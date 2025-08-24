@@ -15,16 +15,13 @@
   
   "functions": {
     "app/api/*/route.ts": {
-      "maxDuration": 10,
-      "memory": 512
+      "maxDuration": 10
     },
     "app/api/export/*/route.ts": {
-      "maxDuration": 10,
-      "memory": 1024
+      "maxDuration": 10
     },
     "app/api/dashboard/*/route.ts": {
-      "maxDuration": 10,
-      "memory": 512
+      "maxDuration": 10
     }
   },
   
@@ -119,21 +116,6 @@
       "source": "/home",
       "destination": "/",
       "permanent": true
-    }
-  ],
-  
-  "crons": [
-    {
-      "path": "/api/cron/cleanup",
-      "schedule": "0 3 * * *"
-    },
-    {
-      "path": "/api/cron/backup",
-      "schedule": "0 4 * * *"
-    },
-    {
-      "path": "/api/cron/report",
-      "schedule": "0 9 * * 1"
     }
   ],
   
