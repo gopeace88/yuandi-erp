@@ -1,0 +1,20 @@
+# Vercel ビルドから除外するファイル
+__tests__
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+jest.config.js
+jest.setup.js
+playwright.config.ts
+.env.local
+.env.development
+scripts/test-*.js
+docs/
+README.md
+CONTRIBUTING.md
+*.log
+.git
+.github
+.vscode
+.idea

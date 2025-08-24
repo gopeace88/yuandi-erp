@@ -1,0 +1,100 @@
+{
+  "name": "yuandi-collection-management",
+  "version": "1.0.0",
+  "description": "YUANDI Collection 주문/재고/배송 관리 시스템",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 8081",
+    "build": "next build",
+    "build:optimize": "node scripts/optimize-build.js && next build",
+    "build:analyze": "cross-env ANALYZE=true next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit --skipLibCheck",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:e2e": "playwright test",
+    "analyze": "node scripts/analyze-bundle.js",
+    "deploy": "vercel",
+    "deploy:prod": "vercel --prod",
+    "env:setup": "bash scripts/setup-vercel-env.sh",
+    "env:pull": "vercel env pull .env.local",
+    "optimize": "node scripts/optimize-build.js"
+  },
+  "dependencies": {
+    "@sentry/nextjs": "^7.100.0",
+    "@supabase/auth-helpers-nextjs": "^0.8.7",
+    "@supabase/ssr": "^0.7.0",
+    "@supabase/supabase-js": "^2.56.0",
+    "@vercel/analytics": "^1.1.0",
+    "@vercel/speed-insights": "^1.0.0",
+    "autoprefixer": "^10.4.0",
+    "clsx": "^2.1.0",
+    "date-fns": "^4.1.0",
+    "file-saver": "^2.0.5",
+    "lucide-react": "^0.400.0",
+    "next": "^14.2.0",
+    "pg": "^8.16.3",
+    "postcss": "^8.4.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "recharts": "^3.1.2",
+    "sharp": "^0.33.0",
+    "tailwind-merge": "^3.3.1",
+    "tailwindcss": "^3.4.0",
+    "tailwindcss-animate": "^1.0.7",
+    "typescript": "5.9.2",
+    "xlsx": "^0.18.5",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "@next/bundle-analyzer": "^14.2.0",
+    "@playwright/test": "^1.55.0",
+    "@testing-library/jest-dom": "^6.4.0",
+    "@testing-library/react": "^14.2.0",
+    "@types/jest": "^30.0.0",
+    "@types/node": "24.3.0",
+    "@types/react": "19.1.11",
+    "@types/react-dom": "^18.2.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "cross-env": "^7.0.3",
+    "eslint": "^8.56.0",
+    "eslint-config-next": "^14.2.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.1.0",
+    "gzip-size": "^7.0.0",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^30.0.5",
+    "prettier": "^3.2.0",
+    "vercel": "^33.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "keywords": [
+    "nextjs",
+    "supabase",
+    "ecommerce",
+    "order-management",
+    "inventory-management",
+    "typescript",
+    "tailwindcss"
+  ],
+  "author": "YUANDI Collection Management <contact@yuandi.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yuandi/collection-management.git"
+  },
+  "main": "jest.config.js",
+  "directories": {
+    "doc": "docs",
+    "lib": "lib"
+  },
+  "bugs": {
+    "url": "https://github.com/yuandi/collection-management/issues"
+  },
+  "homepage": "https://github.com/yuandi/collection-management#readme"
+}

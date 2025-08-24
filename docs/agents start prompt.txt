@@ -1,0 +1,4 @@
+ e2e-scenario-analyzer subagent 사용해서 http://localhost:8081 의 주요  
+   사용자 흐름을 분석하고, E2E 테스트 시나리오를 만들어줘.               
+   그리고, 각각의 테스트 시나리오를 playwright-e2e-tester subagent       
+   사용해서 병렬로 구현해줘

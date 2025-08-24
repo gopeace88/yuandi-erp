@@ -1,0 +1,10 @@
+{
+    "agents": {
+        "default": {
+            "subagents": [
+                "e2e-scenario-analyzer",
+                "playwright-e2e-tester"
+            ]
+        }
+    }
+}
