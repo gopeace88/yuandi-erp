@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import * as XLSX from 'xlsx'
+// import * as XLSX from 'xlsx' // Temporarily disabled for Vercel deployment
 
 export async function GET(request: NextRequest) {
+  // Temporarily return error for Excel export
+  return NextResponse.json(
+    { error: 'Excel export is temporarily disabled' },
+    { status: 503 }
+  )
+  
+  /* Original code - to be re-enabled after fixing SSR issues
   try {
     const supabase = await createServerSupabaseClient()
     
@@ -60,4 +67,5 @@ export async function GET(request: NextRequest) {
     console.error('Export orders API error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
+  */
 }
