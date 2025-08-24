@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  yuandi-erp:
+    image: yuandi-erp:latest
+    container_name: yuandi-erp
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      # Supabase 설정
+      - NEXT_PUBLIC_SUPABASE_URL=https://eikwfesvmohfpokgeqtv.supabase.co
+      - NEXT_PUBLIC_SUPABASE_API_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVpa3dmZXN2bW9oZnBva2dlcXR2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjMxMTE0MjIsImV4cCI6MjAzODY4NzQyMn0.gZJlYKHaEcVnz2ieKMpVRBGz-SI3czJGZQLmY5GDvP0
+      - SUPABASE_API_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVpa3dmZXN2bW9oZnBva2dlcXR2Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTcyMzExMTQyMiwiZXhwIjoyMDM4Njg3NDIyfQ.UuXkBpvqhOxPMKm3cIq_rEIvSludS9_b0nNVPiwN5BY
+      # 세션 시크릿 (32자 이상 랜덤 문자열로 변경하세요)
+      - SESSION_SECRET=your-super-secret-session-key-change-this-12345
+      # 앱 URL (NAS IP로 변경)
+      - NEXT_PUBLIC_APP_URL=http://192.168.1.100:3000
+    volumes:
+      - yuandi-uploads:/app/uploads
+      - yuandi-logs:/app/logs
+    networks:
+      - yuandi-network
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+      - "traefik.enable=false"  # Traefik 사용시 true로 변경
+
+networks:
+  yuandi-network:
+    driver: bridge
+
+volumes:
+  yuandi-uploads:
+    driver: local
+  yuandi-logs:
+    driver: local
