@@ -156,17 +156,16 @@ const nextConfig = {
         tls: false,
         crypto: false,
       };
-      
-      // Fix for 'self is not defined' error
-      config.resolve.alias = {
-        ...config.resolve.alias,
+    }
+    
+    // Fix for client-side packages
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        tls: false,
       };
-      
-      // Polyfill for 'self' in server-side bundles
-      config.output.globalObject = 'this';
-      
-      // Externalize packages that cause SSR issues
-      config.externals = [...(config.externals || []), 'xlsx', 'file-saver'];
     }
     // Bundle analyzer in production build
     if (!dev && !isServer && process.env.ANALYZE === 'true') {

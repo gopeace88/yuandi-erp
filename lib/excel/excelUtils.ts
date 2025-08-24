@@ -24,11 +24,15 @@ export interface ExcelExportOptions {
 // UTF-8 BOM 추가하여 한글 깨짐 방지
 const UTF8_BOM = '\uFEFF'
 
-// 엑셀 내보내기 메인 함수
+// 엑셀 내보내기 메인 함수 (임시 비활성화)
 export async function exportToExcel(options: ExcelExportOptions) {
-  // Dynamic import to avoid SSR issues
-  const XLSX = await import('xlsx')
-  const { saveAs } = await import('file-saver')
+  // Temporarily disabled for Vercel deployment
+  console.log('Excel export is temporarily disabled')
+  return
+  
+  // TODO: Re-enable after fixing SSR issues
+  // const XLSX = await import('xlsx')
+  // const { saveAs } = await import('file-saver')
   const {
     filename,
     sheetName = 'Sheet1',
