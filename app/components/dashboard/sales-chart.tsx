@@ -2,12 +2,12 @@
 
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
-interface SalesData {
+export interface SalesData {
   date: string
   amount: number
 }
 
-interface SalesChartProps {
+export interface SalesChartProps {
   data: SalesData[]
 }
 

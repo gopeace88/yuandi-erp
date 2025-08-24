@@ -2,13 +2,13 @@
 
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
 
-interface OrderStatusData {
+export interface OrderStatusData {
   status: string
   label: string
   count: number
 }
 
-interface OrderStatusChartProps {
+export interface OrderStatusChartProps {
   data: OrderStatusData[]
 }
 

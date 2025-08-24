@@ -6,6 +6,9 @@ const nextConfig = {
   // Enable SWC minification for faster builds
   swcMinify: true,
   
+  // Transpile packages that have issues with SSR
+  transpilePackages: ['recharts'],
+  
   // TypeScript and ESLint configuration for Vercel deployment
   typescript: {
     // !! WARN !!
@@ -145,88 +148,15 @@ const nextConfig = {
     ];
   },
   
-  // Webpack configuration for bundle optimization
+  // Webpack configuration - minimal setup to avoid SSR issues
   webpack: (config, { dev, isServer }) => {
-    // Fix for browser-only modules in SSR
-    if (isServer) {
-      config.resolve.fallback = {
-        ...config.resolve.fallback,
-        fs: false,
-        net: false,
-        tls: false,
-        crypto: false,
-      };
-    }
-    
-    // Fix for client-side packages
+    // Client-side fallbacks
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
         fs: false,
         net: false,
         tls: false,
-      };
-    }
-    // Bundle analyzer in production build
-    if (!dev && !isServer && process.env.ANALYZE === 'true') {
-      const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
-      config.plugins.push(
-        new BundleAnalyzerPlugin({
-          analyzerMode: 'static',
-          reportFilename: './analyze.html',
-          openAnalyzer: false,
-        })
-      );
-    }
-    
-    // Optimize chunks in production
-    if (!dev) {
-      config.optimization = {
-        ...config.optimization,
-        splitChunks: {
-          chunks: 'all',
-          cacheGroups: {
-            default: false,
-            vendors: false,
-            // Vendor chunk for node_modules
-            vendor: {
-              name: 'vendor',
-              chunks: 'all',
-              test: /node_modules/,
-              priority: 20,
-            },
-            // Common chunk for shared code
-            common: {
-              name: 'common',
-              minChunks: 2,
-              chunks: 'all',
-              priority: 10,
-              reuseExistingChunk: true,
-              enforce: true,
-            },
-            // Supabase SDK chunk
-            supabase: {
-              name: 'supabase',
-              test: /[\\/]node_modules[\\/]@supabase[\\/]/,
-              chunks: 'all',
-              priority: 30,
-            },
-            // UI libraries chunk
-            ui: {
-              name: 'ui',
-              test: /[\\/]node_modules[\\/](react-dom|lucide-react)[\\/]/,
-              chunks: 'all',
-              priority: 25,
-            },
-            // Excel libraries chunk (heavy)
-            excel: {
-              name: 'excel',
-              test: /[\\/]node_modules[\\/](xlsx|file-saver)[\\/]/,
-              chunks: 'all',
-              priority: 15,
-            },
-          },
-        },
       };
     }
     
