@@ -1,5 +1,3 @@
-import * as XLSX from 'xlsx'
-import { saveAs } from 'file-saver'
 import { formatDate, formatCurrency, formatPhoneNumber } from '@/lib/i18n/formatters'
 import { Locale } from '@/lib/i18n/config'
 
@@ -27,7 +25,10 @@ export interface ExcelExportOptions {
 const UTF8_BOM = '\uFEFF'
 
 // 엑셀 내보내기 메인 함수
-export function exportToExcel(options: ExcelExportOptions) {
+export async function exportToExcel(options: ExcelExportOptions) {
+  // Dynamic import to avoid SSR issues
+  const XLSX = await import('xlsx')
+  const { saveAs } = await import('file-saver')
   const {
     filename,
     sheetName = 'Sheet1',

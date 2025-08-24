@@ -58,8 +58,9 @@ const nextConfig = {
     optimizePackageImports: [
       '@supabase/supabase-js',
       'lucide-react',
-      'xlsx',
-      'file-saver',
+      // Remove xlsx and file-saver from optimization to avoid SSR issues
+      // 'xlsx',
+      // 'file-saver',
     ],
     
     // Server Actions configuration
@@ -146,7 +147,7 @@ const nextConfig = {
   
   // Webpack configuration for bundle optimization
   webpack: (config, { dev, isServer }) => {
-    // Fix for isomorphic-dompurify and other browser-only modules
+    // Fix for browser-only modules in SSR
     if (isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
@@ -155,6 +156,17 @@ const nextConfig = {
         tls: false,
         crypto: false,
       };
+      
+      // Fix for 'self is not defined' error
+      config.resolve.alias = {
+        ...config.resolve.alias,
+      };
+      
+      // Polyfill for 'self' in server-side bundles
+      config.output.globalObject = 'this';
+      
+      // Externalize packages that cause SSR issues
+      config.externals = [...(config.externals || []), 'xlsx', 'file-saver'];
     }
     // Bundle analyzer in production build
     if (!dev && !isServer && process.env.ANALYZE === 'true') {

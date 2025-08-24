@@ -120,7 +120,7 @@ export async function GET(request: NextRequest) {
     })
 
     // 엑셀 파일 생성 및 다운로드
-    exportToExcel({
+    await exportToExcel({
       filename: locale === 'ko' ? '주문목록' : '订单列表',
       sheetName: locale === 'ko' ? '주문' : '订单',
       columns: getOrderExcelColumns(locale),
