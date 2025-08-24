@@ -25,12 +25,12 @@
   
   "functions": {
     "app/api/*/route.ts": {
-      "maxDuration": 30,
-      "memory": 1024
+      "maxDuration": 10,
+      "memory": 512
     },
     "app/api/export/*/route.ts": {
-      "maxDuration": 60,
-      "memory": 3008
+      "maxDuration": 10,
+      "memory": 1024
     },
     "app/api/dashboard/*/route.ts": {
       "maxDuration": 10,
