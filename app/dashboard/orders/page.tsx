@@ -73,7 +73,7 @@ export default function OrdersPage() {
 
   useEffect(() => {
     fetchOrders()
-  }, [currentPage, searchTerm, statusFilter])
+  }, [currentPage, statusFilter])
 
   useEffect(() => {
     fetchStats()
@@ -116,6 +116,15 @@ export default function OrdersPage() {
     e.preventDefault()
     setCurrentPage(1) // 검색 시 첫 페이지로 이동
     fetchOrders()
+  }
+  
+  // 검색어 입력 시 엔터키로도 검색 가능
+  const handleSearchKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      setCurrentPage(1)
+      fetchOrders()
+    }
   }
 
   const getStatusBadge = (status: string) => {
@@ -232,6 +241,7 @@ export default function OrdersPage() {
               placeholder={t('orders.searchPlaceholder')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyPress={handleSearchKeyPress}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </form>

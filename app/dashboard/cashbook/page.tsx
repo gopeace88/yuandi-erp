@@ -8,6 +8,18 @@ import { TransactionModal } from '@/app/components/cashbook/transaction-modal'
 export default function CashbookPage() {
   const [locale, setLocale] = useState<Locale>(defaultLocale)
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+  const [transactions, setTransactions] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [summary, setSummary] = useState({
+    balance: 0,
+    income: 0,
+    expense: 0,
+    monthlyProfit: 0
+  })
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalCount, setTotalCount] = useState(0)
+  const itemsPerPage = 20
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -42,6 +54,77 @@ export default function CashbookPage() {
 
   const t = (key: string) => translate(locale, key)
 
+  const fetchCashbook = async () => {
+    setLoading(true)
+    try {
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: itemsPerPage.toString()
+      })
+      
+      const response = await fetch(`/api/cashbook?${params}`)
+      const result = await response.json()
+      
+      if (response.ok) {
+        setTransactions(result.transactions || [])
+        setSummary(result.summary || {
+          balance: 0,
+          income: 0,
+          expense: 0,
+          monthlyProfit: 0
+        })
+        setTotalCount(result.pagination?.total || 0)
+        setTotalPages(result.pagination?.totalPages || 1)
+      } else {
+        console.error('Error fetching cashbook:', result.error)
+      }
+    } catch (error) {
+      console.error('Error:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchCashbook()
+  }, [currentPage])
+
+  const formatAmount = (amount: number) => {
+    return new Intl.NumberFormat('ko-KR', {
+      style: 'currency',
+      currency: 'KRW'
+    }).format(amount)
+  }
+
+  const getTransactionTypeLabel = (type: string) => {
+    const typeMap: any = {
+      sale: '매출',
+      inbound: '매입',
+      shipping: '배송비',
+      adjustment: '조정',
+      refund: '환불'
+    }
+    return typeMap[type] || type
+  }
+
+  const getPageNumbers = () => {
+    const pages = []
+    const maxVisiblePages = 5
+    
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2))
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1)
+    
+    if (endPage - startPage < maxVisiblePages - 1) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1)
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(i)
+    }
+    
+    return pages
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -63,7 +146,7 @@ export default function CashbookPage() {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">{t('cashbook.totalBalance')}</p>
-              <p className="text-2xl font-bold text-gray-900">₩15,250,000</p>
+              <p className="text-2xl font-bold text-gray-900">{formatAmount(summary.balance)}</p>
             </div>
           </div>
         </div>
@@ -75,7 +158,7 @@ export default function CashbookPage() {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">{t('cashbook.income')}</p>
-              <p className="text-2xl font-bold text-gray-900">₩20,500,000</p>
+              <p className="text-2xl font-bold text-green-600">{formatAmount(summary.income)}</p>
             </div>
           </div>
         </div>
@@ -87,7 +170,7 @@ export default function CashbookPage() {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">{t('cashbook.expense')}</p>
-              <p className="text-2xl font-bold text-gray-900">₩5,250,000</p>
+              <p className="text-2xl font-bold text-red-600">{formatAmount(summary.expense)}</p>
             </div>
           </div>
         </div>
@@ -99,7 +182,7 @@ export default function CashbookPage() {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">{t('cashbook.monthlyProfit')}</p>
-              <p className="text-2xl font-bold text-gray-900">₩2,150,000</p>
+              <p className="text-2xl font-bold text-gray-900">{formatAmount(summary.monthlyProfit)}</p>
             </div>
           </div>
         </div>
@@ -136,31 +219,117 @@ export default function CashbookPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              <tr>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  2024-08-23
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                    {t('cashbook.income')}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {t('cashbook.salesCategory')}
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-900">
-                  iPhone 15 Pro {t('cashbook.salesDescription')}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
-                  +₩1,250,000
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                  ₩15,250,000
-                </td>
-              </tr>
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
+                    로딩 중...
+                  </td>
+                </tr>
+              ) : transactions.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
+                    거래 내역이 없습니다
+                  </td>
+                </tr>
+              ) : (
+                transactions.map((transaction, index) => {
+                  const isIncome = transaction.amount_krw > 0
+                  const runningBalance = transactions
+                    .slice(0, index + 1)
+                    .reduce((sum, t) => sum + t.amount_krw, 0)
+                  
+                  return (
+                    <tr key={transaction.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {new Date(transaction.transaction_date).toLocaleDateString(locale)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          isIncome ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                        }`}>
+                          {getTransactionTypeLabel(transaction.type)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {transaction.ref_no || '-'}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900">
+                        {transaction.description || transaction.note || '-'}
+                      </td>
+                      <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${
+                        isIncome ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        {isIncome ? '+' : ''}{formatAmount(transaction.amount_krw)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {formatAmount(runningBalance)}
+                      </td>
+                    </tr>
+                  )
+                })
+              )}
             </tbody>
           </table>
         </div>
+        
+        {/* 페이지네이션 */}
+        {totalPages > 1 && (
+          <div className="px-6 py-4 border-t border-gray-200">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-gray-700">
+                전체 {totalCount}건 중 {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, totalCount)}건 표시
+              </div>
+              
+              <div className="flex items-center space-x-1">
+                <button
+                  onClick={() => setCurrentPage(1)}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  처음
+                </button>
+                
+                <button
+                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  이전
+                </button>
+                
+                {getPageNumbers().map(page => (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={`px-3 py-1 rounded-md text-sm font-medium ${
+                      currentPage === page
+                        ? 'bg-blue-600 text-white'
+                        : 'text-gray-700 hover:bg-gray-100'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+                
+                <button
+                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  다음
+                </button>
+                
+                <button
+                  onClick={() => setCurrentPage(totalPages)}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  마지막
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
       
       {/* 거래 추가 모달 */}
@@ -170,8 +339,7 @@ export default function CashbookPage() {
           onClose={() => setIsAddModalOpen(false)}
           onSuccess={() => {
             setIsAddModalOpen(false)
-            // TODO: 거래 목록 새로고침
-            window.location.reload()
+            fetchCashbook()
           }}
         />
       )}
