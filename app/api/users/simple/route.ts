@@ -1,10 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSupabaseClient } from '@/lib/supabase/api'
+import { createClient } from '@supabase/supabase-js'
+
+// Supabase 클라이언트 직접 생성 (쿠키 없이)
+function getDirectSupabase() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_API_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error('Missing Supabase configuration')
+  }
+  
+  return createClient(supabaseUrl, supabaseKey)
+}
 
 // 단순화된 사용자 관리 - Auth 없이 profiles 테이블만 사용
 export async function GET(request: NextRequest) {
   try {
-    const { supabase } = await getSupabaseClient()
+    const supabase = getDirectSupabase()
     
     // 모든 사용자 조회
     const { data: users, error } = await supabase
@@ -29,12 +41,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { supabase, session } = await getSupabaseClient()
-    
-    // 현재 세션 확인
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const supabase = getDirectSupabase()
     
     const body = await request.json()
     const { name, email, role = 'Admin', active = true } = body
@@ -75,12 +82,7 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const { supabase, session } = await getSupabaseClient()
-    
-    // 현재 세션 확인
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const supabase = getDirectSupabase()
     
     const body = await request.json()
     const { id, name, role, active } = body
@@ -115,12 +117,7 @@ export async function PATCH(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const { supabase, session } = await getSupabaseClient()
-    
-    // 현재 세션 확인
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const supabase = getDirectSupabase()
     
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get('id')

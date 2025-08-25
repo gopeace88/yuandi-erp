@@ -31,7 +31,7 @@ export function UserModal({ locale, mode, user, onClose, onSuccess }: UserModalP
     try {
       if (mode === 'add') {
         // 새 사용자 추가 (Auth + Profile)
-        const response = await fetch('/api/users', {
+        const response = await fetch('/api/users/simple', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -49,7 +49,7 @@ export function UserModal({ locale, mode, user, onClose, onSuccess }: UserModalP
         }
       } else {
         // 사용자 수정 (Profile만)
-        const response = await fetch('/api/users', {
+        const response = await fetch('/api/users/simple', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
