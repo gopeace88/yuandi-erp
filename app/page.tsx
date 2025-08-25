@@ -31,7 +31,9 @@ export default function HomePage() {
         } else {
           // 저장된 설정이 없으면 브라우저 언어 감지
           const browserLang = navigator.language?.toLowerCase() || 'ko'
-          const detectedLocale = browserLang.includes('zh') ? 'zh-CN' : 'ko'
+          // ko, ko-kr 등 한국어 설정을 우선 체크
+          const detectedLocale = browserLang.includes('ko') ? 'ko' : 
+                                 browserLang.includes('zh') ? 'zh-CN' : 'ko'
           setLocale(detectedLocale)
           localStorage.setItem('locale', detectedLocale)
           document.cookie = `locale=${detectedLocale}; path=/; max-age=${60 * 60 * 24 * 365}`

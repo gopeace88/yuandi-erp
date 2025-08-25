@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Locale, LOCALE_STORAGE_KEY, defaultLocale } from '@/lib/i18n/config'
 import { translate } from '@/lib/i18n/translations'
+import { UserModal } from '@/app/components/users/user-modal'
 
 interface UserStats {
   totalUsers: number
@@ -28,6 +29,11 @@ interface UsersContentProps {
 
 export function UsersContent({ stats, users }: UsersContentProps) {
   const [locale, setLocale] = useState<Locale>(defaultLocale)
+  const [userModal, setUserModal] = useState<{
+    isOpen: boolean
+    mode: 'add' | 'edit'
+    user?: any
+  }>({ isOpen: false, mode: 'add' })
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -75,8 +81,11 @@ export function UsersContent({ stats, users }: UsersContentProps) {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">{t('users.title')}</h1>
-        <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-          {t('users.addUser')}
+        <button 
+          onClick={() => setUserModal({ isOpen: true, mode: 'add' })}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          사용자 추가
         </button>
       </div>
 
@@ -194,8 +203,23 @@ export function UsersContent({ stats, users }: UsersContentProps) {
                       {user.last_login_at ? new Date(user.last_login_at).toLocaleString(locale) : t('users.neverLoggedIn')}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button className="text-blue-600 hover:text-blue-900 mr-3">{t('common.edit')}</button>
-                      <button className="text-red-600 hover:text-red-900">{t('common.delete')}</button>
+                      <button 
+                        onClick={() => setUserModal({ isOpen: true, mode: 'edit', user })}
+                        className="text-blue-600 hover:text-blue-900 mr-3"
+                      >
+                        {t('common.edit')}
+                      </button>
+                      <button 
+                        onClick={() => {
+                          if (confirm(`${user.name} 사용자를 삭제하시겠습니까?`)) {
+                            console.log('Delete user:', user.id)
+                            // TODO: API 호출로 사용자 삭제
+                          }
+                        }}
+                        className="text-red-600 hover:text-red-900"
+                      >
+                        {t('common.delete')}
+                      </button>
                     </td>
                   </tr>
                 )
@@ -204,6 +228,21 @@ export function UsersContent({ stats, users }: UsersContentProps) {
           </table>
         </div>
       </div>
+      
+      {/* 사용자 추가/수정 모달 */}
+      {userModal.isOpen && (
+        <UserModal
+          locale={locale}
+          mode={userModal.mode}
+          user={userModal.user}
+          onClose={() => setUserModal({ isOpen: false, mode: 'add' })}
+          onSuccess={() => {
+            setUserModal({ isOpen: false, mode: 'add' })
+            // TODO: 사용자 목록 새로고침
+            window.location.reload()
+          }}
+        />
+      )}
     </div>
   )
 }

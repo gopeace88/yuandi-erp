@@ -3,9 +3,11 @@
 import { useState, useEffect } from 'react'
 import { Locale, LOCALE_STORAGE_KEY, defaultLocale } from '@/lib/i18n/config'
 import { translate } from '@/lib/i18n/translations'
+import { TransactionModal } from '@/app/components/cashbook/transaction-modal'
 
 export default function CashbookPage() {
   const [locale, setLocale] = useState<Locale>(defaultLocale)
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false)
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -44,7 +46,10 @@ export default function CashbookPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">{t('cashbook.title')}</h1>
-        <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+        <button 
+          onClick={() => setIsAddModalOpen(true)}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+        >
           {t('cashbook.addTransaction')}
         </button>
       </div>
@@ -157,6 +162,19 @@ export default function CashbookPage() {
           </table>
         </div>
       </div>
+      
+      {/* 거래 추가 모달 */}
+      {isAddModalOpen && (
+        <TransactionModal
+          locale={locale}
+          onClose={() => setIsAddModalOpen(false)}
+          onSuccess={() => {
+            setIsAddModalOpen(false)
+            // TODO: 거래 목록 새로고침
+            window.location.reload()
+          }}
+        />
+      )}
     </div>
   )
 }

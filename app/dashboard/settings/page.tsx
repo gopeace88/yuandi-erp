@@ -17,11 +17,21 @@ export default function SettingsPage() {
     email: '',
     lowStockThreshold: 5,
     autoStockAlert: true,
-    autoReorderEnabled: false,
     defaultLanguage: 'ko',
     timezone: 'Asia/Seoul',
     defaultCurrency: 'KRW'
   })
+  
+  const [categories, setCategories] = useState([
+    { id: 'electronics', name: '전자제품', active: true },
+    { id: 'fashion', name: '패션', active: true },
+    { id: 'home', name: '홈&리빙', active: true },
+    { id: 'beauty', name: '뷰티', active: true },
+    { id: 'sports', name: '스포츠', active: true },
+    { id: 'food', name: '식품', active: true },
+    { id: 'other', name: '기타', active: true }
+  ])
+  const [newCategory, setNewCategory] = useState('')
   
   const t = (key: string, params?: Record<string, any>) => translate(locale, key, params)
 
@@ -298,17 +308,73 @@ export default function SettingsPage() {
                   {t('settings.autoStockAlert')}
                 </label>
               </div>
-              <div className="flex items-center">
+            </div>
+          </div>
+          
+          {/* 카테고리 관리 */}
+          <div className="bg-white shadow rounded-lg">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg leading-6 font-medium text-gray-900">카테고리 관리</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                상품 카테고리를 관리합니다.
+              </p>
+            </div>
+            <div className="px-6 py-4 space-y-4">
+              <div className="flex space-x-2">
                 <input
-                  id="auto-reorder"
-                  type="checkbox"
-                  checked={settings.autoReorderEnabled}
-                  onChange={(e) => handleInputChange('autoReorderEnabled', e.target.checked)}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  type="text"
+                  value={newCategory}
+                  onChange={(e) => setNewCategory(e.target.value)}
+                  placeholder="새 카테고리 이름"
+                  className="flex-1 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 />
-                <label htmlFor="auto-reorder" className="ml-2 block text-sm text-gray-900">
-                  {t('settings.autoReorderEnabled')}
-                </label>
+                <button
+                  onClick={() => {
+                    if (newCategory.trim()) {
+                      setCategories([...categories, {
+                        id: newCategory.toLowerCase().replace(/\s+/g, '_'),
+                        name: newCategory,
+                        active: true
+                      }])
+                      setNewCategory('')
+                    }
+                  }}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                >
+                  추가
+                </button>
+              </div>
+              <div className="space-y-2">
+                {categories.map((category) => (
+                  <div key={category.id} className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-md">
+                    <span className="text-sm font-medium text-gray-900">{category.name}</span>
+                    <div className="flex items-center space-x-2">
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={category.active}
+                          onChange={(e) => {
+                            setCategories(categories.map(c => 
+                              c.id === category.id ? { ...c, active: e.target.checked } : c
+                            ))
+                          }}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                        <span className="ml-2 text-sm text-gray-600">활성</span>
+                      </label>
+                      {!['electronics', 'fashion', 'home', 'beauty', 'sports', 'food', 'other'].includes(category.id) && (
+                        <button
+                          onClick={() => {
+                            setCategories(categories.filter(c => c.id !== category.id))
+                          }}
+                          className="text-red-600 hover:text-red-800 text-sm"
+                        >
+                          삭제
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
