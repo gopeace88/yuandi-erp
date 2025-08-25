@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import { Locale, LOCALE_STORAGE_KEY, defaultLocale } from '@/lib/i18n/config'
 import { translate } from '@/lib/i18n/translations'
 import { OrderAddModal } from '@/app/components/orders/order-add-modal'
+import { OrderDetailModal } from '@/components/orders/order-detail-modal'
+import { OrderEditModal } from '@/components/orders/order-edit-modal'
 import { createClient } from '@/lib/supabase/client'
 
 export default function OrdersPage() {
@@ -11,6 +13,8 @@ export default function OrdersPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+  const [selectedOrder, setSelectedOrder] = useState<any>(null)
+  const [editingOrder, setEditingOrder] = useState<any>(null)
   const [orders, setOrders] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   
@@ -75,16 +79,22 @@ export default function OrdersPage() {
     }
   }
 
+  // 페이지 변경 시
   useEffect(() => {
     fetchOrders()
   }, [currentPage])
   
-  // 상태 필터 변경 시 첫 페이지로 이동
+  // 검색어나 상태 필터 변경 시 첫 페이지로 이동
   useEffect(() => {
-    if (statusFilter !== undefined) {
-      fetchOrders(true)
+    // 첫 렌더링 시 실행 방지
+    const isFirstRender = statusFilter === '' && searchTerm === ''
+    if (!isFirstRender) {
+      const timer = setTimeout(() => {
+        fetchOrders(true)
+      }, 300) // 디바운싱
+      return () => clearTimeout(timer)
     }
-  }, [statusFilter])
+  }, [searchTerm, statusFilter])
 
   useEffect(() => {
     fetchStats()
@@ -138,16 +148,12 @@ export default function OrdersPage() {
   
   // 주문 상세 보기
   const handleViewOrder = (order: any) => {
-    // TODO: 모달로 상세 정보 표시
-    console.log('주문 상세:', order)
-    alert(`주문 상세\n\n주문번호: ${order.order_number}\n고객명: ${order.customer_name}\n연락처: ${order.customer_phone}\n금액: ${formatAmount(order.total_amount)}\n상태: ${t(`orders.status.${order.status.toLowerCase()}`)}`)
+    setSelectedOrder(order)
   }
   
   // 주문 수정
   const handleEditOrder = (order: any) => {
-    // TODO: 수정 모달 구현
-    console.log('주문 수정:', order)
-    alert(`주문 수정 기능 준비 중\n주문번호: ${order.order_number}`)
+    setEditingOrder(order)
   }
 
   const getStatusBadge = (status: string) => {
@@ -425,6 +431,29 @@ export default function OrdersPage() {
           onClose={() => setIsAddModalOpen(false)}
           onSuccess={() => {
             setIsAddModalOpen(false)
+            fetchOrders()
+            fetchStats()
+          }}
+        />
+      )}
+      
+      {/* 주문 상세 모달 */}
+      {selectedOrder && (
+        <OrderDetailModal
+          order={selectedOrder}
+          locale={locale}
+          onClose={() => setSelectedOrder(null)}
+        />
+      )}
+      
+      {/* 주문 수정 모달 */}
+      {editingOrder && (
+        <OrderEditModal
+          order={editingOrder}
+          locale={locale}
+          onClose={() => setEditingOrder(null)}
+          onSuccess={() => {
+            setEditingOrder(null)
             fetchOrders()
             fetchStats()
           }}

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Locale } from '@/lib/i18n/config'
 import { translate } from '@/lib/i18n/translations'
+import { ProductImageUpload } from '@/components/products/product-image-upload'
 
 interface ProductAddModalProps {
   locale: Locale
@@ -12,6 +13,7 @@ interface ProductAddModalProps {
 
 export function ProductAddModal({ locale, onClose, onSuccess }: ProductAddModalProps) {
   const [isLoading, setIsLoading] = useState(false)
+  const [productImage, setProductImage] = useState<File | null>(null)
   const [formData, setFormData] = useState({
     category: '',
     name: '',
@@ -79,6 +81,14 @@ export function ProductAddModal({ locale, onClose, onSuccess }: ProductAddModalP
         </div>
 
         <form onSubmit={handleSubmit} className="p-6">
+          {/* 상품 이미지 */}
+          <div className="mb-6">
+            <ProductImageUpload
+              onImageUpload={(file) => setProductImage(file)}
+              locale={locale}
+            />
+          </div>
+          
           <div className="grid grid-cols-2 gap-4">
             {/* 카테고리 */}
             <div>

@@ -107,6 +107,15 @@ export const koMessages = {
     "searchPlaceholder": "주문번호 또는 고객명으로 검색...",
     "allStatus": "모든 상태",
     "noOrders": "주문이 없습니다",
+    "orderDetail": "주문 상세",
+    "basicInfo": "기본 정보",
+    "customerInfo": "고객 정보",
+    "productInfo": "상품 정보",
+    "statusHistory": "상태 변경 이력",
+    "shippingInfo": "배송 정보",
+    "currentStatus": "현재 상태",
+    "courier": "택배사",
+    "trackingNumber": "운송장 번호",
     "stats": {
       "total": "전체 주문",
       "processing": "처리 중",
@@ -150,7 +159,29 @@ export const koMessages = {
       "complete": "완료",
       "refund": "환불",
       "cancel": "취소",
-      "edit": "수정"
+      "edit": "수정",
+      "registerShipping": "송장 등록",
+      "cancelOrder": "주문 취소",
+      "markComplete": "배송 완료 처리",
+      "processRefund": "환불 처리"
+    },
+    "editOrder": "주문 수정",
+    "selectAction": "작업 선택",
+    "noActionsAvailable": "가능한 작업이 없습니다",
+    "updateSuccess": "주문이 성공적으로 업데이트되었습니다",
+    "updateError": "주문 업데이트 중 오류가 발생했습니다",
+    "refundReason": "환불 사유",
+    "warnings": {
+      "cancelOrder": "주문을 취소하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
+      "refundOrder": "환불을 진행하시겠습니까? 이 작업은 되돌릴 수 없습니다."
+    },
+    "confirm": {
+      "cancel": "정말로 이 주문을 취소하시겠습니까?",
+      "refund": "정말로 환불을 진행하시겠습니까?"
+    },
+    "errors": {
+      "trackingRequired": "운송장 번호를 입력해주세요",
+      "refundReasonRequired": "환불 사유를 입력해주세요"
     }
   },
   "products": {

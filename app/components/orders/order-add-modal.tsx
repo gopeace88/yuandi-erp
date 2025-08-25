@@ -3,6 +3,20 @@
 import { useState, useEffect } from 'react'
 import { Locale } from '@/lib/i18n/config'
 import { translate } from '@/lib/i18n/translations'
+import { Search, Package } from 'lucide-react'
+
+interface Product {
+  id: string
+  name: string
+  model: string
+  color: string
+  brand: string
+  sku: string
+  sale_price_krw: number
+  on_hand: number
+  image_url?: string
+  category: string
+}
 
 interface OrderAddModalProps {
   locale: Locale
@@ -12,7 +26,10 @@ interface OrderAddModalProps {
 
 export function OrderAddModal({ locale, onClose, onSuccess }: OrderAddModalProps) {
   const [isLoading, setIsLoading] = useState(false)
-  const [availableProducts, setAvailableProducts] = useState<any[]>([])
+  const [loadingProducts, setLoadingProducts] = useState(false)
+  const [availableProducts, setAvailableProducts] = useState<Product[]>([])
+  const [allProducts, setAllProducts] = useState<Product[]>([])
+  const [productSearch, setProductSearch] = useState('')
   const [formData, setFormData] = useState({
     customerName: '',
     customerPhone: '',
@@ -29,26 +46,113 @@ export function OrderAddModal({ locale, onClose, onSuccess }: OrderAddModalProps
 
   const t = (key: string) => translate(locale, key)
 
-  // 샘플 상품 데이터
+  // 상품 데이터 불러오기
   useEffect(() => {
-    setAvailableProducts([
-      { id: '1', name: 'iPhone 15 Pro', sku: 'ELEC-IP15-BLU-APPLE-12345', price: 1250000, stock: 25 },
-      { id: '2', name: '스마트워치 Ultra', sku: 'ELEC-WATCH-BLK-APPLE-67890', price: 400000, stock: 3 },
-      { id: '3', name: '무선 이어폰', sku: 'ELEC-AIRPOD-WHT-APPLE-11111', price: 150000, stock: 15 },
-      { id: '4', name: 'iPad Pro', sku: 'ELEC-IPAD-SLV-APPLE-22222', price: 1100000, stock: 8 },
-      { id: '5', name: 'MacBook Air', sku: 'ELEC-MAC-GRY-APPLE-33333', price: 1600000, stock: 5 },
-    ])
+    fetchProducts()
   }, [])
+
+  // 상품 검색 필터링
+  useEffect(() => {
+    if (productSearch.trim() === '') {
+      setAvailableProducts(allProducts.filter(p => p.on_hand > 0))
+    } else {
+      const searchLower = productSearch.toLowerCase()
+      setAvailableProducts(
+        allProducts.filter(p => 
+          p.on_hand > 0 && (
+            p.name.toLowerCase().includes(searchLower) ||
+            p.model?.toLowerCase().includes(searchLower) ||
+            p.brand?.toLowerCase().includes(searchLower) ||
+            p.color?.toLowerCase().includes(searchLower)
+          )
+        )
+      )
+    }
+  }, [productSearch, allProducts])
+
+  const fetchProducts = async () => {
+    setLoadingProducts(true)
+    try {
+      const response = await fetch('/api/products?active=true&limit=100')
+      if (!response.ok) throw new Error('Failed to fetch products')
+      
+      const data = await response.json()
+      setAllProducts(data.products || [])
+      setAvailableProducts((data.products || []).filter((p: Product) => p.on_hand > 0))
+    } catch (error) {
+      console.error('Error fetching products:', error)
+      // 샘플 데이터 폴백
+      const sampleProducts: Product[] = [
+        { 
+          id: '1', 
+          name: 'iPhone 15 Pro', 
+          model: 'iPhone15Pro',
+          color: 'Blue',
+          brand: 'Apple',
+          sku: 'ELEC-IP15-BLU-APPLE-12345', 
+          sale_price_krw: 1250000, 
+          on_hand: 25,
+          category: 'electronics'
+        },
+        { 
+          id: '2', 
+          name: '스마트워치 Ultra', 
+          model: 'Watch Ultra',
+          color: 'Black',
+          brand: 'Apple',
+          sku: 'ELEC-WATCH-BLK-APPLE-67890', 
+          sale_price_krw: 400000, 
+          on_hand: 3,
+          category: 'electronics'
+        },
+      ]
+      setAllProducts(sampleProducts)
+      setAvailableProducts(sampleProducts)
+    } finally {
+      setLoadingProducts(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
 
     try {
-      // API 호출 시뮬레이션
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      const selectedProduct = allProducts.find(p => p.id === formData.productId)
+      if (!selectedProduct) {
+        alert('상품을 선택해주세요')
+        setIsLoading(false)
+        return
+      }
+
+      const orderData = {
+        customer_name: formData.customerName,
+        customer_phone: formData.customerPhone,
+        customer_email: formData.customerEmail || null,
+        pccc_code: formData.pcccCode,
+        shipping_address: formData.shippingAddress,
+        shipping_address_detail: formData.shippingAddressDetail || null,
+        zip_code: formData.zipCode,
+        product_id: formData.productId,
+        quantity: formData.quantity,
+        total_amount: selectedProduct.sale_price_krw * formData.quantity,
+        customer_memo: formData.customerMemo || null,
+        internal_memo: formData.internalMemo || null,
+        status: 'PAID'
+      }
+
+      const response = await fetch('/api/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(orderData)
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to create order')
+      }
       
-      console.log('Creating order:', formData)
       onSuccess()
     } catch (error) {
       console.error('Error creating order:', error)
@@ -58,8 +162,8 @@ export function OrderAddModal({ locale, onClose, onSuccess }: OrderAddModalProps
     }
   }
 
-  const selectedProduct = availableProducts.find(p => p.id === formData.productId)
-  const totalAmount = selectedProduct ? selectedProduct.price * formData.quantity : 0
+  const selectedProduct = allProducts.find(p => p.id === formData.productId)
+  const totalAmount = selectedProduct ? selectedProduct.sale_price_krw * formData.quantity : 0
 
   return (
     <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
@@ -184,25 +288,91 @@ export function OrderAddModal({ locale, onClose, onSuccess }: OrderAddModalProps
           {/* 상품 정보 */}
           <div className="mb-6">
             <h4 className="text-base font-medium text-gray-900 mb-4">상품 정보</h4>
+            
+            {/* 상품 검색 */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                상품 검색
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={productSearch}
+                  onChange={(e) => setProductSearch(e.target.value)}
+                  placeholder="상품명, 모델명, 색상, 브랜드로 검색..."
+                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
-              <div>
+              <div className="col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   상품 선택 *
                 </label>
-                <select
-                  required
-                  value={formData.productId}
-                  onChange={(e) => setFormData({ ...formData, productId: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">상품을 선택하세요</option>
-                  {availableProducts.map(product => (
-                    <option key={product.id} value={product.id}>
-                      {product.name} (재고: {product.stock}개)
-                    </option>
-                  ))}
-                </select>
+                {loadingProducts ? (
+                  <div className="w-full px-3 py-8 border border-gray-300 rounded-md text-center text-gray-500">
+                    상품 목록을 불러오는 중...
+                  </div>
+                ) : (
+                  <select
+                    required
+                    value={formData.productId}
+                    onChange={(e) => setFormData({ ...formData, productId: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    size={5}
+                  >
+                    <option value="">상품을 선택하세요</option>
+                    {availableProducts.length === 0 ? (
+                      <option disabled>검색 결과가 없습니다</option>
+                    ) : (
+                      availableProducts.map(product => (
+                        <option key={product.id} value={product.id}>
+                          {product.name} | {product.model} | {product.color} | {product.brand} (재고: {product.on_hand}개)
+                        </option>
+                      ))
+                    )}
+                  </select>
+                )}
               </div>
+
+              {/* 선택된 상품 정보 및 이미지 */}
+              {selectedProduct && (
+                <div className="col-span-2">
+                  <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                    <div className="flex gap-4">
+                      {/* 상품 이미지 */}
+                      <div className="flex-shrink-0">
+                        {selectedProduct.image_url ? (
+                          <img
+                            src={selectedProduct.image_url}
+                            alt={selectedProduct.name}
+                            className="w-24 h-24 object-cover rounded-lg border border-gray-300"
+                          />
+                        ) : (
+                          <div className="w-24 h-24 bg-gray-200 rounded-lg flex items-center justify-center border border-gray-300">
+                            <Package className="h-8 w-8 text-gray-400" />
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* 상품 상세 정보 */}
+                      <div className="flex-1">
+                        <h5 className="font-semibold text-gray-900">{selectedProduct.name}</h5>
+                        <div className="mt-1 text-sm text-gray-600 space-y-1">
+                          <div>모델: {selectedProduct.model} | 색상: {selectedProduct.color}</div>
+                          <div>브랜드: {selectedProduct.brand}</div>
+                          <div>재고: {selectedProduct.on_hand}개</div>
+                          <div className="font-medium text-gray-900">
+                            단가: ₩{selectedProduct.sale_price_krw.toLocaleString()}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -212,23 +382,22 @@ export function OrderAddModal({ locale, onClose, onSuccess }: OrderAddModalProps
                   type="number"
                   required
                   min="1"
-                  max={selectedProduct?.stock || 999}
+                  max={selectedProduct?.on_hand || 999}
                   value={formData.quantity}
                   onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) || 1 })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={!selectedProduct}
                 />
               </div>
-              
-              {selectedProduct && (
-                <div className="col-span-2 bg-gray-50 p-3 rounded-md">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">단가: ₩{selectedProduct.price.toLocaleString()}</span>
-                    <span className="text-lg font-bold text-gray-900">
-                      총액: ₩{totalAmount.toLocaleString()}
-                    </span>
-                  </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  총 금액
+                </label>
+                <div className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md font-bold text-lg text-gray-900">
+                  ₩{totalAmount.toLocaleString()}
                 </div>
-              )}
+              </div>
             </div>
           </div>
 

@@ -120,8 +120,20 @@ export const zhCNMessages = {
       "shipping": "配送中",
       "done": "已完成",
       "delivered": "配送完成",
-      "refunded": "已退款"
+      "refunded": "已退款",
+      "cancelled": "已取消"
     },
+    "orderDetail": "订单详情",
+    "basicInfo": "基本信息",
+    "customerInfo": "客户信息",
+    "productInfo": "商品信息",
+    "statusHistory": "状态变更记录",
+    "shippingInfo": "配送信息",
+    "currentStatus": "当前状态",
+    "courier": "快递公司",
+    "trackingNumber": "运单号",
+    "allStatus": "所有状态",
+    "noOrders": "没有订单",
     "table": {
       "orderNumber": "订单号",
       "customerName": "客户姓名",
@@ -140,7 +152,29 @@ export const zhCNMessages = {
       "complete": "完成",
       "refund": "退款",
       "cancel": "取消",
-      "edit": "编辑"
+      "edit": "编辑",
+      "registerShipping": "登记运单",
+      "cancelOrder": "取消订单",
+      "markComplete": "标记完成",
+      "processRefund": "处理退款"
+    },
+    "editOrder": "编辑订单",
+    "selectAction": "选择操作",
+    "noActionsAvailable": "没有可用的操作",
+    "updateSuccess": "订单更新成功",
+    "updateError": "订单更新失败",
+    "refundReason": "退款原因",
+    "warnings": {
+      "cancelOrder": "确定要取消此订单吗？此操作无法撤销。",
+      "refundOrder": "确定要进行退款吗？此操作无法撤销。"
+    },
+    "confirm": {
+      "cancel": "您确定要取消此订单吗？",
+      "refund": "您确定要进行退款吗？"
+    },
+    "errors": {
+      "trackingRequired": "请输入运单号",
+      "refundReasonRequired": "请输入退款原因"
     }
   },
   "products": {
