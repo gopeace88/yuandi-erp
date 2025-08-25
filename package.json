@@ -7,7 +7,7 @@
     "dev": "next dev -p 8081",
     "build": "next build",
     "build:optimize": "node scripts/optimize-build.js && next build",
-    "install:ci": "pnpm i --frozen-lockfile",
+    "install:ci": "npm install --legacy-peer-deps",
     "build:analyze": "cross-env ANALYZE=true next build",
     "start": "next start",
     "lint": "next lint",
@@ -68,7 +68,8 @@
     "vercel": "^33.0.0"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
   },
   "keywords": [
     "nextjs",

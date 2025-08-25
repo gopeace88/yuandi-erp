@@ -9,16 +9,8 @@ const nextConfig = {
   // Transpile packages that have issues with SSR
   transpilePackages: ['recharts'],
   
-  // Enable standalone output for deployment
+  // Enable standalone output for Docker deployment
   output: 'standalone',
-  
-  // Experimental features
-  experimental: {
-    serverActions: {
-      allowedOrigins: ['*'],
-      bodySizeLimit: '2mb'
-    }
-  },
   
   // TypeScript and ESLint configuration for Vercel deployment
   typescript: {
