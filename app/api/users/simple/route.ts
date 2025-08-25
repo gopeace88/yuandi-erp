@@ -44,12 +44,16 @@ export async function POST(request: NextRequest) {
     const supabase = getDirectSupabase()
     
     const body = await request.json()
-    const { name, email, role = 'Admin', active = true } = body
+    const { name, email, password, role = 'Admin', active = true } = body
     
     console.log('Creating simple user:', { email, name, role, active })
     
     // Generate a unique ID
     const userId = crypto.randomUUID()
+    
+    // Hash password using simple method (for demo purposes)
+    // In production, use bcrypt or similar
+    const hashedPassword = Buffer.from(password || 'default123').toString('base64')
     
     // Create profile record only (no auth)
     const { data: newProfile, error: profileError } = await supabase
@@ -58,6 +62,7 @@ export async function POST(request: NextRequest) {
         id: userId,
         email,
         name,
+        password: hashedPassword, // Store hashed password
         role,
         active,
         created_at: new Date().toISOString()
