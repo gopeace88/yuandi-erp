@@ -17,6 +17,7 @@ export function UserModal({ locale, mode, user, onClose, onSuccess }: UserModalP
   const [formData, setFormData] = useState({
     name: user?.name || '',
     email: user?.email || '',
+    password: '',
     role: 'Admin', // 관리자로 통일
     active: user?.active !== undefined ? user.active : true
   })
@@ -29,13 +30,14 @@ export function UserModal({ locale, mode, user, onClose, onSuccess }: UserModalP
 
     try {
       if (mode === 'add') {
-        // 새 사용자 추가 (간단한 API 사용)
-        const response = await fetch('/api/users/simple', {
+        // 새 사용자 추가 (Auth + Profile)
+        const response = await fetch('/api/users', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             name: formData.name,
             email: formData.email,
+            password: formData.password,
             role: formData.role,
             active: formData.active
           })
@@ -46,8 +48,8 @@ export function UserModal({ locale, mode, user, onClose, onSuccess }: UserModalP
           throw new Error(error.error || 'Failed to create user')
         }
       } else {
-        // 사용자 수정
-        const response = await fetch('/api/users/simple', {
+        // 사용자 수정 (Profile만)
+        const response = await fetch('/api/users', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
@@ -121,7 +123,22 @@ export function UserModal({ locale, mode, user, onClose, onSuccess }: UserModalP
               />
             </div>
 
-            {/* 비밀번호 필드 제거 - 간단한 사용자 관리용 */}
+            {/* 비밀번호 (추가 모드만) */}
+            {mode === 'add' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  비밀번호 *
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="최소 6자 이상"
+                />
+              </div>
+            )}
 
             {/* 역할 - 관리자로 통일 */}
             <input type="hidden" value="Admin" />

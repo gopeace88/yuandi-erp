@@ -6,16 +6,16 @@ import { createClient } from '@supabase/supabase-js'
 // Create admin client with service role key for user management
 const getSupabaseAdmin = () => {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_API_KEY
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   
   console.log('Creating admin client:', {
     hasUrl: !!supabaseUrl,
     hasServiceKey: !!supabaseServiceKey,
-    serviceKeyPrefix: supabaseServiceKey?.substring(0, 20) + '...'
+    keyLength: supabaseServiceKey?.length
   })
   
   if (!supabaseUrl || !supabaseServiceKey) {
-    throw new Error('Missing Supabase configuration')
+    throw new Error(`Missing Supabase configuration: URL=${!!supabaseUrl}, ServiceKey=${!!supabaseServiceKey}`)
   }
   
   return createClient(supabaseUrl, supabaseServiceKey, {
