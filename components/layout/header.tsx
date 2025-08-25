@@ -146,14 +146,12 @@ export function Header({ user }: HeaderProps) {
                 </a>
                 
                 <div className="border-t border-gray-200 dark:border-gray-700">
-                  <form action="/auth/signout" method="POST">
-                    <button
-                      type="submit"
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                    >
-                      로그아웃
-                    </button>
-                  </form>
+                  <button
+                    onClick={() => window.location.href = '/api/auth/logout'}
+                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
+                    로그아웃
+                  </button>
                 </div>
               </div>
             )}
