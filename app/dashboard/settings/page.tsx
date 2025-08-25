@@ -128,254 +128,233 @@ export default function SettingsPage() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* 사이드바 네비게이션 */}
-        <div className="lg:col-span-1">
-          <nav className="space-y-1">
-            <a
-              href="#general"
-              className="bg-blue-50 border-blue-500 text-blue-700 hover:bg-blue-50 hover:text-blue-700 border-l-4 group px-3 py-2 flex items-center text-sm font-medium"
-            >
-              {t('settings.general')}
-            </a>
-            <a
-              href="#business"
-              className="border-transparent text-gray-900 hover:bg-gray-50 hover:text-gray-900 border-l-4 group px-3 py-2 flex items-center text-sm font-medium"
-            >
-              {t('settings.businessInfo')}
-            </a>
-          </nav>
-        </div>
-
-        {/* 설정 패널 */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* 일반 설정 */}
-          <div className="bg-white shadow rounded-lg">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg leading-6 font-medium text-gray-900">{t('settings.general')}</h3>
-              <p className="mt-1 text-sm text-gray-500">
-                {t('settings.generalDescription')}
-              </p>
-            </div>
-            <div className="px-6 py-4 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">{t('settings.systemName')}</label>
-                <input
-                  type="text"
-                  value={settings.systemName}
-                  onChange={(e) => handleInputChange('systemName', e.target.value)}
-                  placeholder="YUANDI Collection Management"
-                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">{t('settings.defaultLanguage')}</label>
-                <select
-                  value={locale}
-                  onChange={(e) => {
-                    const newLocale = e.target.value as Locale
-                    setLocale(newLocale)
-                    localStorage.setItem(LOCALE_STORAGE_KEY, newLocale)
-                    window.dispatchEvent(new CustomEvent('localeChange', {
-                      detail: { locale: newLocale }
-                    }))
-                    // 언어 변경 후 페이지 새로고침
-                    setTimeout(() => {
-                      window.location.reload()
-                    }, 100)
-                  }}
-                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                >
-                  <option value="ko">{t('settings.languages.korean')}</option>
-                  <option value="zh-CN">{t('settings.languages.chineseSimplified')}</option>
-                  <option value="en">English</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">{t('settings.timezone')}</label>
-                <select className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-                  <option value="Asia/Seoul">Asia/Seoul (KST)</option>
-                  <option value="Asia/Shanghai">Asia/Shanghai (CST)</option>
-                  <option value="UTC">UTC</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">{t('settings.defaultCurrency')}</label>
-                <select className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-                  <option value="KRW">{t('settings.currencies.krw')}</option>
-                  <option value="CNY">{t('settings.currencies.cny')}</option>
-                  <option value="USD">{t('settings.currencies.usd')}</option>
-                </select>
-              </div>
-            </div>
+      <div className="space-y-6">
+        {/* 카테고리 관리 */}
+        <div className="bg-white shadow rounded-lg">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h3 className="text-lg leading-6 font-medium text-gray-900">카테고리 관리</h3>
+            <p className="mt-1 text-sm text-gray-500">
+              상품 카테고리를 관리합니다.
+            </p>
           </div>
-
-          {/* 사업 정보 */}
-          <div className="bg-white shadow rounded-lg">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg leading-6 font-medium text-gray-900">{t('settings.businessInfo')}</h3>
-              <p className="mt-1 text-sm text-gray-500">
-                {t('settings.businessInfoDescription')}
-              </p>
+          <div className="px-6 py-4 space-y-4">
+            <div className="flex space-x-2">
+              <input
+                type="text"
+                value={newCategory}
+                onChange={(e) => setNewCategory(e.target.value)}
+                placeholder="새 카테고리 이름"
+                className="flex-1 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+              />
+              <button
+                onClick={() => {
+                  if (newCategory.trim()) {
+                    setCategories([...categories, {
+                      id: newCategory.toLowerCase().replace(/\s+/g, '_'),
+                      name: newCategory,
+                      active: true
+                    }])
+                    setNewCategory('')
+                  }
+                }}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              >
+                추가
+              </button>
             </div>
-            <div className="px-6 py-4 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">{t('settings.businessName')}</label>
-                <input
-                  type="text"
-                  value={settings.businessName}
-                  onChange={(e) => handleInputChange('businessName', e.target.value)}
-                  placeholder={t('settings.businessNamePlaceholder')}
-                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">{t('settings.representativeName')}</label>
-                <input
-                  type="text"
-                  value={settings.representativeName}
-                  onChange={(e) => handleInputChange('representativeName', e.target.value)}
-                  placeholder={t('settings.representativeNamePlaceholder')}
-                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">{t('settings.businessNumber')}</label>
-                <input
-                  type="text"
-                  value={settings.businessNumber}
-                  onChange={(e) => handleInputChange('businessNumber', e.target.value)}
-                  placeholder="123-45-67890"
-                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">{t('settings.contactNumber')}</label>
-                <input
-                  type="tel"
-                  value={settings.contactNumber}
-                  onChange={(e) => handleInputChange('contactNumber', e.target.value)}
-                  placeholder="02-1234-5678"
-                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">{t('settings.email')}</label>
-                <input
-                  type="email"
-                  value={settings.email}
-                  onChange={(e) => handleInputChange('email', e.target.value)}
-                  placeholder="contact@yuandi.com"
-                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* 재고 관리 설정 */}
-          <div className="bg-white shadow rounded-lg">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg leading-6 font-medium text-gray-900">{t('settings.inventoryManagement')}</h3>
-              <p className="mt-1 text-sm text-gray-500">
-                {t('settings.inventoryManagementDescription')}
-              </p>
-            </div>
-            <div className="px-6 py-4 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">{t('settings.lowStockThreshold')}</label>
-                <div className="mt-1 relative rounded-md shadow-sm">
-                  <input
-                    type="number"
-                    value={settings.lowStockThreshold}
-                    onChange={(e) => handleInputChange('lowStockThreshold', parseInt(e.target.value))}
-                    placeholder="5"
-                    className="block w-full pr-12 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  />
-                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                    <span className="text-gray-500 sm:text-sm">{t('settings.units.pieces')}</span>
+            <div className="space-y-2">
+              {categories.map((category) => (
+                <div key={category.id} className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-md">
+                  <span className="text-sm font-medium text-gray-900">{category.name}</span>
+                  <div className="flex items-center space-x-2">
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={category.active}
+                        onChange={(e) => {
+                          setCategories(categories.map(c => 
+                            c.id === category.id ? { ...c, active: e.target.checked } : c
+                          ))
+                        }}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      />
+                      <span className="ml-2 text-sm text-gray-600">활성</span>
+                    </label>
+                    {!['electronics', 'fashion', 'home', 'beauty', 'sports', 'food', 'other'].includes(category.id) && (
+                      <button
+                        onClick={() => {
+                          setCategories(categories.filter(c => c.id !== category.id))
+                        }}
+                        className="text-red-600 hover:text-red-800 text-sm"
+                      >
+                        삭제
+                      </button>
+                    )}
                   </div>
                 </div>
-              </div>
-              <div className="flex items-center">
-                <input
-                  id="auto-stock-alert"
-                  type="checkbox"
-                  checked={settings.autoStockAlert}
-                  onChange={(e) => handleInputChange('autoStockAlert', e.target.checked)}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <label htmlFor="auto-stock-alert" className="ml-2 block text-sm text-gray-900">
-                  {t('settings.autoStockAlert')}
-                </label>
-              </div>
+              ))}
             </div>
           </div>
-          
-          {/* 카테고리 관리 */}
-          <div className="bg-white shadow rounded-lg">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg leading-6 font-medium text-gray-900">카테고리 관리</h3>
-              <p className="mt-1 text-sm text-gray-500">
-                상품 카테고리를 관리합니다.
-              </p>
-            </div>
-            <div className="px-6 py-4 space-y-4">
-              <div className="flex space-x-2">
+        </div>
+        
+        {/* 재고 관리 설정 */}
+        <div className="bg-white shadow rounded-lg">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h3 className="text-lg leading-6 font-medium text-gray-900">{t('settings.inventoryManagement')}</h3>
+            <p className="mt-1 text-sm text-gray-500">
+              {t('settings.inventoryManagementDescription')}
+            </p>
+          </div>
+          <div className="px-6 py-4 space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">{t('settings.lowStockThreshold')}</label>
+              <div className="mt-1 relative rounded-md shadow-sm">
                 <input
-                  type="text"
-                  value={newCategory}
-                  onChange={(e) => setNewCategory(e.target.value)}
-                  placeholder="새 카테고리 이름"
-                  className="flex-1 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  type="number"
+                  value={settings.lowStockThreshold}
+                  onChange={(e) => handleInputChange('lowStockThreshold', parseInt(e.target.value))}
+                  placeholder="5"
+                  className="block w-full pr-12 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 />
-                <button
-                  onClick={() => {
-                    if (newCategory.trim()) {
-                      setCategories([...categories, {
-                        id: newCategory.toLowerCase().replace(/\s+/g, '_'),
-                        name: newCategory,
-                        active: true
-                      }])
-                      setNewCategory('')
-                    }
-                  }}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                >
-                  추가
-                </button>
+                <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                  <span className="text-gray-500 sm:text-sm">{t('settings.units.pieces')}</span>
+                </div>
               </div>
-              <div className="space-y-2">
-                {categories.map((category) => (
-                  <div key={category.id} className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-md">
-                    <span className="text-sm font-medium text-gray-900">{category.name}</span>
-                    <div className="flex items-center space-x-2">
-                      <label className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={category.active}
-                          onChange={(e) => {
-                            setCategories(categories.map(c => 
-                              c.id === category.id ? { ...c, active: e.target.checked } : c
-                            ))
-                          }}
-                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                        />
-                        <span className="ml-2 text-sm text-gray-600">활성</span>
-                      </label>
-                      {!['electronics', 'fashion', 'home', 'beauty', 'sports', 'food', 'other'].includes(category.id) && (
-                        <button
-                          onClick={() => {
-                            setCategories(categories.filter(c => c.id !== category.id))
-                          }}
-                          className="text-red-600 hover:text-red-800 text-sm"
-                        >
-                          삭제
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
+            </div>
+            <div className="flex items-center">
+              <input
+                id="auto-stock-alert"
+                type="checkbox"
+                checked={settings.autoStockAlert}
+                onChange={(e) => handleInputChange('autoStockAlert', e.target.checked)}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <label htmlFor="auto-stock-alert" className="ml-2 block text-sm text-gray-900">
+                {t('settings.autoStockAlert')}
+              </label>
+            </div>
+          </div>
+        </div>
+        
+        {/* 사업 정보 */}
+        <div className="bg-white shadow rounded-lg">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h3 className="text-lg leading-6 font-medium text-gray-900">{t('settings.businessInfo')}</h3>
+            <p className="mt-1 text-sm text-gray-500">
+              {t('settings.businessInfoDescription')}
+            </p>
+          </div>
+          <div className="px-6 py-4 space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">{t('settings.businessName')}</label>
+              <input
+                type="text"
+                value={settings.businessName}
+                onChange={(e) => handleInputChange('businessName', e.target.value)}
+                placeholder={t('settings.businessNamePlaceholder')}
+                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">{t('settings.representativeName')}</label>
+              <input
+                type="text"
+                value={settings.representativeName}
+                onChange={(e) => handleInputChange('representativeName', e.target.value)}
+                placeholder={t('settings.representativeNamePlaceholder')}
+                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">{t('settings.businessNumber')}</label>
+              <input
+                type="text"
+                value={settings.businessNumber}
+                onChange={(e) => handleInputChange('businessNumber', e.target.value)}
+                placeholder="123-45-67890"
+                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">{t('settings.contactNumber')}</label>
+              <input
+                type="tel"
+                value={settings.contactNumber}
+                onChange={(e) => handleInputChange('contactNumber', e.target.value)}
+                placeholder="02-1234-5678"
+                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">{t('settings.email')}</label>
+              <input
+                type="email"
+                value={settings.email}
+                onChange={(e) => handleInputChange('email', e.target.value)}
+                placeholder="contact@yuandi.com"
+                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+              />
+            </div>
+          </div>
+        </div>
+        
+        {/* 일반 설정 */}
+        <div className="bg-white shadow rounded-lg">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h3 className="text-lg leading-6 font-medium text-gray-900">{t('settings.general')}</h3>
+            <p className="mt-1 text-sm text-gray-500">
+              {t('settings.generalDescription')}
+            </p>
+          </div>
+          <div className="px-6 py-4 space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">{t('settings.systemName')}</label>
+              <input
+                type="text"
+                value={settings.systemName}
+                onChange={(e) => handleInputChange('systemName', e.target.value)}
+                placeholder="YUANDI Collection Management"
+                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">{t('settings.defaultLanguage')}</label>
+              <select
+                value={locale}
+                onChange={(e) => {
+                  const newLocale = e.target.value as Locale
+                  setLocale(newLocale)
+                  localStorage.setItem(LOCALE_STORAGE_KEY, newLocale)
+                  window.dispatchEvent(new CustomEvent('localeChange', {
+                    detail: { locale: newLocale }
+                  }))
+                  // 언어 변경 후 페이지 새로고침
+                  setTimeout(() => {
+                    window.location.reload()
+                  }, 100)
+                }}
+                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+              >
+                <option value="ko">{t('settings.languages.korean')}</option>
+                <option value="zh-CN">{t('settings.languages.chineseSimplified')}</option>
+                <option value="en">English</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">{t('settings.timezone')}</label>
+              <select className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                <option value="Asia/Seoul">Asia/Seoul (KST)</option>
+                <option value="Asia/Shanghai">Asia/Shanghai (CST)</option>
+                <option value="UTC">UTC</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">{t('settings.defaultCurrency')}</label>
+              <select className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                <option value="KRW">{t('settings.currencies.krw')}</option>
+                <option value="CNY">{t('settings.currencies.cny')}</option>
+                <option value="USD">{t('settings.currencies.usd')}</option>
+              </select>
             </div>
           </div>
         </div>
