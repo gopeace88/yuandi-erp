@@ -98,17 +98,26 @@ export async function PATCH(request: NextRequest) {
     const supabase = getDirectSupabase()
     
     const body = await request.json()
-    const { id, name, role, active } = body
+    const { id, name, password, role, active } = body
+    
+    // Prepare update object
+    const updateData: any = {
+      name,
+      role,
+      active,
+      updated_at: new Date().toISOString()
+    }
+    
+    // Only update password if provided
+    if (password && password.trim() !== '') {
+      const hashedPassword = Buffer.from(password).toString('base64')
+      updateData.password = hashedPassword
+    }
     
     // Update profile
     const { data: updatedProfile, error } = await supabase
       .from('profiles')
-      .update({
-        name,
-        role,
-        active,
-        updated_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('id', id)
       .select()
       .single()
