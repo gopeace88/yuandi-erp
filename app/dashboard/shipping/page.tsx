@@ -22,51 +22,25 @@ export default async function ShippingPage() {
         </p>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <div className="rounded-lg border bg-card p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">
-                배송 대기
-              </p>
-              <p className="text-2xl font-bold">{pending.length}</p>
-            </div>
-            <Clock className="h-8 w-8 text-yellow-600" />
-          </div>
-        </div>
-        <div className="rounded-lg border bg-card p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">
-                배송 중
-              </p>
-              <p className="text-2xl font-bold">{shipped.length}</p>
-            </div>
-            <Truck className="h-8 w-8 text-blue-600" />
-          </div>
-        </div>
-        <div className="rounded-lg border bg-card p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">
-                배송 완료
-              </p>
-              <p className="text-2xl font-bold">{completed.length}</p>
-            </div>
-            <CheckCircle className="h-8 w-8 text-green-600" />
-          </div>
-        </div>
-        <div className="rounded-lg border bg-card p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">
-                오늘 발송
-              </p>
-              <p className="text-2xl font-bold">12</p>
-            </div>
-            <Package className="h-8 w-8 text-purple-600" />
-          </div>
+      {/* 배송 통계 */}
+      <div className="bg-white px-4 py-2 rounded-lg shadow">
+        <div className="flex items-center gap-6 text-sm text-gray-700">
+          <span>
+            <span className="text-gray-500">배송 대기:</span>
+            <span className="ml-2 font-medium">{pending.length}건</span>
+          </span>
+          <span>
+            <span className="text-gray-500">배송 중:</span>
+            <span className="ml-2 font-medium">{shipped.length}건</span>
+          </span>
+          <span>
+            <span className="text-gray-500">배송 완료:</span>
+            <span className="ml-2 font-medium">{completed.length}건</span>
+          </span>
+          <span>
+            <span className="text-gray-500">오늘 발송:</span>
+            <span className="ml-2 font-medium">12건</span>
+          </span>
         </div>
       </div>
 

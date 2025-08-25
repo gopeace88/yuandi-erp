@@ -138,53 +138,24 @@ export default function CashbookPage() {
       </div>
 
       {/* 잔액 요약 */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="flex items-center">
-            <div className="p-3 rounded-full bg-blue-100 text-blue-600">
-              💰
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">{t('cashbook.totalBalance')}</p>
-              <p className="text-2xl font-bold text-gray-900">{formatAmount(summary.balance)}</p>
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="flex items-center">
-            <div className="p-3 rounded-full bg-green-100 text-green-600">
-              📈
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">{t('cashbook.income')}</p>
-              <p className="text-2xl font-bold text-green-600">{formatAmount(summary.income)}</p>
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="flex items-center">
-            <div className="p-3 rounded-full bg-red-100 text-red-600">
-              📉
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">{t('cashbook.expense')}</p>
-              <p className="text-2xl font-bold text-red-600">{formatAmount(summary.expense)}</p>
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="flex items-center">
-            <div className="p-3 rounded-full bg-yellow-100 text-yellow-600">
-              📊
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">{t('cashbook.monthlyProfit')}</p>
-              <p className="text-2xl font-bold text-gray-900">{formatAmount(summary.monthlyProfit)}</p>
-            </div>
-          </div>
+      <div className="bg-white px-4 py-2 rounded-lg shadow">
+        <div className="flex items-center gap-6 text-sm text-gray-700">
+          <span>
+            <span className="text-gray-500">{t('cashbook.totalBalance')}:</span>
+            <span className="ml-2 font-medium">{formatAmount(summary.balance)}</span>
+          </span>
+          <span>
+            <span className="text-gray-500">{t('cashbook.income')}:</span>
+            <span className="ml-2 font-medium text-green-600">{formatAmount(summary.income)}</span>
+          </span>
+          <span>
+            <span className="text-gray-500">{t('cashbook.expense')}:</span>
+            <span className="ml-2 font-medium text-red-600">{formatAmount(summary.expense)}</span>
+          </span>
+          <span>
+            <span className="text-gray-500">{t('cashbook.monthlyProfit')}:</span>
+            <span className="ml-2 font-medium">{formatAmount(summary.monthlyProfit)}</span>
+          </span>
         </div>
       </div>
 

@@ -24,48 +24,124 @@
 **공통 권한**: 모든 로그인 사용자는 출납장부 조회 가능
 **언어 설정**: 화면 상단에서 KR/CN 토글을 통해 UI 언어 전환 (사용자별 기본 언어 저장)
 
-## 2. 업무 프로세스 및 상태 흐름
+## 2. 비즈니스 플로우
 
+### 2.1 재고 입고 플로우 (상품 등록 통합)
 ```
-입금 확인 → 주문입력(PAID) → 물류업체 수거(SHIPPED) → 완료(DONE) 또는 환불(REFUNDED)
+재고 입고 화면:
+1. 상품명 입력 → 동일 이름 있으면 드롭다운 표시
+2. 모델명 입력 → 동일 모델명 있으면 드롭다운 표시
+3-A. 기존 상품 선택 시:
+    → 기존 상품 정보 자동 로드
+    → 수량과 입고단가(CNY)만 입력
+    
+3-B. 신규 상품인 경우:
+    → 카테고리, 색상, 브랜드 추가 입력
+    → products 테이블에 신규 생성
+    → SKU 자동생성: [카테고리]-[모델]-[색상]-[브랜드]-[HASH5]
+
+4. 공통 처리:
+    → products.onHand 증가
+    → inventory_movements 기록 (입고 이력)
+    → cashbook 기록 (type: 'inbound', 매입 지출)
+    → event_logs 기록
 ```
 
-**상태 정의**:
+### 2.2 주문 생성 플로우 (PAID)
+```
+주문 생성 (단일 상품):
+→ 상품 1개 선택
+→ 재고 확인 (products.onHand >= 1)
+→ orders 생성 (status: 'PAID', 단일 상품)
+→ products.onHand 감소 (-1)
+→ inventory_movements 기록 (판매 이력)
+→ cashbook 기록 (type: 'sale', 판매 수입)
+→ event_logs 기록
+```
+
+### 2.3 배송 처리 플로우 (PAID → SHIPPED)
+```
+송장 등록:
+→ orders.status = 'SHIPPED'
+→ shipments 생성 (송장번호, 택배사)
+→ event_logs 기록
+```
+
+### 2.4 주문 완료 플로우 (SHIPPED → DONE)
+```
+완료 처리:
+→ orders.status = 'DONE'
+→ shipments.delivered_at 업데이트
+→ event_logs 기록
+```
+
+### 2.5 취소 플로우 (PAID → CANCELLED)
+```
+배송 전 취소:
+→ orders.status = 'CANCELLED'
+→ products.onHand 복구 (+1)
+→ inventory_movements 기록 (취소 이력)
+→ cashbook 기록 (type: 'refund', 환불)
+→ event_logs 기록
+```
+
+### 2.6 환불 플로우 (SHIPPED/DONE → REFUNDED)
+```
+배송 후 환불:
+→ orders.status = 'REFUNDED'
+→ cashbook 기록 (type: 'refund', 환불)
+→ ❌ 재고 복구 없음 (물건 회수 없음)
+→ event_logs 기록
+```
+
+### 2.7 재고 조정 플로우
+```
+재고 조정 (분실/불량):
+→ products.onHand 감소
+→ inventory_movements 기록 (조정 이력)
+→ cashbook 기록 (type: 'adjustment', 손실)
+→ event_logs 기록
+```
+
+**주문 상태 정의**:
 - **PAID**: 입금 확인 후 주문 생성 완료
-- **SHIPPED**: 물류업체 수거 완료, 송장번호 등록  
+- **SHIPPED**: 물류업체 수거 완료, 송장번호 등록
 - **DONE**: 정상 완료 (수동 처리)
-- **REFUNDED**: 물건 회수 없이 환불 처리 (수동 처리)
+- **CANCELLED**: 배송 전 취소 (재고 복구)
+- **REFUNDED**: 배송 후 환불 (재고 복구 없음)
 
 ## 3. 기능 요구사항
 
-### 3.1 상품 및 재고 관리
+### 3.1 재고 관리 (상품 관리 통합)
 
-**상품 정보 (필수 항목)**:
-- 카테고리, 상품명, 모델명, 색상, 제조사/브랜드, 입고가격(CNY)
+**재고 입고 (상품 등록 포함)**:
+- 상품명/모델명 입력 시 기존 상품 자동완성
+- 신규 상품: 카테고리, 색상, 브랜드 추가 입력
+- 기존 상품: 수량과 입고단가만 입력
 - SKU 자동생성: `[카테고리]-[모델]-[색상]-[브랜드]-[HASH5]`
-  - 예: `ELEC-iPhone15-Black-Apple-A1B2C`
 
 **재고 관리**:
-- `onHand`: 현재 보유 수량 (단일 수량 관리)
-- 입고등록: 상품 선택 → 수량 추가 → 메모 → onHand 증가 + 로그 기록 + Cashbook 기록
-- 재고차감: 주문 생성 시 자동 차감 (부족 시 주문 생성 불가)
-- 재고보정: ±1 버튼 또는 직접입력, 사유 선택 (입고, 보정, 폐기 등)
+- `onHand`: 현재 보유 수량 (단순 수량 관리)
+- 재고차감: 주문 생성 시 자동 차감
+- 재고복구: 취소 시에만 복구 (환불 시 복구 없음)
+- 재고조정: 분실/불량 시 차감 처리
 
 ### 3.2 주문 처리
 
-**주문 생성**:
-- 필수 정보: 고객명, 전화번호, 해외통관부호(PCCC), 배송주소, 상품/수량
+**주문 생성 (단일 상품)**:
+- 필수 정보: 고객명, 전화번호, 해외통관부호(PCCC), 배송주소
+- 상품: 1개 상품만 선택 (수량 = 1 고정)
 - 주소 입력: Daum 우편번호 API 연동
-- **실시간 재고 표시**: 상품 선택 시 현재 재고수량 표시, 부족 시 빨간색 경고
-- **재고 검증**: 주문 수량이 재고를 초과하면 주문 생성 불가 (실시간 검증)
-- 주문번호 자동생성: `ORD-YYMMDD-###` (예: `ORD-240823-001`)
-- 주문 생성 시 자동으로 PAID 상태로 시작
-- Cashbook에 sale 기록 자동 생성
+- **실시간 재고 표시**: 재고 있는 상품만 선택 가능
+- 주문번호 자동생성: `ORD-YYMMDD-###`
+- 주문 생성 시 자동으로 PAID 상태
+- Cashbook과 inventory_movements 자동 기록
 
 **주문 상태 변경**:
-- PAID → SHIPPED: 송장번호 입력 + 송장 사진 업로드 (선택사항)
-- SHIPPED → DONE: 수동 처리
-- SHIPPED → REFUNDED: 수동 처리 + Cashbook 환불 기록
+- PAID → SHIPPED: 송장번호 입력
+- PAID → CANCELLED: 배송 전 취소 (재고 복구)
+- SHIPPED → DONE: 배송 완료
+- SHIPPED/DONE → REFUNDED: 환불 (재고 복구 없음)
 
 ### 3.3 출고 및 배송 관리
 
@@ -84,7 +160,7 @@
 ### 3.5 관리 기능
 
 **출납장부 (Cashbook)**:
-- 거래 유형: sale(판매), inbound(입고), shipping(배송비), adjustment(조정), refund(환불)
+- 거래 유형: sale(판매), inbound(입고), adjustment(조정), refund(환불)
 - 일/주/월별 합계 및 순익 계산
 - 통화: CNY/KRW, 환율 적용
 
@@ -106,12 +182,12 @@
 - 재고 가치 (CNY/KRW 기준)
 
 **주문 현황** (전체 사용자):
-- 상태별 주문 건수 (PAID/SHIPPED/DONE/REFUNDED)
+- 상태별 주문 건수 (PAID/SHIPPED/DONE/CANCELLED/REFUNDED)
 - 처리 대기 주문 (각 역할별 할 일)
 - 최근 주문 5건 (간단 정보)
 
 **주문 검색**: 고객명, 전화번호, 주문번호, 송장번호
-**주문 필터**: 상태별(PAID/SHIPPED/DONE/REFUNDED), 기간별
+**주문 필터**: 상태별(PAID/SHIPPED/DONE/CANCELLED/REFUNDED), 기간별
 **재고 검색**: 상품명, 모델명, 색상, 브랜드
 **기간별 조회**: 주문일자, 출고일자, 입고일자 기준
 
@@ -146,10 +222,10 @@
 - Admin 빠른 액션: [주문수정] [송장등록] [출고완료] [환불처리]
 
 ### 4.3 주문 관리 화면 (Admin, OrderManager)
-**상단**: 주문 생성 폼 (고객정보 + 품목 선택)
-- **실시간 재고 표시**: 상품 선택 드롭다운에 재고수량 함께 표시
-- **재고 부족 경고**: 주문 수량 > 재고 시 빨간색 경고 메시지 및 주문 버튼 비활성화
-- **자동 계산**: 수량 변경 시 실시간 금액 계산
+**상단**: 주문 생성 폼 (고객정보 + 단일 상품 선택)
+- **실시간 재고 표시**: 상품 선택 드롭다운에 재고수량 표시
+- **재고 부족 경고**: 재고 0개 시 선택 불가
+- **판매가 표시**: 상품 선택 시 판매가격 표시
 
 **하단**: 주문 목록 (검색/필터/정렬)
 - 각 행: 주문번호, 고객명, 상태, 주문금액, 최근 업데이트
@@ -157,8 +233,11 @@
 - Admin 빠른 액션: [주문수정] [송장등록] [출고완료] [환불처리]
 
 ### 4.4 재고 관리 화면 (Admin, OrderManager)
-**재고 목록**: 상품정보, 현재수량, 입고/보정 버튼
-**입고 등록**: 상품 선택 + 수량 + 메모 입력
+**재고 등록**:
+- 상품명/모델명 입력 시 자동완성
+- 기존 상품: 수량과 입고단가만 입력
+- 신규 상품: 카테고리, 색상, 브랜드 추가 입력
+**재고 조정**: 분실/불량 등록
 
 ### 4.5 배송 관리 화면 (Admin, ShipManager)
 **대기 주문**: PAID 상태 주문 목록 (송장 등록 대기)
@@ -221,7 +300,7 @@ Product {
   createdAt: timestamp
 }
 
--- 주문
+-- 주문 (단일 상품 포함)
 Order {
   id: uuid,
   orderNo: varchar,
@@ -231,22 +310,16 @@ Order {
   shippingAddress: text,
   zipCode: varchar,
   memo: text,
-  status: enum('PAID', 'SHIPPED', 'DONE', 'REFUNDED'),
+  -- 단일 상품 정보 (order_items 대체)
+  productId: uuid,
+  productName: varchar,
+  productSku: varchar,
+  quantity: integer DEFAULT 1,  -- 항상 1
+  unitPrice: decimal,
   totalAmount: decimal,
+  status: enum('PAID', 'SHIPPED', 'DONE', 'CANCELLED', 'REFUNDED'),
   createdAt: timestamp,
   updatedAt: timestamp
-}
-
--- 주문 상품
-OrderItem {
-  id: uuid,
-  orderId: uuid,
-  productId: uuid,
-  sku: varchar,
-  productName: varchar,
-  quantity: integer,
-  unitPrice: decimal,
-  subtotal: decimal
 }
 
 -- 배송
@@ -275,7 +348,7 @@ EventLog {
 Cashbook {
   id: uuid,
   date: date,
-  type: enum('sale', 'inbound', 'shipping', 'adjustment', 'refund'),
+  type: enum('sale', 'inbound', 'adjustment', 'refund'),
   amount: decimal,
   currency: enum('CNY', 'KRW'),
   fxRate: decimal,
@@ -283,6 +356,22 @@ Cashbook {
   refType: varchar,
   refId: uuid,
   note: text,
+  createdAt: timestamp
+}
+
+-- 재고 이동 이력
+InventoryMovement {
+  id: uuid,
+  productId: uuid,
+  movementType: enum('inbound', 'sale', 'cancellation', 'adjustment'),
+  quantity: integer,  -- +입고, -출고
+  unitCost: decimal,  -- 입고 시 단가
+  balanceAfter: integer,  -- 이동 후 재고
+  refType: varchar,
+  refId: uuid,
+  note: text,
+  movementDate: date,
+  createdBy: uuid,
   createdAt: timestamp
 }
 ```
@@ -307,13 +396,12 @@ GET /api/auth/me                    # 현재 사용자 정보
 
 ### 6.3 주문 관리 (Admin, OrderManager)
 ```http
-POST /api/orders                    # 주문 생성
+POST /api/orders                    # 주문 생성 (단일 상품)
 GET /api/orders                     # 주문 목록 조회
 GET /api/orders/:id                 # 주문 상세 조회
-PATCH /api/orders/:id               # 주문 수정 (OrderManager: PAID만, Admin: 전체)
+PATCH /api/orders/:id               # 주문 수정 (PAID만)
+PATCH /api/orders/:id/cancel        # 주문 취소 (PAID → CANCELLED)
 DELETE /api/orders/:id              # 주문 삭제 (Admin만)
-GET /api/products/stock/:id         # 상품별 실시간 재고 조회
-POST /api/orders/validate-stock     # 주문 전 재고 검증
 ```
 
 ### 6.4 배송 관리 (Admin, ShipManager)
@@ -321,26 +409,16 @@ POST /api/orders/validate-stock     # 주문 전 재고 검증
 GET /api/orders?status=PAID         # 배송 대기 주문 조회
 PATCH /api/orders/:id/ship          # 송장 등록 (PAID → SHIPPED)
 PATCH /api/orders/:id/complete      # 주문 완료 (SHIPPED → DONE)
-PATCH /api/orders/:id/refund        # 환불 처리 (SHIPPED → REFUNDED)
+PATCH /api/orders/:id/refund        # 환불 처리 (SHIPPED/DONE → REFUNDED)
 ```
 
 ### 6.5 재고 관리 (Admin, OrderManager)
 ```http
-POST /api/orders                    # 주문 생성
-GET /api/orders                     # 주문 목록 조회
-GET /api/orders/:id                 # 주문 상세 조회
-PATCH /api/orders/:id/ship          # 송장 등록 (PAID → SHIPPED)
-PATCH /api/orders/:id/complete      # 주문 완료 (SHIPPED → DONE)
-PATCH /api/orders/:id/refund        # 환불 처리 (SHIPPED → REFUNDED)
-```
-
-### 6.2 재고 관리
-```http
 GET /api/products                   # 상품 목록 조회
-POST /api/products                  # 상품 등록
-PATCH /api/products/:id             # 상품 정보 수정
-POST /api/inventory/inbound         # 입고 등록
-PATCH /api/inventory/adjust         # 재고 조정
+GET /api/products/search            # 상품명/모델명 검색 (자동완성)
+POST /api/inventory/inbound         # 입고 등록 (상품 생성 포함)
+PATCH /api/inventory/adjust         # 재고 조정 (분실/불량)
+GET /api/inventory/movements        # 재고 이동 이력
 ```
 
 ### 6.6 고객 조회 (공개)
@@ -406,15 +484,18 @@ POST /api/upload/shipment-photo     # 송장 사진 업로드
 
 ## 8. 수용 기준
 
-### 8.1 상품 관리
-- [ ] 상품 등록 시 필수 6항목 검증
+### 8.1 재고 및 상품 관리
+- [ ] 재고 입고 시 상품 자동완성 기능
 - [ ] SKU 자동 생성 및 중복 방지
 - [ ] 재고 부족 시 주문 생성 차단
+- [ ] 취소 시 재고 복구, 환불 시 재고 미복구
 
-### 8.2 주문 처리  
+### 8.2 주문 처리
 - [ ] 주문번호 자동 생성 (ORD-YYMMDD-###)
-- [ ] 상태 변경 시 이벤트 로그 기록
+- [ ] 단일 상품 1개 주문 처리
+- [ ] 상태 변경 시 이벤트 로그 및 자동 기록
 - [ ] Daum 우편번호 API 연동
+- [ ] CANCELLED 상태 추가 및 재고 복구
 
 ### 8.3 고객 조회
 - [ ] 이름 + 전화번호 전체 일치 시에만 조회 가능
@@ -422,7 +503,7 @@ POST /api/upload/shipment-photo     # 송장 사진 업로드
 - [ ] 송장 추적 링크 자동 생성
 
 ### 8.4 출납장부
-- [ ] 모든 거래 자동 기록
+- [ ] 주문, 입고, 취소, 환불, 조정 자동 기록
 - [ ] 일/주/월별 합계 계산
 - [ ] 엑셀 다운로드 정상 동작
 

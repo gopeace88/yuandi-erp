@@ -46,23 +46,25 @@ export function DashboardContent() {
     <div className="dashboard-container">
       <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-4 sm:mb-6 lg:mb-8">{t('dashboard.title')}</h1>
       
-      {/* 통계 카드 영역 - 모바일에서 2x2, 태블릿 이상에서 4개 */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-4 sm:mb-6 lg:mb-8">
-        <div className="stat-card bg-white rounded-lg shadow p-3 sm:p-4 lg:p-6">
-          <p className="text-xs sm:text-sm text-gray-600 truncate">{t('dashboard.totalProducts')}</p>
-          <p className="text-lg sm:text-xl lg:text-2xl font-bold">150</p>
-        </div>
-        <div className="stat-card bg-white rounded-lg shadow p-3 sm:p-4 lg:p-6">
-          <p className="text-xs sm:text-sm text-gray-600 truncate">{t('dashboard.inventoryValue')}</p>
-          <p className="text-lg sm:text-xl lg:text-2xl font-bold">₩5M</p>
-        </div>
-        <div className="stat-card bg-white rounded-lg shadow p-3 sm:p-4 lg:p-6">
-          <p className="text-xs sm:text-sm text-gray-600 truncate">{t('dashboard.lowStock')}</p>
-          <p className="text-lg sm:text-xl lg:text-2xl font-bold">5</p>
-        </div>
-        <div className="stat-card bg-white rounded-lg shadow p-3 sm:p-4 lg:p-6">
-          <p className="text-xs sm:text-sm text-gray-600 truncate">{t('dashboard.outOfStock')}</p>
-          <p className="text-lg sm:text-xl lg:text-2xl font-bold">2</p>
+      {/* 통계 정보 */}
+      <div className="bg-white px-4 py-2 rounded-lg shadow mb-4 sm:mb-6">
+        <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-sm text-gray-700">
+          <span>
+            <span className="text-gray-500">{t('dashboard.totalProducts')}:</span>
+            <span className="ml-2 font-medium">150개</span>
+          </span>
+          <span>
+            <span className="text-gray-500">{t('dashboard.inventoryValue')}:</span>
+            <span className="ml-2 font-medium">₩5M</span>
+          </span>
+          <span>
+            <span className="text-gray-500">{t('dashboard.lowStock')}:</span>
+            <span className="ml-2 font-medium text-yellow-600">5개</span>
+          </span>
+          <span>
+            <span className="text-gray-500">{t('dashboard.outOfStock')}:</span>
+            <span className="ml-2 font-medium text-red-600">2개</span>
+          </span>
         </div>
       </div>
       
