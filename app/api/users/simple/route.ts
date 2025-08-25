@@ -44,16 +44,24 @@ export async function POST(request: NextRequest) {
     const supabase = getDirectSupabase()
     
     const body = await request.json()
+    console.log('Request body:', JSON.stringify(body))
+    
     const { name, email, password, role = 'Admin', active = true } = body
     
-    console.log('Creating simple user:', { email, name, role, active })
+    console.log('Creating simple user:', { email, name, role, active, hasPassword: !!password, passwordLength: password?.length })
     
     // Generate a unique ID
     const userId = crypto.randomUUID()
     
+    // Validate password
+    if (!password || password.trim() === '') {
+      console.error('Password is required but was not provided')
+      return NextResponse.json({ error: 'Password is required' }, { status: 400 })
+    }
+    
     // Hash password using simple method (for demo purposes)
     // In production, use bcrypt or similar
-    const hashedPassword = Buffer.from(password || 'default123').toString('base64')
+    const hashedPassword = Buffer.from(password).toString('base64')
     
     // Create profile record only (no auth)
     const { data: newProfile, error: profileError } = await supabase
