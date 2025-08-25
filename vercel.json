@@ -1,12 +1,14 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
-  "buildCommand": "npm run build",
-  "devCommand": "npm run dev",
-  "installCommand": "npm run install:ci",
+  "buildCommand": "pnpm build",
+  "devCommand": "pnpm dev",
+  "installCommand": "pnpm i --frozen-lockfile",
   "outputDirectory": ".next",
   
   "regions": ["icn1"],
+  
+  "nodeVersion": "20.x",
   
   "env": {
     "NODE_ENV": "production",
