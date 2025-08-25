@@ -19,12 +19,9 @@ export async function PATCH(
       tracking_number_cn,
       courier_cn,
       shipment_photo_url,
-      tracking_barcode,
-      courier_code,
       shipping_fee,
       actual_weight,
-      volume_weight,
-      receipt_photo_url
+      volume_weight
     } = body
 
     // 입력값 검증 - 한국 또는 중국 택배사 중 하나는 필수
@@ -57,6 +54,13 @@ export async function PATCH(
       )
     }
 
+    // 이미 shipment가 있는지 확인
+    const { data: existingShipment } = await supabase
+      .from('shipments')
+      .select('id')
+      .eq('order_id', orderId)
+      .single()
+
     // 한국 배송 추적 URL 생성
     let tracking_url = null
     if (courier && tracking_number) {
@@ -87,19 +91,16 @@ export async function PATCH(
         case 'coupang':
           tracking_url = `https://www.coupanglogistics.com/tracking/${tracking_number}`
           break
-        default:
-          // 기타 택배사는 URL 없음
-          break
       }
     }
 
-    // 중국 배송 추적 URL 생성 (추가 필드)
+    // 중국 배송 추적 URL 생성
     let tracking_url_cn = null
     if (courier_cn && tracking_number_cn) {
       switch (courier_cn.toLowerCase()) {
         case 'sf':
         case 'sfexpress':
-        case '순펑':
+        case '순풍':
           tracking_url_cn = `https://www.sf-express.com/cn/sc/dynamic_function/waybill/#search/bill-number/${tracking_number_cn}`
           break
         case 'yto':
@@ -115,42 +116,29 @@ export async function PATCH(
           tracking_url_cn = `https://www.sto.cn/web/single.html?billcode=${tracking_number_cn}`
           break
         case 'yunda':
-        case '운달':
+        case '윤다':
           tracking_url_cn = `https://www.yundaex.com/cn/track/detail?number=${tracking_number_cn}`
           break
         case 'jd':
         case '경동':
           tracking_url_cn = `https://www.jdl.com/#/order/search?waybillCode=${tracking_number_cn}`
           break
-        default:
-          // 기타 택배사는 URL 없음
-          break
       }
     }
-
-    // 이미 shipment가 있는지 확인
-    const { data: existingShipment } = await supabase
-      .from('shipments')
-      .select('id')
-      .eq('order_id', orderId)
-      .single()
 
     // Shipment 데이터 준비
     const shipmentData = {
       order_id: orderId,
       courier: courier || null,
-      courier_code: courier_code || null,
       tracking_no: tracking_number || null,
-      tracking_barcode: tracking_barcode || null,
       tracking_url: tracking_url || null,
       courier_cn: courier_cn || null,
       tracking_no_cn: tracking_number_cn || null,
       tracking_url_cn: tracking_url_cn || null,
       shipment_photo_url: shipment_photo_url || null,
-      receipt_photo_url: receipt_photo_url || null,
-      shipping_fee: shipping_fee ? parseFloat(shipping_fee) : 0,
-      actual_weight: actual_weight ? parseFloat(actual_weight) : null,
-      volume_weight: volume_weight ? parseFloat(volume_weight) : null,
+      shipping_fee: shipping_fee || 0,
+      actual_weight: actual_weight || null,
+      volume_weight: volume_weight || null,
       shipped_at: new Date().toISOString()
     }
 
@@ -184,7 +172,7 @@ export async function PATCH(
       }
     }
 
-    // 주문 상태를 SHIPPED로 업데이트 (상태만 변경)
+    // 주문 상태를 SHIPPED로 업데이트
     const { error: orderUpdateError } = await supabase
       .from('orders')
       .update({
@@ -213,13 +201,8 @@ export async function PATCH(
           status: 'SHIPPED',
           tracking_number,
           courier,
-          tracking_barcode,
-          courier_code,
           tracking_number_cn,
-          courier_cn,
-          shipping_fee,
-          actual_weight,
-          volume_weight
+          courier_cn
         }
       })
 

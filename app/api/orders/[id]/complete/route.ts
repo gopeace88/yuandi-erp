@@ -9,11 +9,10 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = createServerSupabaseClient()
+    const supabase = await createServerSupabaseClient()
     const orderId = params.id
-    const body = await request.json()
 
-    const { completion_note } = body
+    // 완료는 특별한 파라미터가 필요 없음
 
     // 주문 정보 조회
     const { data: order, error: orderError } = await supabase
@@ -42,8 +41,7 @@ export async function PATCH(
       .from('orders')
       .update({
         status: 'DONE',
-        completion_note,
-        completed_at: new Date().toISOString()
+        updated_at: new Date().toISOString()
       })
       .eq('id', orderId)
 
@@ -64,8 +62,7 @@ export async function PATCH(
         action: 'complete',
         actor: 'system', // TODO: 실제 사용자 정보
         new_values: {
-          status: 'DONE',
-          completion_note
+          status: 'DONE'
         }
       })
 

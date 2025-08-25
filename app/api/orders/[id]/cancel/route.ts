@@ -11,17 +11,6 @@ export async function PATCH(
   try {
     const supabase = await createServerSupabaseClient()
     const orderId = params.id
-    const body = await request.json()
-
-    const { reason } = body  // OrderEditModal에서 reason으로 보냄
-
-    // 입력값 검증
-    if (!reason) {
-      return NextResponse.json(
-        { error: '환불 사유는 필수입니다' },
-        { status: 400 }
-      )
-    }
 
     // 주문 정보 조회
     const { data: order, error: orderError } = await supabase
@@ -37,36 +26,27 @@ export async function PATCH(
       )
     }
 
-    // DONE 상태만 환불 가능 (완료된 주문)
-    if (order.status !== 'DONE') {
+    // PAID 상태가 아니면 취소 불가
+    if (order.status !== 'PAID') {
       return NextResponse.json(
-        { error: '완료된 주문만 환불할 수 있습니다' },
+        { error: '결제 완료 상태의 주문만 취소할 수 있습니다' },
         { status: 400 }
       )
     }
 
-    // 이미 환불된 주문인지 확인
-    if (order.status === 'REFUNDED') {
-      return NextResponse.json(
-        { error: '이미 환불된 주문입니다' },
-        { status: 400 }
-      )
-    }
-
-    // 주문 상태를 REFUNDED로 업데이트
+    // 주문 상태를 CANCELLED로 업데이트
     const { error: updateError } = await supabase
       .from('orders')
       .update({
-        status: 'REFUNDED',
-        internal_memo: reason,
+        status: 'CANCELLED',
         updated_at: new Date().toISOString()
       })
       .eq('id', orderId)
 
     if (updateError) {
-      console.error('주문 환불 업데이트 실패:', updateError)
+      console.error('주문 취소 업데이트 실패:', updateError)
       return NextResponse.json(
-        { error: '환불 처리에 실패했습니다' },
+        { error: '주문 취소 처리에 실패했습니다' },
         { status: 500 }
       )
     }
@@ -92,14 +72,14 @@ export async function PATCH(
             product_id: item.product_id,
             movement_type: 'adjustment',
             quantity: item.quantity,
-            ref_type: 'order_refund',
+            ref_type: 'order_cancel',
             ref_id: orderId,
-            note: '환불로 인한 재고 복구'
+            note: '주문 취소로 인한 재고 복구'
           })
       }
     }
 
-    // 출납장부에 환불 기록
+    // 출납장부에 취소 기록
     await supabase
       .from('cashbook')
       .insert({
@@ -110,7 +90,7 @@ export async function PATCH(
         ref_type: 'order',
         ref_id: orderId,
         ref_no: order.order_no,
-        description: `환불: ${order.order_no} - ${reason}`
+        description: `주문 취소: ${order.order_no}`
       })
 
     // 이벤트 로그 기록
@@ -119,11 +99,10 @@ export async function PATCH(
       .insert({
         table_name: 'orders',
         record_id: orderId,
-        action: 'refund',
+        action: 'cancel',
         actor: 'system', // TODO: 실제 사용자 정보
         new_values: {
-          status: 'REFUNDED',
-          refund_reason: reason
+          status: 'CANCELLED'
         }
       })
 
@@ -132,11 +111,11 @@ export async function PATCH(
     revalidatePath(`/orders/${orderId}`)
 
     return NextResponse.json({
-      message: '환불이 처리되었습니다'
+      message: '주문이 취소되었습니다'
     })
 
   } catch (error) {
-    console.error('환불 처리 API 오류:', error)
+    console.error('주문 취소 API 오류:', error)
     return NextResponse.json(
       { error: '서버 오류가 발생했습니다' },
       { status: 500 }

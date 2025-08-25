@@ -2,13 +2,28 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## 📌 IMPORTANT: Development Guidelines
+
+### Reference Documents (MUST READ)
+1. **[PRD_v2.md](./docs/PRD_v2.md)** - Latest Product Requirements (v2.0)
+2. **[DATABASE_ERD.md](./docs/DATABASE_ERD.md)** - Current Database Schema
+3. **[ITERATIVE_DEVELOPMENT.md](./docs/ITERATIVE_DEVELOPMENT.md)** - Development Process
+
+### Development Process
+Follow the **Iterative Development Process**:
+1. **Always check PRD_v2.md** for latest requirements before implementing
+2. **Update documentation first** when discovering new requirements
+3. **Use shipments table** for all shipping information (NOT orders table)
+4. **Test thoroughly** before marking tasks complete
+5. **Document all changes** in appropriate files
+
 ## Project Overview
-YUANDI Collection Management System - an Order/Inventory/Shipping management system for a single-person overseas purchasing agent business. Currently in planning phase with comprehensive PRD documentation.
+YUANDI Collection Management System - an Order/Inventory/Shipping management system for a single-person overseas purchasing agent business. **Currently in active development with iterative refinement approach**.
 
 ## Business Context
 - **Business Type**: Single-person overseas purchasing agent service
-- **Core Functions**: Order management (after payment confirmation), logistics tracking, cashbook monitoring, customer order lookup
-- **Design Principle**: Simple WMS/accounting excluded, single inventory quantity (onHand), intuitive PC/mobile UI
+- **Core Functions**: Order management, dual shipping system (Korea+China), inventory with images, cashbook monitoring, customer order lookup
+- **Design Principle**: Simple WMS/accounting excluded, single inventory quantity (onHand), intuitive PC/mobile UI, iterative improvement
 
 ## Tech Stack (Planned)
 - **Frontend**: Next.js 14 (App Router), TypeScript, Tailwind CSS

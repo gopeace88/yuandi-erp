@@ -180,7 +180,7 @@ export const koMessages = {
       "refund": "정말로 환불을 진행하시겠습니까?"
     },
     "errors": {
-      "trackingRequired": "운송장 번호를 입력해주세요",
+      "trackingRequired": "최소 하나의 택배사 정보를 입력해주세요",
       "refundReasonRequired": "환불 사유를 입력해주세요"
     }
   },

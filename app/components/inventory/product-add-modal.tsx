@@ -33,6 +33,16 @@ export function ProductAddModal({ locale, onClose, onSuccess }: ProductAddModalP
     setIsLoading(true)
 
     try {
+      // 이미지를 base64로 변환
+      let imageUrl = null
+      if (productImage) {
+        const reader = new FileReader()
+        imageUrl = await new Promise<string>((resolve) => {
+          reader.onloadend = () => resolve(reader.result as string)
+          reader.readAsDataURL(productImage)
+        })
+      }
+
       const response = await fetch('/api/products', {
         method: 'POST',
         headers: {
@@ -48,6 +58,7 @@ export function ProductAddModal({ locale, onClose, onSuccess }: ProductAddModalP
           sale_price_krw: parseFloat(formData.salePriceKrw),
           on_hand: parseInt(formData.initialStock),
           low_stock_threshold: parseInt(formData.lowStockThreshold),
+          image_url: imageUrl,
           active: true
         }),
       })
