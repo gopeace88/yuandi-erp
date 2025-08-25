@@ -18,7 +18,8 @@ export const koMessages = {
     "back": "뒤로",
     "next": "다음",
     "previous": "이전",
-    "close": "닫기"
+    "close": "닫기",
+    "view": "보기"
   },
   "nav": {
     "dashboard": "대시보드",
@@ -82,6 +83,7 @@ export const koMessages = {
   "orders": {
     "title": "주문 관리",
     "addOrder": "주문 추가",
+    "addNew": "새 주문",
     "newOrder": "새 주문",
     "orderList": "주문 목록",
     "orderNo": "주문번호",
@@ -101,6 +103,9 @@ export const koMessages = {
     "statusShipped": "배송중",
     "statusDone": "완료",
     "statusRefunded": "환불",
+    "searchPlaceholder": "주문번호 또는 고객명으로 검색...",
+    "allStatus": "모든 상태",
+    "noOrders": "주문이 없습니다",
     "stats": {
       "total": "전체 주문",
       "processing": "처리 중",
@@ -113,21 +118,27 @@ export const koMessages = {
     },
     "status": {
       "all": "모든 상태",
+      "pending": "대기중",
       "paid": "결제완료",
       "shipped": "배송중",
       "shipping": "배송중",
       "done": "완료",
       "delivered": "배송완료",
+      "cancelled": "취소됨",
       "refunded": "환불"
     },
     "table": {
       "orderNumber": "주문번호",
+      "customer": "고객",
       "customerName": "고객명",
       "productName": "상품명",
       "quantity": "수량",
+      "amount": "금액",
       "totalAmount": "총 금액",
       "status": "상태",
+      "date": "주문일",
       "orderDate": "주문일",
+      "tracking": "운송장",
       "actions": "액션"
     },
     "actions": {

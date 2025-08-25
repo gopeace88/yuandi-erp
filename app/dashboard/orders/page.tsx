@@ -26,44 +26,22 @@ export default function OrdersPage() {
   const fetchOrders = async () => {
     setLoading(true)
     try {
-      // 전체 개수 조회 (필터 적용)
-      let countQuery = supabase
-        .from('orders')
-        .select('*', { count: 'exact', head: true })
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: itemsPerPage.toString(),
+        ...(searchTerm && { search: searchTerm }),
+        ...(statusFilter && { status: statusFilter })
+      })
       
-      if (searchTerm) {
-        countQuery = countQuery.or(`order_number.ilike.%${searchTerm}%,customer_name.ilike.%${searchTerm}%`)
-      }
+      const response = await fetch(`/api/orders/simple?${params}`)
+      const result = await response.json()
       
-      if (statusFilter) {
-        countQuery = countQuery.eq('status', statusFilter)
-      }
-      
-      const { count } = await countQuery
-      
-      // 실제 데이터 조회
-      let query = supabase
-        .from('orders')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .range((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage - 1)
-      
-      if (searchTerm) {
-        query = query.or(`order_number.ilike.%${searchTerm}%,customer_name.ilike.%${searchTerm}%`)
-      }
-      
-      if (statusFilter) {
-        query = query.eq('status', statusFilter)
-      }
-      
-      const { data, error } = await query
-      
-      if (error) {
-        console.error('Error fetching orders:', error)
+      if (response.ok) {
+        setOrders(result.data || [])
+        setTotalCount(result.count || 0)
+        setTotalPages(result.totalPages || 1)
       } else {
-        setOrders(data || [])
-        setTotalCount(count || 0)
-        setTotalPages(Math.ceil((count || 0) / itemsPerPage))
+        console.error('Error fetching orders:', result.error)
       }
     } catch (error) {
       console.error('Error:', error)
@@ -82,17 +60,11 @@ export default function OrdersPage() {
 
   const fetchStats = async () => {
     try {
-      const { data, error } = await supabase
-        .from('orders')
-        .select('status')
+      const response = await fetch('/api/orders/simple', { method: 'OPTIONS' })
+      const data = await response.json()
       
-      if (!error && data) {
-        setStats({
-          total: data.length,
-          processing: data.filter(o => o.status === 'paid' || o.status === 'shipped').length,
-          delivered: data.filter(o => o.status === 'delivered' || o.status === 'done').length,
-          refunded: data.filter(o => o.status === 'refunded').length
-        })
+      if (response.ok) {
+        setStats(data)
       }
     } catch (error) {
       console.error('Error fetching stats:', error)
@@ -272,11 +244,10 @@ export default function OrdersPage() {
             className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="">{t('orders.allStatus')}</option>
-            <option value="pending">{t('orders.status.pending')}</option>
             <option value="paid">{t('orders.status.paid')}</option>
             <option value="shipped">{t('orders.status.shipped')}</option>
             <option value="delivered">{t('orders.status.delivered')}</option>
-            <option value="cancelled">{t('orders.status.cancelled')}</option>
+            <option value="done">{t('orders.status.done')}</option>
             <option value="refunded">{t('orders.status.refunded')}</option>
           </select>
 
