@@ -44,9 +44,14 @@ export default function InventoryPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">{t('inventory.title')}</h1>
-        <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-          {t('inventory.inbound')}
-        </button>
+        <div className="flex gap-2">
+          <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+            {t('products.add')}
+          </button>
+          <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+            {t('inventory.inbound')}
+          </button>
+        </div>
       </div>
 
       {/* 재고 통계 */}

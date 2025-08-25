@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { getServerSession } from '@/lib/auth/session'
+import { SKUGenerator } from '@/lib/core/utils/SKUGenerator'
 
 // GET: 상품 목록 조회
 export async function GET(request: NextRequest) {
@@ -91,13 +92,41 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const supabase = await createServerSupabaseClient()
 
-    // SKU 자동 생성 (중복 체크 포함)
-    const { data: skuData } = await supabase.rpc('generate_sku', {
-      p_category: body.category,
-      p_model: body.model || null,
-      p_color: body.color || null,
-      p_brand: body.brand || null
-    })
+    // SKU 자동 생성
+    let sku = body.sku
+    if (!sku) {
+      // SKU가 제공되지 않으면 자동 생성
+      let attempts = 0
+      let isUnique = false
+      
+      while (!isUnique && attempts < 10) {
+        sku = SKUGenerator.generate({
+          category: body.category,
+          model: body.model || '',
+          color: body.color || '',
+          brand: body.brand || ''
+        })
+        
+        // 중복 체크
+        const { data: existing } = await supabase
+          .from('products')
+          .select('id')
+          .eq('sku', sku)
+          .single()
+        
+        if (!existing) {
+          isUnique = true
+        }
+        attempts++
+      }
+      
+      if (!isUnique) {
+        return NextResponse.json(
+          { error: 'Failed to generate unique SKU' },
+          { status: 500 }
+        )
+      }
+    }
 
     const productData = {
       ...body,

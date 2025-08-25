@@ -4,6 +4,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { getServerSession } from '@/lib/auth/session'
 import { getEventLogger } from '@/lib/middleware/event-logger'
+import { OrderNumberGenerator } from '@/lib/core/utils/OrderNumberGenerator'
+import { InventoryManager } from '@/lib/core/services/InventoryManager'
+import { CashbookService } from '@/lib/core/services/CashbookService'
 
 // GET: 주문 목록 조회
 export async function GET(request: NextRequest) {
@@ -109,44 +112,101 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     const supabase = await createServerSupabaseClient()
-
-    // 재고 확인
-    const productIds = body.items.map((item: any) => item.product_id)
-    const { data: products } = await supabase
-      .from('products')
-      .select('id, on_hand, sale_price_krw')
-      .in('id', productIds)
-
-    // 재고 부족 체크
-    for (const item of body.items) {
-      const product = products?.find(p => p.id === item.product_id)
-      if (!product || product.on_hand < item.quantity) {
-        return NextResponse.json(
-          { error: `재고 부족: ${item.product_name}` },
-          { status: 400 }
-        )
-      }
+    
+    // 비즈니스 로직 서비스 초기화
+    const inventoryManager = new InventoryManager(supabase)
+    const cashbookService = new CashbookService(supabase)
+    
+    // 1. 재고 검증
+    const stockValidation = await inventoryManager.validateStock(
+      body.items.map((item: any) => ({
+        productId: item.product_id,
+        quantity: item.quantity
+      }))
+    )
+    
+    if (!stockValidation.valid) {
+      return NextResponse.json(
+        { error: stockValidation.errors.join('; ') },
+        { status: 400 }
+      )
     }
-
-    // 트랜잭션 시작 (Supabase는 자동 트랜잭션 지원 안함, RPC 함수 사용)
-    const { data: order, error: orderError } = await supabase.rpc(
-      'create_order_with_items',
-      {
-        p_customer_name: body.customer_name,
-        p_customer_phone: body.customer_phone,
-        p_customer_email: body.customer_email || null,
-        p_pccc_code: body.pccc_code,
-        p_shipping_address: body.shipping_address,
-        p_shipping_address_detail: body.shipping_address_detail || null,
-        p_zip_code: body.zip_code,
-        p_customer_memo: body.customer_memo || null,
-        p_internal_memo: body.internal_memo || null,
-        p_items: body.items,
-        p_created_by: session.user.id
-      }
+    
+    // 2. 주문번호 생성
+    const { data: existingOrders } = await supabase
+      .from('orders')
+      .select('order_no')
+      .gte('created_at', new Date().toISOString().split('T')[0])
+    
+    const orderNo = await OrderNumberGenerator.generate(
+      existingOrders?.map(o => o.order_no) || []
     )
 
+    // 3. 주문 생성
+    const totalAmount = body.items.reduce((sum: number, item: any) => 
+      sum + (item.quantity * item.unit_price), 0
+    )
+    
+    const { data: order, error: orderError } = await supabase
+      .from('orders')
+      .insert({
+        order_no: orderNo,
+        customer_name: body.customer_name,
+        customer_phone: body.customer_phone,
+        customer_email: body.customer_email || null,
+        pccc_code: body.pccc_code,
+        shipping_address: body.shipping_address,
+        shipping_address_detail: body.shipping_address_detail || null,
+        zip_code: body.zip_code,
+        customer_memo: body.customer_memo || null,
+        internal_memo: body.internal_memo || null,
+        status: 'PAID',
+        total_amount: totalAmount,
+        created_by: session.user.id
+      })
+      .select()
+      .single()
+
     if (orderError) throw orderError
+    
+    // 4. 주문 아이템 생성
+    const orderItems = body.items.map((item: any) => ({
+      order_id: order.id,
+      product_id: item.product_id,
+      sku: item.sku,
+      product_name: item.product_name,
+      quantity: item.quantity,
+      unit_price: item.unit_price,
+      subtotal: item.quantity * item.unit_price
+    }))
+    
+    const { error: itemsError } = await supabase
+      .from('order_items')
+      .insert(orderItems)
+    
+    if (itemsError) {
+      // 롤백: 주문 삭제
+      await supabase.from('orders').delete().eq('id', order.id)
+      throw itemsError
+    }
+    
+    // 5. 재고 차감
+    const deductResult = await inventoryManager.deductStock(
+      body.items.map((item: any) => ({
+        productId: item.product_id,
+        quantity: item.quantity
+      }))
+    )
+    
+    if (!deductResult.success) {
+      // 롤백: 주문 및 아이템 삭제
+      await supabase.from('order_items').delete().eq('order_id', order.id)
+      await supabase.from('orders').delete().eq('id', order.id)
+      throw new Error(deductResult.message || 'Failed to deduct stock')
+    }
+    
+    // 6. 출납장부 기록
+    await cashbookService.recordSale(order.id, totalAmount, orderNo)
 
     // 이벤트 로그 기록
     const logger = getEventLogger()

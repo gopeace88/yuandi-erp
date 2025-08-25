@@ -107,12 +107,6 @@ export function Sidebar({ user }: SidebarProps) {
       roles: ['Admin', 'OrderManager']
     },
     { 
-      name: t('nav.products'), 
-      href: '/dashboard/products', 
-      icon: ProductsIcon,
-      roles: ['Admin', 'OrderManager']
-    },
-    { 
       name: t('nav.inventory'), 
       href: '/dashboard/inventory', 
       icon: InventoryIcon,

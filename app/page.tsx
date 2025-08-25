@@ -47,14 +47,16 @@ export default function HomePage() {
       subtitle: 'YUANDI Collection 주문/재고/배송 관리 시스템',
       dashboard: '대시보드로 이동',
       track: '주문 조회',
-      language: '中文'
+      language: '한국어',
+      switchTo: '中文'
     },
     'zh-CN': {
       title: 'YUANDI Collection Management',
       subtitle: 'YUANDI Collection 订单/库存/配送管理系统',
       dashboard: '进入仪表板',
       track: '订单查询',
-      language: '한국어'
+      language: '中文',
+      switchTo: '한국어'
     }
   }
 
@@ -73,9 +75,11 @@ export default function HomePage() {
         <button
           onClick={toggleLanguage}
           className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition flex items-center gap-2"
+          title={`Switch to ${content[locale].switchTo}`}
         >
-          <span className="text-xl">{locale === 'ko' ? '🇨🇳' : '🇰🇷'}</span>
+          <span className="text-xl">{locale === 'ko' ? '🇰🇷' : '🇨🇳'}</span>
           <span className="text-sm font-medium">{content[locale].language}</span>
+          <span className="text-xs text-gray-500">→ {content[locale].switchTo}</span>
         </button>
       </div>
       
