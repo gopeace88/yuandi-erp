@@ -9,7 +9,7 @@ const SalesChart = dynamic(
   { 
     ssr: false,
     loading: () => (
-      <div className="h-64 flex items-center justify-center text-gray-500">
+      <div className="h-44 flex items-center justify-center text-gray-500">
         <div className="text-center">
           <div className="text-sm">차트를 불러오는 중...</div>
         </div>

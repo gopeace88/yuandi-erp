@@ -37,7 +37,7 @@ export function OrderStatusChart({ data }: OrderStatusChartProps) {
 
   if (!data || data.length === 0) {
     return (
-      <div className="h-64 flex items-center justify-center text-gray-500">
+      <div className="h-44 flex items-center justify-center text-gray-500">
         <div className="text-center">
           <div className="text-sm">주문 데이터가 없습니다</div>
           <div className="text-xs mt-1">주문이 생성되면 차트가 표시됩니다</div>
@@ -51,15 +51,15 @@ export function OrderStatusChart({ data }: OrderStatusChartProps) {
   return (
     <div className="space-y-4">
       {/* 차트 */}
-      <div className="h-48">
+      <div className="h-36">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
               data={data}
               cx="50%"
               cy="50%"
-              innerRadius={40}
-              outerRadius={80}
+              innerRadius={30}
+              outerRadius={60}
               paddingAngle={5}
               dataKey="count"
             >

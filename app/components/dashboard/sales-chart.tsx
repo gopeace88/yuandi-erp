@@ -44,7 +44,7 @@ export function SalesChart({ data }: SalesChartProps) {
 
   if (!data || data.length === 0) {
     return (
-      <div className="h-64 flex items-center justify-center text-gray-500">
+      <div className="h-44 flex items-center justify-center text-gray-500">
         <div className="text-center">
           <div className="text-sm">매출 데이터가 없습니다</div>
           <div className="text-xs mt-1">주문이 생성되면 차트가 표시됩니다</div>
@@ -71,7 +71,7 @@ export function SalesChart({ data }: SalesChartProps) {
       </div>
 
       {/* 차트 */}
-      <div className="h-64">
+      <div className="h-44">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
             data={data}

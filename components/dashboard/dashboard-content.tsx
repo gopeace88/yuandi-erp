@@ -70,8 +70,8 @@ export function DashboardContent() {
       
       {/* 차트 영역 - 모바일에서 세로 배치 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6 lg:mb-8">
-        <div className="chart bg-white rounded-lg shadow p-4 sm:p-6">
-          <h2 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">{t('dashboard.salesTrend')}</h2>
+        <div className="chart bg-white rounded-lg shadow p-3 sm:p-4">
+          <h2 className="text-base sm:text-lg font-semibold mb-2">{t('dashboard.salesTrend')}</h2>
           <SalesChartWrapper data={[
             { date: '2024-01-01', amount: 1500000 },
             { date: '2024-01-02', amount: 2300000 },
@@ -82,8 +82,8 @@ export function DashboardContent() {
             { date: '2024-01-07', amount: 3200000 },
           ]} />
         </div>
-        <div className="chart bg-white rounded-lg shadow p-4 sm:p-6">
-          <h2 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">{t('dashboard.orderStatus')}</h2>
+        <div className="chart bg-white rounded-lg shadow p-3 sm:p-4">
+          <h2 className="text-base sm:text-lg font-semibold mb-2">{t('dashboard.orderStatus')}</h2>
           <OrderStatusChartWrapper data={[
             { status: 'PAID', label: t('orders.status.paid'), count: 15 },
             { status: 'SHIPPED', label: t('orders.status.shipped'), count: 8 },
@@ -107,11 +107,36 @@ export function DashboardContent() {
             </tr>
           </thead>
           <tbody>
+            {/* 최근 주문 5개 표시 */}
             <tr className="border-b">
               <td className="py-2 text-xs sm:text-sm">ORD-240101-001</td>
               <td className="py-2 text-xs sm:text-sm">홍길동</td>
               <td className="py-2 text-xs sm:text-sm">₩100,000</td>
               <td className="py-2 text-xs sm:text-sm">{t('orders.status.paid')}</td>
+            </tr>
+            <tr className="border-b">
+              <td className="py-2 text-xs sm:text-sm">ORD-240101-002</td>
+              <td className="py-2 text-xs sm:text-sm">김철수</td>
+              <td className="py-2 text-xs sm:text-sm">₩150,000</td>
+              <td className="py-2 text-xs sm:text-sm">{t('orders.status.shipped')}</td>
+            </tr>
+            <tr className="border-b">
+              <td className="py-2 text-xs sm:text-sm">ORD-240101-003</td>
+              <td className="py-2 text-xs sm:text-sm">이영희</td>
+              <td className="py-2 text-xs sm:text-sm">₩80,000</td>
+              <td className="py-2 text-xs sm:text-sm">{t('orders.status.done')}</td>
+            </tr>
+            <tr className="border-b">
+              <td className="py-2 text-xs sm:text-sm">ORD-240101-004</td>
+              <td className="py-2 text-xs sm:text-sm">박민수</td>
+              <td className="py-2 text-xs sm:text-sm">₩200,000</td>
+              <td className="py-2 text-xs sm:text-sm">{t('orders.status.paid')}</td>
+            </tr>
+            <tr className="border-b">
+              <td className="py-2 text-xs sm:text-sm">ORD-240101-005</td>
+              <td className="py-2 text-xs sm:text-sm">최지연</td>
+              <td className="py-2 text-xs sm:text-sm">₩120,000</td>
+              <td className="py-2 text-xs sm:text-sm">{t('orders.status.shipped')}</td>
             </tr>
           </tbody>
         </table>
