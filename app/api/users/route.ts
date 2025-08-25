@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
     
     let supabase
     try {
-      supabase = getSupabaseClient()
+      supabase = await getSupabaseClient()
     } catch (error) {
       console.error('Failed to create Supabase client:', error)
       return NextResponse.json({ 
@@ -128,7 +128,7 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const supabase = getSupabaseClient()
+    const supabase = await getSupabaseClient()
     
     // Check if user is admin
     const { data: { session } } = await supabase.auth.getSession()
@@ -176,7 +176,7 @@ export async function PATCH(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const supabase = getSupabaseClient()
+    const supabase = await getSupabaseClient()
     
     // Check if user is admin
     const { data: { session } } = await supabase.auth.getSession()

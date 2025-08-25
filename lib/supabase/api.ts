@@ -1,12 +1,13 @@
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
+import { NextRequest } from 'next/server'
 
 /**
  * Get Supabase client for API routes
  * Handles environment variable compatibility issues
  */
-export function getSupabaseClient() {
+export async function getSupabaseClient() {
   // Try different environment variable names for compatibility
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseAnonKey = 
@@ -29,14 +30,23 @@ export function getSupabaseClient() {
     )
   }
 
+  // Get cookies
+  const cookieStore = cookies()
+  
   // Create client with explicit configuration
-  return createRouteHandlerClient(
-    { cookies },
+  const supabase = createRouteHandlerClient(
+    { cookies: () => cookieStore },
     {
       supabaseUrl,
       supabaseKey: supabaseAnonKey
     }
   )
+  
+  // Log cookie information for debugging
+  const allCookies = cookieStore.getAll()
+  console.log('Cookies found:', allCookies.map(c => c.name))
+  
+  return supabase
 }
 
 /**
