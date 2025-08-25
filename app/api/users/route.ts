@@ -1,6 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
+import { createClient } from '@supabase/supabase-js'
+
+// Create admin client with service role key for user management
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_API_KEY!, // This is the service role key
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
+)
 
 export async function POST(request: NextRequest) {
   try {
@@ -26,14 +39,17 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { name, email, password, role, active } = body
     
-    // Create auth user
-    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+    console.log('Creating user with:', { email, name, role, active })
+    
+    // Create auth user using admin client
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
       email_confirm: true
     })
     
     if (authError) {
+      console.error('Auth creation error:', authError)
       return NextResponse.json({ error: authError.message }, { status: 400 })
     }
     
@@ -52,15 +68,19 @@ export async function POST(request: NextRequest) {
       .single()
     
     if (profileError) {
+      console.error('Profile creation error:', profileError)
       // Clean up auth user if profile creation fails
-      await supabase.auth.admin.deleteUser(authData.user.id)
+      await supabaseAdmin.auth.admin.deleteUser(authData.user.id)
       return NextResponse.json({ error: profileError.message }, { status: 400 })
     }
     
     return NextResponse.json(newProfile, { status: 201 })
   } catch (error) {
     console.error('Error creating user:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ 
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
   }
 }
 
@@ -147,19 +167,24 @@ export async function DELETE(request: NextRequest) {
       .eq('id', userId)
     
     if (profileError) {
+      console.error('Profile deletion error:', profileError)
       return NextResponse.json({ error: profileError.message }, { status: 400 })
     }
     
-    // Delete auth user
-    const { error: authError } = await supabase.auth.admin.deleteUser(userId)
+    // Delete auth user using admin client
+    const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userId)
     
     if (authError) {
-      return NextResponse.json({ error: authError.message }, { status: 400 })
+      console.error('Auth deletion error:', authError)
+      // Profile is already deleted, just log the error
     }
     
     return NextResponse.json({ success: true }, { status: 200 })
   } catch (error) {
     console.error('Error deleting user:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ 
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
   }
 }
