@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
       .insert({
         ...body,
         order_number: orderNumber,
-        status: body.status || 'paid',
+        status: body.status || 'PAID',
         order_date: new Date().toISOString(),
         created_at: new Date().toISOString()
       })
@@ -124,9 +124,9 @@ export async function OPTIONS(request: NextRequest) {
     
     const stats = {
       total: data?.length || 0,
-      processing: data?.filter((o: any) => o.status === 'paid' || o.status === 'shipped').length || 0,
-      delivered: data?.filter((o: any) => o.status === 'delivered' || o.status === 'done').length || 0,
-      refunded: data?.filter((o: any) => o.status === 'refunded').length || 0
+      processing: data?.filter((o: any) => o.status === 'PAID' || o.status === 'SHIPPED').length || 0,
+      delivered: data?.filter((o: any) => o.status === 'DONE').length || 0,
+      refunded: data?.filter((o: any) => o.status === 'REFUNDED').length || 0
     }
     
     return NextResponse.json(stats)

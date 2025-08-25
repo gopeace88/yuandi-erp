@@ -120,13 +120,14 @@ export default function OrdersPage() {
 
   const getStatusBadge = (status: string) => {
     const statusColors = {
-      pending: 'bg-gray-100 text-gray-800',
+      PAID: 'bg-blue-100 text-blue-800',
+      SHIPPED: 'bg-yellow-100 text-yellow-800',
+      DONE: 'bg-green-100 text-green-800',
+      REFUNDED: 'bg-purple-100 text-purple-800',
+      // Lowercase versions for backward compatibility
       paid: 'bg-blue-100 text-blue-800',
       shipped: 'bg-yellow-100 text-yellow-800',
-      shipping: 'bg-yellow-100 text-yellow-800',
-      delivered: 'bg-green-100 text-green-800',
       done: 'bg-green-100 text-green-800',
-      cancelled: 'bg-red-100 text-red-800',
       refunded: 'bg-purple-100 text-purple-800'
     }
     return statusColors[status as keyof typeof statusColors] || 'bg-gray-100 text-gray-800'
@@ -244,11 +245,10 @@ export default function OrdersPage() {
             className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="">{t('orders.allStatus')}</option>
-            <option value="paid">{t('orders.status.paid')}</option>
-            <option value="shipped">{t('orders.status.shipped')}</option>
-            <option value="delivered">{t('orders.status.delivered')}</option>
-            <option value="done">{t('orders.status.done')}</option>
-            <option value="refunded">{t('orders.status.refunded')}</option>
+            <option value="PAID">{t('orders.status.paid')}</option>
+            <option value="SHIPPED">{t('orders.status.shipped')}</option>
+            <option value="DONE">{t('orders.status.done')}</option>
+            <option value="REFUNDED">{t('orders.status.refunded')}</option>
           </select>
 
           <button
@@ -319,7 +319,7 @@ export default function OrdersPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadge(order.status)}`}>
-                        {t(`orders.status.${order.status}`)}
+                        {t(`orders.status.${order.status.toLowerCase()}`)}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
