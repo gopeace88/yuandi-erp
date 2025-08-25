@@ -107,3 +107,5 @@ pnpm-lock.yaml
 # Custom
 nul
 /yuandi-erp
+# GitHub CLI binary
+gh
