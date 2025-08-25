@@ -5,7 +5,14 @@ import { cookies } from 'next/headers'
 // 단순화된 사용자 관리 - Auth 없이 profiles 테이블만 사용
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies })
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_API_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    
+    const supabase = createRouteHandlerClient({ 
+      cookies,
+    }, {
+      supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+      supabaseKey: supabaseAnonKey!,
+    })
     
     // 모든 사용자 조회
     const { data: users, error } = await supabase
@@ -30,7 +37,14 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies })
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_API_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    
+    const supabase = createRouteHandlerClient({ 
+      cookies,
+    }, {
+      supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+      supabaseKey: supabaseAnonKey!,
+    })
     
     // 현재 세션 확인
     const { data: { session } } = await supabase.auth.getSession()
@@ -77,7 +91,14 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies })
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_API_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    
+    const supabase = createRouteHandlerClient({ 
+      cookies,
+    }, {
+      supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+      supabaseKey: supabaseAnonKey!,
+    })
     
     // 현재 세션 확인
     const { data: { session } } = await supabase.auth.getSession()
@@ -118,7 +139,14 @@ export async function PATCH(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies })
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_API_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    
+    const supabase = createRouteHandlerClient({ 
+      cookies,
+    }, {
+      supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+      supabaseKey: supabaseAnonKey!,
+    })
     
     // 현재 세션 확인
     const { data: { session } } = await supabase.auth.getSession()
