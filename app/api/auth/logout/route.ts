@@ -13,8 +13,8 @@ export async function POST(request: NextRequest) {
 
 async function handleLogout(request: NextRequest) {
   try {
-    // Clear cookies and redirect to track page
-    const response = NextResponse.redirect(new URL('/track', request.url))
+    // Clear cookies and redirect to main page
+    const response = NextResponse.redirect(new URL('/', request.url))
     
     // Clear session cookies
     response.cookies.set('user', '', {
@@ -41,7 +41,7 @@ async function handleLogout(request: NextRequest) {
 
   } catch (error) {
     console.error('Logout API error:', error)
-    // Even if there's an error, redirect to track page
-    return NextResponse.redirect(new URL('/track', request.url))
+    // Even if there's an error, redirect to main page
+    return NextResponse.redirect(new URL('/', request.url))
   }
 }
