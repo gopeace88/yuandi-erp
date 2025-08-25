@@ -19,7 +19,8 @@ export const koMessages = {
     "next": "다음",
     "previous": "이전",
     "close": "닫기",
-    "view": "보기"
+    "view": "보기",
+    "reset": "초기화"
   },
   "nav": {
     "dashboard": "대시보드",
@@ -167,6 +168,7 @@ export const koMessages = {
     "model": "모델",
     "color": "색상",
     "brand": "브랜드",
+    "manufacturer": "제조사",
     "costPrice": "원가",
     "salePrice": "판매가",
     "price": "가격",
@@ -250,7 +252,15 @@ export const koMessages = {
     "description": "설명",
     "category": "분류",
     "salesCategory": "매출",
-    "salesDescription": "판매"
+    "salesDescription": "판매",
+    "allTypes": "모든 유형",
+    "sale": "매출",
+    "inbound": "매입",
+    "shipping": "배송비",
+    "adjustment": "조정",
+    "refund": "환불",
+    "startDate": "시작일",
+    "endDate": "종료일"
   },
   "track": {
     "title": "주문조회",

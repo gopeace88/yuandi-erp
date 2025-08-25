@@ -1,11 +1,11 @@
 /**
  * SKU (Stock Keeping Unit) 생성기
- * 패턴: [카테고리3자]-[모델]-[색상3자]-[브랜드3자]-[해시5자]
- * 예시: ELE-iPhone15-BLA-APP-A1B2C
+ * 단순화된 패턴: [카테고리4자]-[모델명]-[색상]-[일련번호6자]
+ * 예시: ELEC-iPhone15Pro-Black-000001
  */
 export class SKUGenerator {
   private static readonly SEPARATOR = '-';
-  private static readonly HASH_LENGTH = 5;
+  private static counter = 0;
   
   /**
    * SKU 생성
@@ -16,85 +16,73 @@ export class SKUGenerator {
     category: string;
     model: string;
     color: string;
-    brand: string;
   }): string {
-    if (!props.category || !props.model || !props.color || !props.brand) {
-      throw new Error('All properties (category, model, color, brand) are required');
+    if (!props.category || !props.model || !props.color) {
+      throw new Error('All properties (category, model, color) are required');
     }
     
     const parts = [
-      this.normalizeCategory(props.category),
+      this.getCategoryCode(props.category),
       this.normalizeModel(props.model),
       this.normalizeColor(props.color),
-      this.normalizeBrand(props.brand),
-      this.generateHash()
+      this.getSerialNumber()
     ];
     
     return parts.join(this.SEPARATOR);
   }
   
   /**
-   * 카테고리 정규화 (첫 3자, 대문자)
+   * 카테고리 코드 (4자리)
    */
-  private static normalizeCategory(category: string): string {
-    return category
-      .replace(/[^a-zA-Z0-9가-힣]/g, '')
-      .substring(0, 3)
-      .toUpperCase()
-      .padEnd(3, 'X');
+  private static getCategoryCode(category: string): string {
+    const categoryMap: { [key: string]: string } = {
+      'electronics': 'ELEC',
+      'fashion': 'FASH',
+      'home': 'HOME',
+      'beauty': 'BEAU',
+      'food': 'FOOD',
+      'sports': 'SPOR',
+      'toys': 'TOYS',
+      'books': 'BOOK',
+      'office': 'OFFI',
+      'other': 'OTHR'
+    };
+    
+    return categoryMap[category.toLowerCase()] || 'OTHR';
   }
   
   /**
-   * 모델명 정규화 (공백 제거, 특수문자 제거)
+   * 모델명 정규화 (공백과 특수문자를 제거)
    */
   private static normalizeModel(model: string): string {
     return model
+      .replace(/[^a-zA-Z0-9가-힣]/g, '')
+      .substring(0, 30); // 최대 30자
+  }
+  
+  /**
+   * 색상 정규화 (공백과 특수문자 제거)
+   */
+  private static normalizeColor(color: string): string {
+    return color
       .replace(/[^a-zA-Z0-9가-힣]/g, '')
       .substring(0, 20); // 최대 20자
   }
   
   /**
-   * 색상 정규화 (첫 3자, 대문자)
+   * 일련번호 생성 (6자리)
    */
-  private static normalizeColor(color: string): string {
-    return color
-      .replace(/[^a-zA-Z0-9가-힣]/g, '')
-      .substring(0, 3)
-      .toUpperCase()
-      .padEnd(3, 'X');
-  }
-  
-  /**
-   * 브랜드 정규화 (첫 3자, 대문자)
-   */
-  private static normalizeBrand(brand: string): string {
-    return brand
-      .replace(/[^a-zA-Z0-9가-힣]/g, '')
-      .substring(0, 3)
-      .toUpperCase()
-      .padEnd(3, 'X');
-  }
-  
-  /**
-   * 고유 해시 생성 (5자)
-   */
-  private static generateHash(): string {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let hash = '';
-    
-    for (let i = 0; i < this.HASH_LENGTH; i++) {
-      hash += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    
-    return hash;
+  private static getSerialNumber(): string {
+    this.counter++;
+    return this.counter.toString().padStart(6, '0');
   }
   
   /**
    * SKU 유효성 검증
    */
   static validate(sku: string): boolean {
-    // 패턴: XXX-모델-XXX-XXX-XXXXX
-    const pattern = /^[A-Z0-9]{3}-[A-Z0-9가-힣]+-[A-Z0-9]{3}-[A-Z0-9]{3}-[A-Z0-9]{5}$/;
+    // 패턴: XXXX-모델-색상-000000
+    const pattern = /^[A-Z]{4}-[A-Za-z0-9가-힣]+-[A-Za-z0-9가-힣]+-\d{6}$/;
     return pattern.test(sku);
   }
   
@@ -105,21 +93,26 @@ export class SKUGenerator {
     category: string;
     model: string;
     color: string;
-    brand: string;
-    hash: string;
+    serial: string;
   } | null {
-    if (!this.validate(sku)) {
+    const parts = sku.split(this.SEPARATOR);
+    
+    if (parts.length !== 4) {
       return null;
     }
-    
-    const parts = sku.split(this.SEPARATOR);
     
     return {
       category: parts[0],
       model: parts[1],
       color: parts[2],
-      brand: parts[3],
-      hash: parts[4]
+      serial: parts[3]
     };
+  }
+  
+  /**
+   * 카운터 리셋 (테스트용)
+   */
+  static reset(): void {
+    this.counter = 0;
   }
 }

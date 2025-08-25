@@ -16,6 +16,20 @@ YUANDI Collection Management System - an Order/Inventory/Shipping management sys
 - **Deployment**: Vercel (Edge Functions, Cron Jobs)
 - **Architecture**: Serverless with Supabase + Vercel
 
+## Git Commit Guidelines
+
+### Important: Commit Approval Process
+- **ALWAYS** get confirmation from the user BEFORE committing changes
+- **Batch multiple features** into a single commit for efficiency
+- **Avoid excessive commits** for single feature modifications
+- **Wait for user approval** with a summary of changes before executing git commit
+
+Example workflow:
+1. Implement multiple related features
+2. Present summary of all changes to user
+3. Wait for user confirmation
+4. Only then execute git commit with comprehensive message
+
 ## Development Setup
 
 ### Environment Variables

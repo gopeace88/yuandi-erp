@@ -20,6 +20,11 @@ export default function CashbookPage() {
   const [totalPages, setTotalPages] = useState(1)
   const [totalCount, setTotalCount] = useState(0)
   const itemsPerPage = 20
+  
+  // 필터 상태
+  const [typeFilter, setTypeFilter] = useState('')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -54,12 +59,16 @@ export default function CashbookPage() {
 
   const t = (key: string) => translate(locale, key)
 
-  const fetchCashbook = async () => {
+  const fetchCashbook = async (resetPage = false) => {
     setLoading(true)
     try {
+      const pageToUse = resetPage ? 1 : currentPage
       const params = new URLSearchParams({
-        page: currentPage.toString(),
-        limit: itemsPerPage.toString()
+        page: pageToUse.toString(),
+        limit: itemsPerPage.toString(),
+        ...(typeFilter && { type: typeFilter }),
+        ...(startDate && { startDate }),
+        ...(endDate && { endDate })
       })
       
       const response = await fetch(`/api/cashbook?${params}`)
@@ -75,6 +84,9 @@ export default function CashbookPage() {
         })
         setTotalCount(result.pagination?.total || 0)
         setTotalPages(result.pagination?.totalPages || 1)
+        if (resetPage) {
+          setCurrentPage(1)
+        }
       } else {
         console.error('Error fetching cashbook:', result.error)
       }
@@ -88,6 +100,22 @@ export default function CashbookPage() {
   useEffect(() => {
     fetchCashbook()
   }, [currentPage])
+  
+  // 필터 변경 시 데이터 다시 가져오기
+  useEffect(() => {
+    fetchCashbook(true)
+  }, [typeFilter, startDate, endDate])
+  
+  const handleSearch = () => {
+    fetchCashbook(true)
+  }
+  
+  const handleReset = () => {
+    setTypeFilter('')
+    setStartDate('')
+    setEndDate('')
+    fetchCashbook(true)
+  }
 
   const formatAmount = (amount: number) => {
     return new Intl.NumberFormat('ko-KR', {
@@ -137,6 +165,54 @@ export default function CashbookPage() {
         </button>
       </div>
 
+      {/* 필터 */}
+      <div className="bg-white p-4 rounded-lg shadow">
+        <div className="flex flex-wrap gap-4">
+          <select
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">{t('cashbook.allTypes')}</option>
+            <option value="sale">{t('cashbook.sale')}</option>
+            <option value="inbound">{t('cashbook.inbound')}</option>
+            <option value="shipping">{t('cashbook.shipping')}</option>
+            <option value="adjustment">{t('cashbook.adjustment')}</option>
+            <option value="refund">{t('cashbook.refund')}</option>
+          </select>
+          
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder={t('cashbook.startDate')}
+          />
+          
+          <input
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder={t('cashbook.endDate')}
+          />
+          
+          <button
+            onClick={handleSearch}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            {t('common.search')}
+          </button>
+          
+          <button
+            onClick={handleReset}
+            className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+          >
+            {t('common.reset')}
+          </button>
+        </div>
+      </div>
+      
       {/* 잔액 요약 */}
       <div className="bg-white px-4 py-2 rounded-lg shadow">
         <div className="flex items-center gap-6 text-sm text-gray-700">

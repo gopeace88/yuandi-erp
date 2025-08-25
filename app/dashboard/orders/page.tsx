@@ -23,11 +23,12 @@ export default function OrdersPage() {
   const supabase = createClient()
 
   // 주문 데이터 가져오기
-  const fetchOrders = async () => {
+  const fetchOrders = async (resetPage = false) => {
     setLoading(true)
     try {
+      const pageToUse = resetPage ? 1 : currentPage
       const params = new URLSearchParams({
-        page: currentPage.toString(),
+        page: pageToUse.toString(),
         limit: itemsPerPage.toString(),
         ...(searchTerm && { search: searchTerm }),
         ...(statusFilter && { status: statusFilter })
@@ -40,6 +41,9 @@ export default function OrdersPage() {
         setOrders(result.data || [])
         setTotalCount(result.count || 0)
         setTotalPages(result.totalPages || 1)
+        if (resetPage) {
+          setCurrentPage(1)
+        }
       } else {
         console.error('Error fetching orders:', result.error)
       }
@@ -73,7 +77,14 @@ export default function OrdersPage() {
 
   useEffect(() => {
     fetchOrders()
-  }, [currentPage, statusFilter])
+  }, [currentPage])
+  
+  // 상태 필터 변경 시 첫 페이지로 이동
+  useEffect(() => {
+    if (statusFilter !== undefined) {
+      fetchOrders(true)
+    }
+  }, [statusFilter])
 
   useEffect(() => {
     fetchStats()
@@ -114,17 +125,29 @@ export default function OrdersPage() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
-    setCurrentPage(1) // 검색 시 첫 페이지로 이동
-    fetchOrders()
+    fetchOrders(true) // 검색 시 첫 페이지로
   }
   
   // 검색어 입력 시 엔터키로도 검색 가능
   const handleSearchKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       e.preventDefault()
-      setCurrentPage(1)
-      fetchOrders()
+      fetchOrders(true)
     }
+  }
+  
+  // 주문 상세 보기
+  const handleViewOrder = (order: any) => {
+    // TODO: 모달로 상세 정보 표시
+    console.log('주문 상세:', order)
+    alert(`주문 상세\n\n주문번호: ${order.order_number}\n고객명: ${order.customer_name}\n연락처: ${order.customer_phone}\n금액: ${formatAmount(order.total_amount)}\n상태: ${t(`orders.status.${order.status.toLowerCase()}`)}`)
+  }
+  
+  // 주문 수정
+  const handleEditOrder = (order: any) => {
+    // TODO: 수정 모달 구현
+    console.log('주문 수정:', order)
+    alert(`주문 수정 기능 준비 중\n주문번호: ${order.order_number}`)
   }
 
   const getStatusBadge = (status: string) => {
@@ -310,10 +333,16 @@ export default function OrdersPage() {
                       {order.tracking_number || '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button className="text-blue-600 hover:text-blue-900 mr-3">
+                      <button 
+                        onClick={() => handleViewOrder(order)}
+                        className="text-blue-600 hover:text-blue-900 mr-3"
+                      >
                         {t('common.view')}
                       </button>
-                      <button className="text-gray-600 hover:text-gray-900">
+                      <button 
+                        onClick={() => handleEditOrder(order)}
+                        className="text-gray-600 hover:text-gray-900"
+                      >
                         {t('common.edit')}
                       </button>
                     </td>

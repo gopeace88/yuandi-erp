@@ -18,7 +18,9 @@ export const zhCNMessages = {
     "back": "返回",
     "next": "下一步",
     "previous": "上一步",
-    "close": "关闭"
+    "close": "关闭",
+    "view": "查看",
+    "reset": "重置"
   },
   "nav": {
     "dashboard": "仪表板",
@@ -156,6 +158,7 @@ export const zhCNMessages = {
     "model": "型号",
     "color": "颜色",
     "brand": "品牌",
+    "manufacturer": "制造商",
     "costPrice": "成本价",
     "salePrice": "销售价",
     "price": "价格",
@@ -239,7 +242,15 @@ export const zhCNMessages = {
     "description": "说明",
     "category": "分类",
     "salesCategory": "销售",
-    "salesDescription": "销售"
+    "salesDescription": "销售",
+    "allTypes": "所有类型",
+    "sale": "销售",
+    "inbound": "采购",
+    "shipping": "运费",
+    "adjustment": "调整",
+    "refund": "退款",
+    "startDate": "开始日期",
+    "endDate": "结束日期"
   },
   "track": {
     "title": "订单查询",

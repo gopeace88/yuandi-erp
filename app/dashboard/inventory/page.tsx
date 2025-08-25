@@ -15,13 +15,68 @@ export default function InventoryPage() {
     product: any
   }>({ isOpen: false, type: 'inbound', product: null })
   
-  // 샘플 재고 데이터
+  // 샘플 재고 데이터 (이미지 추가)
   const inventoryData = [
-    { id: '1', name: 'iPhone 15 Pro', sku: 'ELEC-IPHONE15-BLU-APPLE-A1B2C', category: 'electronics', stock: 25, safetyStock: 10, status: 'normal' },
-    { id: '2', name: '스마트워치 Ultra', sku: 'ELEC-WATCH-BLK-APPLE-B2C3D', category: 'electronics', stock: 3, safetyStock: 5, status: 'low' },
-    { id: '3', name: '무선 이어폰 Pro', sku: 'ELEC-AIRPOD-WHT-APPLE-C3D4E', category: 'electronics', stock: 0, safetyStock: 10, status: 'out' },
-    { id: '4', name: 'iPad Pro 12.9', sku: 'ELEC-IPAD-SLV-APPLE-D4E5F', category: 'electronics', stock: 8, safetyStock: 5, status: 'normal' },
-    { id: '5', name: 'MacBook Air M2', sku: 'ELEC-MAC-GRY-APPLE-E5F6G', category: 'electronics', stock: 2, safetyStock: 3, status: 'low' },
+    { 
+      id: '1', 
+      name: 'iPhone 15 Pro', 
+      model: 'iPhone15Pro', 
+      color: 'Blue', 
+      manufacturer: 'Apple', 
+      category: 'electronics', 
+      stock: 25, 
+      safetyStock: 10, 
+      status: 'normal',
+      imageUrl: '/api/placeholder/60/60' // 실제로는 Supabase Storage URL
+    },
+    { 
+      id: '2', 
+      name: '스마트워치 Ultra', 
+      model: 'WatchUltra', 
+      color: 'Black', 
+      manufacturer: 'Apple', 
+      category: 'electronics', 
+      stock: 3, 
+      safetyStock: 5, 
+      status: 'low',
+      imageUrl: '/api/placeholder/60/60'
+    },
+    { 
+      id: '3', 
+      name: '무선 이어폰 Pro', 
+      model: 'AirPodsPro', 
+      color: 'White', 
+      manufacturer: 'Apple', 
+      category: 'electronics', 
+      stock: 0, 
+      safetyStock: 10, 
+      status: 'out',
+      imageUrl: '/api/placeholder/60/60'
+    },
+    { 
+      id: '4', 
+      name: 'iPad Pro 12.9', 
+      model: 'iPadPro12', 
+      color: 'Silver', 
+      manufacturer: 'Apple', 
+      category: 'electronics', 
+      stock: 8, 
+      safetyStock: 5, 
+      status: 'normal',
+      imageUrl: '/api/placeholder/60/60'
+    },
+    { 
+      id: '5', 
+      name: 'MacBook Air M2', 
+      model: 'MacBookAirM2', 
+      color: 'Gray', 
+      manufacturer: 'Apple', 
+      category: 'electronics', 
+      stock: 2, 
+      safetyStock: 3, 
+      status: 'low',
+      imageUrl: '/api/placeholder/60/60'
+    },
   ]
   
   // 통계 계산
@@ -128,7 +183,13 @@ export default function InventoryPage() {
                   {t('products.productName')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('products.sku')}
+                  {t('products.model')}
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  {t('products.color')}
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  {t('products.manufacturer')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   {t('products.category')}
@@ -153,26 +214,36 @@ export default function InventoryPage() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="flex-shrink-0 h-10 w-10">
-                        <div className="h-10 w-10 rounded bg-gray-300 flex items-center justify-center">
-                          {item.name.includes('iPhone') ? '📱' :
-                           item.name.includes('워치') ? '⌚' :
-                           item.name.includes('이어폰') ? '🎧' :
-                           item.name.includes('iPad') ? '📱' :
-                           item.name.includes('Mac') ? '💻' : '📦'}
-                        </div>
+                        {item.imageUrl ? (
+                          <img 
+                            className="h-10 w-10 rounded-lg object-cover" 
+                            src={item.imageUrl} 
+                            alt={item.name}
+                          />
+                        ) : (
+                          <div className="h-10 w-10 rounded-lg bg-gray-200 flex items-center justify-center">
+                            <span className="text-gray-400 text-xs">No Image</span>
+                          </div>
+                        )}
                       </div>
                       <div className="ml-4">
                         <div className="text-sm font-medium text-gray-900">
                           {item.name}
                         </div>
                         <div className="text-sm text-gray-500">
-                          {item.category}
+                          SKU: {item.id}
                         </div>
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {item.sku}
+                    {item.model}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {item.color}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {item.manufacturer}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {t(`products.categories.${item.category}`)}
