@@ -8,9 +8,11 @@ export async function POST(request: NextRequest) {
     // Step 1: Check authentication
     console.log('Step 1: Checking authentication')
     
-    let supabase
+    let supabase, session
     try {
-      supabase = await getSupabaseClient()
+      const result = await getSupabaseClient()
+      supabase = result.supabase
+      session = result.session
     } catch (error) {
       console.error('Failed to create Supabase client:', error)
       return NextResponse.json({ 
@@ -19,14 +21,8 @@ export async function POST(request: NextRequest) {
       }, { status: 500 })
     }
     
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-    if (sessionError) {
-      console.error('Session error:', sessionError)
-      return NextResponse.json({ error: 'Session error: ' + sessionError.message }, { status: 401 })
-    }
-    
     if (!session) {
-      console.log('No session found')
+      console.log('No session found - user needs to login')
       return NextResponse.json({ error: 'Unauthorized - No session' }, { status: 401 })
     }
     
@@ -128,10 +124,9 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const supabase = await getSupabaseClient()
+    const { supabase, session } = await getSupabaseClient()
     
     // Check if user is admin
-    const { data: { session } } = await supabase.auth.getSession()
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -176,10 +171,9 @@ export async function PATCH(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const supabase = await getSupabaseClient()
+    const { supabase, session } = await getSupabaseClient()
     
     // Check if user is admin
-    const { data: { session } } = await supabase.auth.getSession()
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }

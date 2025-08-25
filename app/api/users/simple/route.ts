@@ -4,7 +4,7 @@ import { getSupabaseClient } from '@/lib/supabase/api'
 // 단순화된 사용자 관리 - Auth 없이 profiles 테이블만 사용
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await getSupabaseClient()
+    const { supabase } = await getSupabaseClient()
     
     // 모든 사용자 조회
     const { data: users, error } = await supabase
@@ -29,10 +29,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await getSupabaseClient()
+    const { supabase, session } = await getSupabaseClient()
     
     // 현재 세션 확인
-    const { data: { session } } = await supabase.auth.getSession()
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -76,10 +75,9 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const supabase = await getSupabaseClient()
+    const { supabase, session } = await getSupabaseClient()
     
     // 현재 세션 확인
-    const { data: { session } } = await supabase.auth.getSession()
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -117,10 +115,9 @@ export async function PATCH(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const supabase = await getSupabaseClient()
+    const { supabase, session } = await getSupabaseClient()
     
     // 현재 세션 확인
-    const { data: { session } } = await supabase.auth.getSession()
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
