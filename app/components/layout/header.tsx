@@ -15,9 +15,9 @@ export function Header({ user }: HeaderProps) {
   const router = useRouter()
   const supabase = createClient()
   
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
-    router.push('/auth/login')
+  const handleLogout = () => {
+    // 로그아웃 API 호출 (GET 지원)
+    window.location.href = '/api/auth/logout'
   }
   
   const handleSearch = (e: React.FormEvent) => {

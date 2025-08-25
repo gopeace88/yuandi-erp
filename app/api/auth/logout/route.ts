@@ -4,7 +4,16 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { EventLogger } from '@/lib/middleware/event-logger'
 
+// Support both GET and POST for logout
+export async function GET(request: NextRequest) {
+  return handleLogout(request)
+}
+
 export async function POST(request: NextRequest) {
+  return handleLogout(request)
+}
+
+async function handleLogout(request: NextRequest) {
   try {
     // Create Supabase client
     const supabase = await createServerSupabaseClient()
@@ -49,10 +58,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    return NextResponse.json({
-      success: true,
-      message: '로그아웃되었습니다.'
-    })
+    // Redirect to main page (track page) after logout
+    return NextResponse.redirect(new URL('/track', request.url))
 
   } catch (error) {
     console.error('Logout API error:', error)
