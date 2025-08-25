@@ -143,8 +143,12 @@ export const koMessages = {
   },
   "products": {
     "title": "상품 관리",
+    "add": "상품 추가",
     "addProduct": "상품 추가",
     "newProduct": "새 제품",
+    "createError": "상품 생성 중 오류가 발생했습니다",
+    "costCny": "원가 (CNY)",
+    "salePriceKrw": "판매가 (KRW)",
     "productList": "상품 목록",
     "sku": "SKU",
     "productName": "상품명",
@@ -180,12 +184,14 @@ export const koMessages = {
       "beauty": "뷰티",
       "sports": "스포츠",
       "toys": "장난감",
-      "food": "식품"
+      "food": "식품",
+      "other": "기타"
     }
   },
   "inventory": {
     "title": "재고 관리",
     "inbound": "입고",
+    "initialStock": "초기 재고",
     "outbound": "출고",
     "adjustment": "조정",
     "stockMovement": "재고이동",

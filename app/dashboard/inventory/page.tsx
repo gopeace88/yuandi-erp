@@ -3,9 +3,11 @@
 import { useState, useEffect } from 'react'
 import { Locale, LOCALE_STORAGE_KEY, defaultLocale } from '@/lib/i18n/config'
 import { translate } from '@/lib/i18n/translations'
+import { ProductAddModal } from '@/app/components/inventory/product-add-modal'
 
 export default function InventoryPage() {
   const [locale, setLocale] = useState<Locale>(defaultLocale)
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false)
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -44,14 +46,12 @@ export default function InventoryPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">{t('inventory.title')}</h1>
-        <div className="flex gap-2">
-          <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-            {t('products.add')}
-          </button>
-          <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-            {t('inventory.inbound')}
-          </button>
-        </div>
+        <button 
+          onClick={() => setIsAddModalOpen(true)}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          {t('products.add')}
+        </button>
       </div>
 
       {/* 재고 통계 */}
@@ -239,6 +239,18 @@ export default function InventoryPage() {
           </table>
         </div>
       </div>
+      
+      {/* 상품 추가 모달 */}
+      {isAddModalOpen && (
+        <ProductAddModal 
+          locale={locale}
+          onClose={() => setIsAddModalOpen(false)}
+          onSuccess={() => {
+            setIsAddModalOpen(false)
+            // TODO: 목록 새로고침
+          }}
+        />
+      )}
     </div>
   )
 }

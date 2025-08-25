@@ -130,7 +130,7 @@ export async function POST(request: NextRequest) {
 
     const productData = {
       ...body,
-      sku: skuData,
+      sku: sku,  // 수정: skuData가 아니라 sku 변수 사용
       created_by: session.user.id,
       updated_by: session.user.id
     }

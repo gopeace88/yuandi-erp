@@ -143,7 +143,11 @@ export const zhCNMessages = {
   },
   "products": {
     "title": "商品管理",
+    "add": "添加商品",
     "addProduct": "添加商品",
+    "createError": "创建商品时出错",
+    "costCny": "成本 (CNY)",
+    "salePriceKrw": "售价 (KRW)",
     "newProduct": "新产品",
     "productList": "商品列表",
     "sku": "SKU",
@@ -180,12 +184,14 @@ export const zhCNMessages = {
       "beauty": "美妆",
       "sports": "运动",
       "toys": "玩具",
-      "food": "食品"
+      "food": "食品",
+      "other": "其他"
     }
   },
   "inventory": {
     "title": "库存管理",
     "inbound": "入库",
+    "initialStock": "初始库存",
     "outbound": "出库",
     "adjustment": "调整",
     "stockMovement": "库存移动",
