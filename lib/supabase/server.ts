@@ -4,10 +4,18 @@ import type { Database } from './database.types'
 
 export async function createServerSupabaseClient() {
   const cookieStore = cookies()
+  
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_API_KEY || 
+                     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error('Missing Supabase configuration')
+  }
 
   return createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseUrl,
+    supabaseKey,
     {
       cookies: {
         get(name: string) {
@@ -37,9 +45,18 @@ export async function createServerSupabaseClient() {
 }
 
 export async function createServiceSupabaseClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 
+                     process.env.SUPABASE_API_KEY ||
+                     process.env.NEXT_PUBLIC_SUPABASE_API_KEY
+
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error('Missing Supabase configuration')
+  }
+
   return createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_API_KEY!,
+    supabaseUrl,
+    supabaseKey,
     {
       cookies: {
         get() {
