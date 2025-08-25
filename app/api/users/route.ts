@@ -1,59 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
-import { createClient } from '@supabase/supabase-js'
-
-// Create admin client with service role key for user management
-const getSupabaseAdmin = () => {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  
-  console.log('Creating admin client:', {
-    hasUrl: !!supabaseUrl,
-    hasServiceKey: !!supabaseServiceKey,
-    keyLength: supabaseServiceKey?.length
-  })
-  
-  if (!supabaseUrl || !supabaseServiceKey) {
-    throw new Error(`Missing Supabase configuration: URL=${!!supabaseUrl}, ServiceKey=${!!supabaseServiceKey}`)
-  }
-  
-  return createClient(supabaseUrl, supabaseServiceKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  })
-}
+import { getSupabaseClient, getSupabaseAdmin } from '@/lib/supabase/api'
 
 export async function POST(request: NextRequest) {
   console.log('POST /api/users - Start')
-  
-  // Log environment variables status
-  console.log('Environment check:', {
-    hasUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
-    hasApiKey: !!process.env.NEXT_PUBLIC_SUPABASE_API_KEY,
-    hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-  })
   
   try {
     // Step 1: Check authentication
     console.log('Step 1: Checking authentication')
     
-    // Use the correct environment variable name
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_API_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !supabaseAnonKey) {
-      throw new Error('Missing Supabase configuration in environment')
+    let supabase
+    try {
+      supabase = getSupabaseClient()
+    } catch (error) {
+      console.error('Failed to create Supabase client:', error)
+      return NextResponse.json({ 
+        error: 'Database connection failed',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      }, { status: 500 })
     }
-    
-    // Explicitly pass environment variables
-    const supabase = createRouteHandlerClient({ 
-      cookies,
-    }, {
-      supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
-      supabaseKey: supabaseAnonKey,
-    })
     
     const { data: { session }, error: sessionError } = await supabase.auth.getSession()
     if (sessionError) {
@@ -164,18 +128,7 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_API_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !supabaseAnonKey) {
-      throw new Error('Missing Supabase configuration in environment')
-    }
-    
-    const supabase = createRouteHandlerClient({ 
-      cookies,
-    }, {
-      supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
-      supabaseKey: supabaseAnonKey,
-    })
+    const supabase = getSupabaseClient()
     
     // Check if user is admin
     const { data: { session } } = await supabase.auth.getSession()
@@ -223,18 +176,7 @@ export async function PATCH(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_API_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !supabaseAnonKey) {
-      throw new Error('Missing Supabase configuration in environment')
-    }
-    
-    const supabase = createRouteHandlerClient({ 
-      cookies,
-    }, {
-      supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
-      supabaseKey: supabaseAnonKey,
-    })
+    const supabase = getSupabaseClient()
     
     // Check if user is admin
     const { data: { session } } = await supabase.auth.getSession()
