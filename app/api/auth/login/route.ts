@@ -34,9 +34,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Development mode: Simple password check
+    // Development mode: Simple password check with base64 encoding
     // In production, this would be handled by proper password hashing
-    if (password !== (profile as any).password) {
+    const encodedPassword = Buffer.from(password).toString('base64')
+    if (encodedPassword !== (profile as any).password && password !== (profile as any).password) {
+      // Check both encoded and plain password for backward compatibility
       return NextResponse.json(
         { error: '이메일 또는 비밀번호가 잘못되었습니다.' },
         { status: 401 }
