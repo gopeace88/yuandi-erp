@@ -31,6 +31,14 @@ export default function OrdersPage() {
     
     return matchesSearch && matchesStatus
   })
+  
+  // 통계 계산
+  const stats = {
+    total: allOrders.length,
+    processing: allOrders.filter(o => o.status === 'paid' || o.status === 'shipping').length,
+    delivered: allOrders.filter(o => o.status === 'delivered' || o.status === 'done').length,
+    refunded: allOrders.filter(o => o.status === 'refunded').length
+  }
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -86,7 +94,7 @@ export default function OrdersPage() {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">{t('orders.stats.total')}</p>
-              <p className="text-2xl font-bold text-gray-900">156</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
             </div>
           </div>
         </div>
@@ -98,7 +106,7 @@ export default function OrdersPage() {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">{t('orders.stats.processing')}</p>
-              <p className="text-2xl font-bold text-gray-900">23</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.processing}</p>
             </div>
           </div>
         </div>
@@ -110,7 +118,7 @@ export default function OrdersPage() {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">{t('orders.stats.delivered')}</p>
-              <p className="text-2xl font-bold text-gray-900">128</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.delivered}</p>
             </div>
           </div>
         </div>
@@ -122,7 +130,7 @@ export default function OrdersPage() {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">{t('orders.stats.refunded')}</p>
-              <p className="text-2xl font-bold text-gray-900">5</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.refunded}</p>
             </div>
           </div>
         </div>

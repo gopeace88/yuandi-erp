@@ -29,13 +29,36 @@ export function UserModal({ locale, mode, user, onClose, onSuccess }: UserModalP
     setIsLoading(true)
 
     try {
-      // API 호출 시뮬레이션
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      console.log(`${mode} user:`, formData)
+      if (mode === 'add') {
+        // 새 사용자 추가
+        const response = await fetch('/api/users', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData)
+        })
+        
+        if (!response.ok) {
+          const error = await response.json()
+          throw new Error(error.error || 'Failed to create user')
+        }
+      } else {
+        // 사용자 수정
+        const response = await fetch('/api/users', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...formData, id: user?.id })
+        })
+        
+        if (!response.ok) {
+          const error = await response.json()
+          throw new Error(error.error || 'Failed to update user')
+        }
+      }
+      
       onSuccess()
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error:', error)
-      alert(t('common.error'))
+      alert(error.message || t('common.error'))
     } finally {
       setIsLoading(false)
     }

@@ -68,6 +68,29 @@ export function UsersContent({ stats, users }: UsersContentProps) {
 
   const t = (key: string) => translate(locale, key)
 
+  const handleDeleteUser = async (userId: string, userName: string) => {
+    if (!confirm(`${userName} 사용자를 삭제하시겠습니까?`)) {
+      return
+    }
+    
+    try {
+      const response = await fetch(`/api/users?id=${userId}`, {
+        method: 'DELETE'
+      })
+      
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to delete user')
+      }
+      
+      // Refresh page to update list
+      window.location.reload()
+    } catch (error: any) {
+      console.error('Error deleting user:', error)
+      alert(error.message || '사용자 삭제 중 오류가 발생했습니다.')
+    }
+  }
+
   const getRoleDisplay = (role: string) => {
     const roleMap = {
       'Admin': { label: t('roles.Admin'), color: 'bg-purple-100 text-purple-800' },
@@ -210,12 +233,7 @@ export function UsersContent({ stats, users }: UsersContentProps) {
                         {t('common.edit')}
                       </button>
                       <button 
-                        onClick={() => {
-                          if (confirm(`${user.name} 사용자를 삭제하시겠습니까?`)) {
-                            console.log('Delete user:', user.id)
-                            // TODO: API 호출로 사용자 삭제
-                          }
-                        }}
+                        onClick={() => handleDeleteUser(user.id, user.name)}
                         className="text-red-600 hover:text-red-900"
                       >
                         {t('common.delete')}
