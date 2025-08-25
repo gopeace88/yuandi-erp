@@ -1,75 +1,56 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
-import { createClient } from '@supabase/supabase-js'
 
-// Create admin client with service role key for user management
-const getSupabaseAdmin = () => {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_API_KEY
-  
-  console.log('Creating admin client:', {
-    hasUrl: !!supabaseUrl,
-    hasServiceKey: !!supabaseServiceKey,
-    serviceKeyPrefix: supabaseServiceKey?.substring(0, 20) + '...'
-  })
-  
-  if (!supabaseUrl || !supabaseServiceKey) {
-    throw new Error('Missing Supabase configuration')
-  }
-  
-  return createClient(supabaseUrl, supabaseServiceKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
+// 단순화된 사용자 관리 - Auth 없이 profiles 테이블만 사용
+export async function GET(request: NextRequest) {
+  try {
+    const supabase = createRouteHandlerClient({ cookies })
+    
+    // 모든 사용자 조회
+    const { data: users, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .order('created_at', { ascending: false })
+    
+    if (error) {
+      console.error('Error fetching users:', error)
+      return NextResponse.json({ error: error.message }, { status: 400 })
     }
-  })
+    
+    return NextResponse.json(users || [], { status: 200 })
+  } catch (error) {
+    console.error('Error in GET /api/users/simple:', error)
+    return NextResponse.json({ 
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
+  }
 }
 
 export async function POST(request: NextRequest) {
   try {
     const supabase = createRouteHandlerClient({ cookies })
     
-    // Check if user is admin
+    // 현재 세션 확인
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     
-    // Get user role from profiles
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', session.user.id)
-      .single()
-    
-    if (profile?.role !== 'Admin') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    }
-    
     const body = await request.json()
-    const { name, email, password, role, active } = body
+    const { name, email, role = 'Admin', active = true } = body
     
-    console.log('Creating user with:', { email, name, role, active })
+    console.log('Creating simple user:', { email, name, role, active })
     
-    // Create auth user using admin client
-    const supabaseAdmin = getSupabaseAdmin()
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true
-    })
+    // Generate a unique ID
+    const userId = crypto.randomUUID()
     
-    if (authError) {
-      console.error('Auth creation error:', authError)
-      return NextResponse.json({ error: authError.message }, { status: 400 })
-    }
-    
-    // Create profile
+    // Create profile record only (no auth)
     const { data: newProfile, error: profileError } = await supabase
       .from('profiles')
       .insert({
-        id: authData.user.id,
+        id: userId,
         email,
         name,
         role,
@@ -81,8 +62,6 @@ export async function POST(request: NextRequest) {
     
     if (profileError) {
       console.error('Profile creation error:', profileError)
-      // Clean up auth user if profile creation fails
-      await supabaseAdmin.auth.admin.deleteUser(authData.user.id)
       return NextResponse.json({ error: profileError.message }, { status: 400 })
     }
     
@@ -100,21 +79,10 @@ export async function PATCH(request: NextRequest) {
   try {
     const supabase = createRouteHandlerClient({ cookies })
     
-    // Check if user is admin
+    // 현재 세션 확인
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-    
-    // Get user role from profiles
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', session.user.id)
-      .single()
-    
-    if (profile?.role !== 'Admin') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
     
     const body = await request.json()
@@ -134,13 +102,17 @@ export async function PATCH(request: NextRequest) {
       .single()
     
     if (error) {
+      console.error('Profile update error:', error)
       return NextResponse.json({ error: error.message }, { status: 400 })
     }
     
     return NextResponse.json(updatedProfile, { status: 200 })
   } catch (error) {
     console.error('Error updating user:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ 
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
   }
 }
 
@@ -148,21 +120,10 @@ export async function DELETE(request: NextRequest) {
   try {
     const supabase = createRouteHandlerClient({ cookies })
     
-    // Check if user is admin
+    // 현재 세션 확인
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-    
-    // Get user role from profiles
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', session.user.id)
-      .single()
-    
-    if (profile?.role !== 'Admin') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
     
     const { searchParams } = new URL(request.url)
@@ -172,7 +133,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'User ID required' }, { status: 400 })
     }
     
-    // Delete from profiles first
+    // Delete from profiles only
     const { error: profileError } = await supabase
       .from('profiles')
       .delete()
@@ -181,15 +142,6 @@ export async function DELETE(request: NextRequest) {
     if (profileError) {
       console.error('Profile deletion error:', profileError)
       return NextResponse.json({ error: profileError.message }, { status: 400 })
-    }
-    
-    // Delete auth user using admin client
-    const supabaseAdmin = getSupabaseAdmin()
-    const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userId)
-    
-    if (authError) {
-      console.error('Auth deletion error:', authError)
-      // Profile is already deleted, just log the error
     }
     
     return NextResponse.json({ success: true }, { status: 200 })

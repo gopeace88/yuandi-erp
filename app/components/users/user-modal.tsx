@@ -17,8 +17,7 @@ export function UserModal({ locale, mode, user, onClose, onSuccess }: UserModalP
   const [formData, setFormData] = useState({
     name: user?.name || '',
     email: user?.email || '',
-    password: '',
-    role: user?.role || 'OrderManager',
+    role: 'Admin', // 관리자로 통일
     active: user?.active !== undefined ? user.active : true
   })
 
@@ -30,11 +29,16 @@ export function UserModal({ locale, mode, user, onClose, onSuccess }: UserModalP
 
     try {
       if (mode === 'add') {
-        // 새 사용자 추가
-        const response = await fetch('/api/users', {
+        // 새 사용자 추가 (간단한 API 사용)
+        const response = await fetch('/api/users/simple', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(formData)
+          body: JSON.stringify({
+            name: formData.name,
+            email: formData.email,
+            role: formData.role,
+            active: formData.active
+          })
         })
         
         if (!response.ok) {
@@ -43,10 +47,15 @@ export function UserModal({ locale, mode, user, onClose, onSuccess }: UserModalP
         }
       } else {
         // 사용자 수정
-        const response = await fetch('/api/users', {
+        const response = await fetch('/api/users/simple', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...formData, id: user?.id })
+          body: JSON.stringify({ 
+            id: user?.id,
+            name: formData.name,
+            role: formData.role,
+            active: formData.active
+          })
         })
         
         if (!response.ok) {
@@ -112,39 +121,10 @@ export function UserModal({ locale, mode, user, onClose, onSuccess }: UserModalP
               />
             </div>
 
-            {/* 비밀번호 (추가 모드만) */}
-            {mode === 'add' && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  비밀번호 *
-                </label>
-                <input
-                  type="password"
-                  required
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="최소 8자 이상"
-                />
-              </div>
-            )}
+            {/* 비밀번호 필드 제거 - 간단한 사용자 관리용 */}
 
-            {/* 역할 */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t('users.table.role')} *
-              </label>
-              <select
-                required
-                value={formData.role}
-                onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="Admin">{t('roles.Admin')}</option>
-                <option value="OrderManager">{t('roles.OrderManager')}</option>
-                <option value="ShipManager">{t('roles.ShipManager')}</option>
-              </select>
-            </div>
+            {/* 역할 - 관리자로 통일 */}
+            <input type="hidden" value="Admin" />
 
             {/* 상태 */}
             <div className="flex items-center">

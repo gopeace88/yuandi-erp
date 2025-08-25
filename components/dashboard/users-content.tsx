@@ -74,7 +74,7 @@ export function UsersContent({ stats, users }: UsersContentProps) {
     }
     
     try {
-      const response = await fetch(`/api/users?id=${userId}`, {
+      const response = await fetch(`/api/users/simple?id=${userId}`, {
         method: 'DELETE'
       })
       
