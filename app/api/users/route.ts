@@ -27,33 +27,64 @@ const getSupabaseAdmin = () => {
 }
 
 export async function POST(request: NextRequest) {
+  console.log('POST /api/users - Start')
+  
   try {
+    // Step 1: Check authentication
+    console.log('Step 1: Checking authentication')
     const supabase = createRouteHandlerClient({ cookies })
     
-    // Check if user is admin
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    if (sessionError) {
+      console.error('Session error:', sessionError)
+      return NextResponse.json({ error: 'Session error: ' + sessionError.message }, { status: 401 })
     }
     
-    // Get user role from profiles
-    const { data: profile } = await supabase
+    if (!session) {
+      console.log('No session found')
+      return NextResponse.json({ error: 'Unauthorized - No session' }, { status: 401 })
+    }
+    
+    console.log('Session found for user:', session.user.id)
+    
+    // Step 2: Check admin role
+    console.log('Step 2: Checking admin role')
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('role')
       .eq('id', session.user.id)
       .single()
     
-    if (profile?.role !== 'Admin') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    if (profileError) {
+      console.error('Profile fetch error:', profileError)
+      return NextResponse.json({ error: 'Profile error: ' + profileError.message }, { status: 403 })
     }
     
+    if (profile?.role !== 'Admin') {
+      console.log('User is not admin:', profile?.role)
+      return NextResponse.json({ error: 'Forbidden - Not admin' }, { status: 403 })
+    }
+    
+    // Step 3: Parse request body
+    console.log('Step 3: Parsing request body')
     const body = await request.json()
     const { name, email, password, role, active } = body
     
-    console.log('Creating user with:', { email, name, role, active })
+    console.log('Creating user with:', { email, name, role, active, hasPassword: !!password })
     
-    // Create auth user using admin client
-    const supabaseAdmin = getSupabaseAdmin()
+    // Step 4: Create auth user
+    console.log('Step 4: Creating auth user')
+    let supabaseAdmin
+    try {
+      supabaseAdmin = getSupabaseAdmin()
+    } catch (error) {
+      console.error('Failed to create admin client:', error)
+      return NextResponse.json({ 
+        error: 'Admin client error', 
+        details: error instanceof Error ? error.message : 'Unknown error'
+      }, { status: 500 })
+    }
+    
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
@@ -62,10 +93,17 @@ export async function POST(request: NextRequest) {
     
     if (authError) {
       console.error('Auth creation error:', authError)
-      return NextResponse.json({ error: authError.message }, { status: 400 })
+      return NextResponse.json({ 
+        error: 'Auth creation failed', 
+        details: authError.message,
+        code: authError.code || 'unknown'
+      }, { status: 400 })
     }
     
-    // Create profile
+    console.log('Auth user created:', authData.user.id)
+    
+    // Step 5: Create profile
+    console.log('Step 5: Creating profile')
     const { data: newProfile, error: profileError } = await supabase
       .from('profiles')
       .insert({
@@ -82,16 +120,23 @@ export async function POST(request: NextRequest) {
     if (profileError) {
       console.error('Profile creation error:', profileError)
       // Clean up auth user if profile creation fails
+      console.log('Cleaning up auth user due to profile error')
       await supabaseAdmin.auth.admin.deleteUser(authData.user.id)
-      return NextResponse.json({ error: profileError.message }, { status: 400 })
+      return NextResponse.json({ 
+        error: 'Profile creation failed', 
+        details: profileError.message 
+      }, { status: 400 })
     }
     
+    console.log('User created successfully:', newProfile)
     return NextResponse.json(newProfile, { status: 201 })
   } catch (error) {
-    console.error('Error creating user:', error)
+    console.error('Unexpected error in POST /api/users:', error)
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack')
     return NextResponse.json({ 
       error: 'Internal server error',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error instanceof Error ? error.message : 'Unknown error',
+      type: error instanceof Error ? error.constructor.name : 'unknown'
     }, { status: 500 })
   }
 }
