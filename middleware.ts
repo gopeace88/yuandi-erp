@@ -192,24 +192,55 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // 1. Language Detection and Routing
-  // Handle language-specific routes
-  if (pathname === '/ko' || pathname === '/zh' || pathname === '/cn') {
-    // These routes handle language setting themselves
+  // Skip static files and API routes for i18n
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/api') ||
+    pathname.startsWith('/static') ||
+    pathname.includes('.')
+  ) {
     return NextResponse.next()
   }
 
-  // Get language preference from cookie or Accept-Language header
+  // Check if URL already has a locale
+  const pathnameHasLocale = ['ko', 'zh-CN', 'en'].some((locale) =>
+    pathname.startsWith(`/${locale}/`) || pathname === `/${locale}`
+  )
+
+  // If already has locale, continue
+  if (pathnameHasLocale) {
+    const currentLocale = pathname.split('/')[1]
+    const response = NextResponse.next()
+    response.headers.set('x-locale', currentLocale)
+    return response
+  }
+
+  // Detect locale from cookie or Accept-Language
   let locale = request.cookies.get('locale')?.value || 'ko'
   
-  // If no cookie, check Accept-Language header
   if (!request.cookies.get('locale')) {
     const acceptLanguage = request.headers.get('accept-language') || ''
     if (acceptLanguage.toLowerCase().includes('zh')) {
       locale = 'zh-CN'
+    } else if (acceptLanguage.toLowerCase().includes('en')) {
+      locale = 'en'
     } else {
       locale = 'ko'
     }
   }
+
+  // Redirect with locale prefix
+  const redirectUrl = new URL(`/${locale}${pathname}`, request.url)
+  redirectUrl.search = request.nextUrl.search
+  
+  const redirectResponse = NextResponse.redirect(redirectUrl)
+  redirectResponse.cookies.set('locale', locale, {
+    path: '/',
+    maxAge: 60 * 60 * 24 * 365,
+    sameSite: 'lax'
+  })
+  
+  return redirectResponse
 
   // 2. HTTPS Enforcement
   const httpsRedirect = enforceHTTPS(request)

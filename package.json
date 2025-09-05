@@ -15,6 +15,11 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:e2e": "playwright test",
+    "test:system": "ts-node test/system/run-all-tests.ts",
+    "test:system:reset": "ts-node test/system/01-database-reset.ts",
+    "test:system:seed": "ts-node test/system/02-seed-products.ts && ts-node test/system/03-seed-orders.ts && ts-node test/system/04-seed-shipments.ts",
+    "test:system:verify": "ts-node test/system/05-verify-integrity.ts",
+    "test:system:functional": "ts-node test/system/06-functional-test.ts",
     "analyze": "node scripts/analyze-bundle.js",
     "deploy": "vercel",
     "deploy:prod": "vercel --prod",
@@ -45,6 +50,8 @@
     "zod": "^3.22.0"
   },
   "devDependencies": {
+    "dotenv": "^16.3.1",
+    "ts-node": "^10.9.2",
     "@next/bundle-analyzer": "^14.2.0",
     "@playwright/test": "^1.55.0",
     "@testing-library/jest-dom": "^6.4.0",

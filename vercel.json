@@ -22,8 +22,24 @@
     },
     "app/api/dashboard/*/route.ts": {
       "maxDuration": 10
+    },
+    "app/api/backup/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/export/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/cron/backup/route.ts": {
+      "maxDuration": 60
     }
   },
+  
+  "crons": [
+    {
+      "path": "/api/cron/backup",
+      "schedule": "0 2 * * *"
+    }
+  ],
   
   "headers": [
     {

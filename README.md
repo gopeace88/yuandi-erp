@@ -1,4 +1,4 @@
-# YUANDI Collection Management System
+# YUANDI ERP System
 
 <div align="center">
   <img src="public/logo.png" alt="YUANDI Logo" width="200"/>

@@ -1,0 +1,2391 @@
+openapi: 3.0.3
+info:
+  title: YUANDI ERP API
+  description: |
+    YUANDI Collection Management System API
+    
+    해외 구매대행 비즈니스를 위한 통합 ERP 시스템 API입니다.
+    주문 관리, 재고 관리, 배송 추적, 현금장부 등의 기능을 제공합니다.
+  version: 2.0.0
+  contact:
+    name: YUANDI Support
+    email: api-support@yuandi.com
+  license:
+    name: Proprietary
+    
+servers:
+  - url: http://localhost:3000/api
+    description: Development server
+  - url: https://yuandi-erp.vercel.app/api
+    description: Production server
+    
+tags:
+  - name: Dashboard
+    description: 대시보드 및 통계 API
+  - name: Orders
+    description: 주문 관리 API
+  - name: Products
+    description: 상품 관리 API
+  - name: Inventory
+    description: 재고 관리 API
+  - name: Shipments
+    description: 배송 관리 API
+  - name: Cashbook
+    description: 현금장부 API
+  - name: Users
+    description: 사용자 관리 API
+  - name: Authentication
+    description: 인증 관련 API
+  - name: Customer Portal
+    description: 고객 포털 API
+  - name: Export
+    description: 데이터 내보내기 API
+  - name: Settings
+    description: 시스템 설정 API
+
+security:
+  - bearerAuth: []
+
+paths:
+  # Dashboard Endpoints
+  /dashboard/summary:
+    get:
+      tags:
+        - Dashboard
+      summary: Get dashboard summary
+      description: 대시보드 요약 정보를 조회합니다
+      operationId: getDashboardSummary
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardSummary'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+          
+  /dashboard/sales-trend:
+    get:
+      tags:
+        - Dashboard
+      summary: Get sales trend
+      description: 최근 판매 트렌드를 조회합니다
+      operationId: getSalesTrend
+      parameters:
+        - name: days
+          in: query
+          description: 조회 기간 (일)
+          schema:
+            type: integer
+            default: 7
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SalesTrend'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+          
+  /dashboard/order-status:
+    get:
+      tags:
+        - Dashboard
+      summary: Get order status distribution
+      description: 주문 상태별 분포를 조회합니다
+      operationId: getOrderStatusDistribution
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderStatusDistribution'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+          
+  /dashboard/low-stock:
+    get:
+      tags:
+        - Dashboard
+      summary: Get low stock products
+      description: 재고 부족 상품을 조회합니다
+      operationId: getLowStockProducts
+      parameters:
+        - name: threshold
+          in: query
+          description: 재고 임계값
+          schema:
+            type: integer
+            default: 5
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  products:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ProductSummary'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+          
+  /dashboard/popular-products:
+    get:
+      tags:
+        - Dashboard
+      summary: Get popular products
+      description: 인기 상품을 조회합니다
+      operationId: getPopularProducts
+      parameters:
+        - name: period
+          in: query
+          description: 조회 기간
+          schema:
+            type: string
+            enum: [week, month, year]
+            default: week
+        - name: limit
+          in: query
+          description: 조회 개수
+          schema:
+            type: integer
+            default: 5
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  products:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PopularProduct'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+          
+  # Orders Endpoints
+  /orders:
+    get:
+      tags:
+        - Orders
+      summary: List orders
+      description: 주문 목록을 조회합니다
+      operationId: getOrders
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+        - name: status
+          in: query
+          description: 주문 상태
+          schema:
+            $ref: '#/components/schemas/OrderStatus'
+        - name: customer_name
+          in: query
+          description: 고객명 검색
+          schema:
+            type: string
+        - name: order_no
+          in: query
+          description: 주문번호 검색
+          schema:
+            type: string
+        - name: date_from
+          in: query
+          description: 시작 날짜
+          schema:
+            type: string
+            format: date
+        - name: date_to
+          in: query
+          description: 종료 날짜
+          schema:
+            type: string
+            format: date
+        - $ref: '#/components/parameters/SortParam'
+        - $ref: '#/components/parameters/OrderParam'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Order'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+          
+    post:
+      tags:
+        - Orders
+      summary: Create order
+      description: 새 주문을 생성합니다
+      operationId: createOrder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrderRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+          
+  /orders/{id}:
+    get:
+      tags:
+        - Orders
+      summary: Get order details
+      description: 특정 주문의 상세 정보를 조회합니다
+      operationId: getOrder
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderDetail'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+          
+    patch:
+      tags:
+        - Orders
+      summary: Update order
+      description: 주문 정보를 수정합니다
+      operationId: updateOrder
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateOrderRequest'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+          
+  /orders/{id}/ship:
+    patch:
+      tags:
+        - Orders
+      summary: Register shipping
+      description: 배송 정보를 등록합니다
+      operationId: shipOrder
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShipOrderRequest'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  status:
+                    type: string
+                  tracking_url:
+                    type: string
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+          
+  /orders/{id}/complete:
+    patch:
+      tags:
+        - Orders
+      summary: Complete order
+      description: 주문을 완료 처리합니다
+      operationId: completeOrder
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  status:
+                    type: string
+                  completed_at:
+                    type: string
+                    format: date-time
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+          
+  /orders/{id}/cancel:
+    patch:
+      tags:
+        - Orders
+      summary: Cancel order
+      description: 주문을 취소합니다
+      operationId: cancelOrder
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  description: 취소 사유
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  status:
+                    type: string
+                  cancelled_at:
+                    type: string
+                    format: date-time
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+          
+  /orders/{id}/refund:
+    patch:
+      tags:
+        - Orders
+      summary: Refund order
+      description: 주문을 환불 처리합니다
+      operationId: refundOrder
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefundOrderRequest'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  status:
+                    type: string
+                  refund_amount:
+                    type: number
+                  refunded_at:
+                    type: string
+                    format: date-time
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+          
+  # Products Endpoints
+  /products:
+    get:
+      tags:
+        - Products
+      summary: List products
+      description: 상품 목록을 조회합니다
+      operationId: getProducts
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+        - name: category
+          in: query
+          description: 카테고리 필터
+          schema:
+            type: string
+        - name: search
+          in: query
+          description: 상품명/SKU 검색
+          schema:
+            type: string
+        - name: in_stock
+          in: query
+          description: 재고 여부
+          schema:
+            type: boolean
+        - $ref: '#/components/parameters/SortParam'
+        - $ref: '#/components/parameters/OrderParam'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Product'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+          
+    post:
+      tags:
+        - Products
+      summary: Create product
+      description: 새 상품을 등록합니다
+      operationId: createProduct
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProductRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+          
+  /products/{id}:
+    get:
+      tags:
+        - Products
+      summary: Get product details
+      description: 특정 상품의 상세 정보를 조회합니다
+      operationId: getProduct
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductDetail'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+          
+    patch:
+      tags:
+        - Products
+      summary: Update product
+      description: 상품 정보를 수정합니다
+      operationId: updateProduct
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProductRequest'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+          
+    delete:
+      tags:
+        - Products
+      summary: Delete product
+      description: 상품을 삭제합니다 (소프트 삭제)
+      operationId: deleteProduct
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+          
+  # Inventory Endpoints
+  /inventory/inbound:
+    post:
+      tags:
+        - Inventory
+      summary: Register inbound
+      description: 재고 입고를 등록합니다
+      operationId: registerInbound
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InboundRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryMovement'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+          
+  /inventory/adjust:
+    patch:
+      tags:
+        - Inventory
+      summary: Adjust inventory
+      description: 재고 조정을 수행합니다
+      operationId: adjustInventory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdjustmentRequest'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryMovement'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+          
+  /inventory/movements:
+    get:
+      tags:
+        - Inventory
+      summary: Get inventory movements
+      description: 재고 이동 내역을 조회합니다
+      operationId: getInventoryMovements
+      parameters:
+        - name: product_id
+          in: query
+          description: 상품 ID 필터
+          schema:
+            type: string
+        - name: movement_type
+          in: query
+          description: 이동 유형
+          schema:
+            type: string
+            enum: [INBOUND, OUTBOUND, ADJUSTMENT]
+        - name: date_from
+          in: query
+          description: 시작 날짜
+          schema:
+            type: string
+            format: date
+        - name: date_to
+          in: query
+          description: 종료 날짜
+          schema:
+            type: string
+            format: date
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/InventoryMovement'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+          
+  /inventory/report:
+    get:
+      tags:
+        - Inventory
+      summary: Get stock report
+      description: 재고 현황 보고서를 조회합니다
+      operationId: getStockReport
+      parameters:
+        - name: category
+          in: query
+          description: 카테고리 필터
+          schema:
+            type: string
+        - name: low_stock_only
+          in: query
+          description: 재고 부족만 조회
+          schema:
+            type: boolean
+            default: false
+        - name: include_inactive
+          in: query
+          description: 비활성 포함
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StockReport'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+          
+  # Shipments Endpoints
+  /shipments:
+    get:
+      tags:
+        - Shipments
+      summary: List shipments
+      description: 배송 목록을 조회합니다
+      operationId: getShipments
+      parameters:
+        - name: status
+          in: query
+          description: 배송 상태
+          schema:
+            type: string
+            enum: [PREPARING, SHIPPED, DELIVERED, RETURNED]
+        - name: courier
+          in: query
+          description: 택배사 코드
+          schema:
+            type: string
+        - name: tracking_no
+          in: query
+          description: 운송장 번호
+          schema:
+            type: string
+        - name: date_from
+          in: query
+          description: 시작 날짜
+          schema:
+            type: string
+            format: date
+        - name: date_to
+          in: query
+          description: 종료 날짜
+          schema:
+            type: string
+            format: date
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Shipment'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+          
+    post:
+      tags:
+        - Shipments
+      summary: Create shipment
+      description: 새 배송을 생성합니다
+      operationId: createShipment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateShipmentRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Shipment'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+          
+  /shipments/{id}/status:
+    patch:
+      tags:
+        - Shipments
+      summary: Update shipment status
+      description: 배송 상태를 업데이트합니다
+      operationId: updateShipmentStatus
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateShipmentStatusRequest'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  status:
+                    type: string
+                  delivered_at:
+                    type: string
+                    format: date-time
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+          
+  /shipments/{id}/photo:
+    post:
+      tags:
+        - Shipments
+      summary: Upload shipment photo
+      description: 배송 사진을 업로드합니다
+      operationId: uploadShipmentPhoto
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                photo:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  photo_url:
+                    type: string
+                  uploaded_at:
+                    type: string
+                    format: date-time
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+          
+  # Cashbook Endpoints
+  /cashbook:
+    get:
+      tags:
+        - Cashbook
+      summary: Get transactions
+      description: 현금 거래 내역을 조회합니다
+      operationId: getTransactions
+      parameters:
+        - name: type
+          in: query
+          description: 거래 유형
+          schema:
+            type: string
+            enum: [INCOME, EXPENSE]
+        - name: category
+          in: query
+          description: 카테고리
+          schema:
+            type: string
+        - name: date_from
+          in: query
+          description: 시작 날짜
+          schema:
+            type: string
+            format: date
+        - name: date_to
+          in: query
+          description: 종료 날짜
+          schema:
+            type: string
+            format: date
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Transaction'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+          
+  /cashbook/summary:
+    get:
+      tags:
+        - Cashbook
+      summary: Get cashbook summary
+      description: 현금장부 요약을 조회합니다
+      operationId: getCashbookSummary
+      parameters:
+        - name: period
+          in: query
+          description: 조회 기간
+          schema:
+            type: string
+            enum: [day, week, month, year]
+            default: month
+        - name: date
+          in: query
+          description: 기준 날짜
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CashbookSummary'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+          
+  /cashbook/transaction:
+    post:
+      tags:
+        - Cashbook
+      summary: Create manual transaction
+      description: 수동 거래를 생성합니다
+      operationId: createTransaction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTransactionRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transaction'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+          
+  # Users Endpoints
+  /users:
+    get:
+      tags:
+        - Users
+      summary: List users
+      description: 사용자 목록을 조회합니다 (Admin only)
+      operationId: getUsers
+      parameters:
+        - name: role
+          in: query
+          description: 역할 필터
+          schema:
+            type: string
+            enum: [Admin, OrderManager, ShipManager]
+        - name: active
+          in: query
+          description: 활성 상태
+          schema:
+            type: boolean
+        - name: search
+          in: query
+          description: 이름/이메일 검색
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+          
+    post:
+      tags:
+        - Users
+      summary: Create user
+      description: 새 사용자를 생성합니다 (Admin only)
+      operationId: createUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+          
+  /users/{id}:
+    patch:
+      tags:
+        - Users
+      summary: Update user
+      description: 사용자 정보를 수정합니다
+      operationId: updateUser
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+          
+    delete:
+      tags:
+        - Users
+      summary: Delete user
+      description: 사용자를 비활성화합니다 (Admin only)
+      operationId: deleteUser
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+          
+  # Authentication Endpoints
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Login
+      description: 사용자 로그인
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+          
+  /auth/logout:
+    post:
+      tags:
+        - Authentication
+      summary: Logout
+      description: 로그아웃
+      operationId: logout
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                    
+  /auth/refresh:
+    post:
+      tags:
+        - Authentication
+      summary: Refresh token
+      description: 토큰 갱신
+      operationId: refreshToken
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - refresh_token
+              properties:
+                refresh_token:
+                  type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+          
+  /auth/me:
+    get:
+      tags:
+        - Authentication
+      summary: Get current user
+      description: 현재 로그인한 사용자 정보 조회
+      operationId: getCurrentUser
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentUser'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+          
+  # Customer Portal
+  /track:
+    get:
+      tags:
+        - Customer Portal
+      summary: Track orders
+      description: 고객 주문 조회 (인증 없음)
+      operationId: trackOrders
+      security: []
+      parameters:
+        - name: name
+          in: query
+          required: true
+          description: 주문자명
+          schema:
+            type: string
+        - name: phone
+          in: query
+          required: true
+          description: 전화번호 (전체)
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CustomerOrder'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+          
+  # Export Endpoints
+  /export/orders:
+    get:
+      tags:
+        - Export
+      summary: Export orders
+      description: 주문 내역을 엑셀로 내보냅니다 (Admin only)
+      operationId: exportOrders
+      parameters:
+        - name: date_from
+          in: query
+          description: 시작 날짜
+          schema:
+            type: string
+            format: date
+        - name: date_to
+          in: query
+          description: 종료 날짜
+          schema:
+            type: string
+            format: date
+        - name: status
+          in: query
+          description: 상태 필터
+          schema:
+            $ref: '#/components/schemas/OrderStatus'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+          
+  /export/inventory:
+    get:
+      tags:
+        - Export
+      summary: Export inventory
+      description: 재고 현황을 엑셀로 내보냅니다 (Admin only)
+      operationId: exportInventory
+      parameters:
+        - name: category
+          in: query
+          description: 카테고리 필터
+          schema:
+            type: string
+        - name: include_movements
+          in: query
+          description: 이동 내역 포함
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Success
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+          
+  /export/cashbook:
+    get:
+      tags:
+        - Export
+      summary: Export cashbook
+      description: 현금장부를 엑셀로 내보냅니다 (Admin only)
+      operationId: exportCashbook
+      parameters:
+        - name: year
+          in: query
+          required: true
+          description: 연도
+          schema:
+            type: integer
+        - name: month
+          in: query
+          description: 월
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Success
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+          
+  # Settings Endpoints
+  /settings:
+    get:
+      tags:
+        - Settings
+      summary: Get system settings
+      description: 시스템 설정을 조회합니다
+      operationId: getSettings
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemSettings'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+          
+    patch:
+      tags:
+        - Settings
+      summary: Update settings
+      description: 시스템 설정을 업데이트합니다 (Admin only)
+      operationId: updateSettings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSettingsRequest'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  updated_at:
+                    type: string
+                    format: date-time
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      
+  parameters:
+    IdParam:
+      name: id
+      in: path
+      required: true
+      description: Resource ID
+      schema:
+        type: string
+        format: uuid
+        
+    PageParam:
+      name: page
+      in: query
+      description: Page number
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+        
+    LimitParam:
+      name: limit
+      in: query
+      description: Items per page
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 50
+        
+    SortParam:
+      name: sort
+      in: query
+      description: Sort field
+      schema:
+        type: string
+        default: created_at
+        
+    OrderParam:
+      name: order
+      in: query
+      description: Sort order
+      schema:
+        type: string
+        enum: [asc, desc]
+        default: desc
+        
+  responses:
+    UnauthorizedError:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+            
+    ForbiddenError:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+            
+    NotFoundError:
+      description: Not Found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+            
+    BadRequestError:
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+            
+  schemas:
+    Error:
+      type: object
+      properties:
+        success:
+          type: boolean
+          default: false
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: object
+              
+    PaginatedResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        pagination:
+          type: object
+          properties:
+            page:
+              type: integer
+            limit:
+              type: integer
+            total:
+              type: integer
+            total_pages:
+              type: integer
+              
+    OrderStatus:
+      type: string
+      enum:
+        - PENDING
+        - PAID
+        - SHIPPED
+        - DONE
+        - CANCELLED
+        - REFUNDED
+        
+    DashboardSummary:
+      type: object
+      properties:
+        sales:
+          type: object
+          properties:
+            today:
+              type: number
+            yesterday:
+              type: number
+            week:
+              type: number
+            month:
+              type: number
+            todayYoY:
+              type: number
+            weekYoY:
+              type: number
+            monthYoY:
+              type: number
+        orders:
+          type: object
+          properties:
+            pending:
+              type: integer
+            processing:
+              type: integer
+            shipped:
+              type: integer
+            completed:
+              type: integer
+        inventory:
+          type: object
+          properties:
+            totalProducts:
+              type: integer
+            totalValue:
+              type: number
+            lowStock:
+              type: integer
+            outOfStock:
+              type: integer
+              
+    SalesTrend:
+      type: object
+      properties:
+        trend:
+          type: array
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+                format: date
+              sales:
+                type: number
+              orders:
+                type: integer
+              units:
+                type: integer
+                
+    OrderStatusDistribution:
+      type: object
+      properties:
+        distribution:
+          type: array
+          items:
+            type: object
+            properties:
+              status:
+                type: string
+              count:
+                type: integer
+              percentage:
+                type: number
+                
+    ProductSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        sku:
+          type: string
+        name:
+          type: string
+        on_hand:
+          type: integer
+        threshold:
+          type: integer
+        last_sale:
+          type: string
+          format: date-time
+          
+    PopularProduct:
+      type: object
+      properties:
+        id:
+          type: string
+        sku:
+          type: string
+        name:
+          type: string
+        sales_count:
+          type: integer
+        revenue:
+          type: number
+        rank:
+          type: integer
+          
+    Order:
+      type: object
+      properties:
+        id:
+          type: string
+        order_no:
+          type: string
+        customer_name:
+          type: string
+        customer_phone:
+          type: string
+        status:
+          $ref: '#/components/schemas/OrderStatus'
+        total_amount:
+          type: number
+        item_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+          
+    OrderDetail:
+      allOf:
+        - $ref: '#/components/schemas/Order'
+        - type: object
+          properties:
+            customer:
+              type: object
+              properties:
+                name:
+                  type: string
+                phone:
+                  type: string
+                email:
+                  type: string
+            shipping:
+              type: object
+              properties:
+                address:
+                  type: string
+                address_detail:
+                  type: string
+                postal_code:
+                  type: string
+                customs_id:
+                  type: string
+                tracking_no:
+                  type: string
+                courier:
+                  type: string
+                shipped_at:
+                  type: string
+                  format: date-time
+            items:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  product:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      sku:
+                        type: string
+                      name:
+                        type: string
+                  quantity:
+                    type: integer
+                  price:
+                    type: number
+                  subtotal:
+                    type: number
+            payment:
+              type: object
+              properties:
+                method:
+                  type: string
+                status:
+                  type: string
+                paid_at:
+                  type: string
+                  format: date-time
+            notes:
+              type: string
+            updated_at:
+              type: string
+              format: date-time
+              
+    CreateOrderRequest:
+      type: object
+      required:
+        - customer_name
+        - customer_phone
+        - shipping_address
+        - postal_code
+        - items
+      properties:
+        customer_name:
+          type: string
+        customer_phone:
+          type: string
+        customer_email:
+          type: string
+        shipping_address:
+          type: string
+        shipping_address_detail:
+          type: string
+        postal_code:
+          type: string
+        customs_id:
+          type: string
+        items:
+          type: array
+          items:
+            type: object
+            required:
+              - product_id
+              - quantity
+              - price
+            properties:
+              product_id:
+                type: string
+              quantity:
+                type: integer
+              price:
+                type: number
+        payment_method:
+          type: string
+        notes:
+          type: string
+          
+    UpdateOrderRequest:
+      type: object
+      properties:
+        customer_name:
+          type: string
+        customer_phone:
+          type: string
+        shipping_address:
+          type: string
+        notes:
+          type: string
+          
+    ShipOrderRequest:
+      type: object
+      required:
+        - tracking_no
+        - courier
+      properties:
+        tracking_no:
+          type: string
+        courier:
+          type: string
+        shipped_at:
+          type: string
+          format: date-time
+          
+    RefundOrderRequest:
+      type: object
+      required:
+        - amount
+        - reason
+      properties:
+        amount:
+          type: number
+        reason:
+          type: string
+        refund_method:
+          type: string
+          
+    Product:
+      type: object
+      properties:
+        id:
+          type: string
+        sku:
+          type: string
+        name:
+          type: string
+        category:
+          type: string
+        model:
+          type: string
+        color:
+          type: string
+        manufacturer:
+          type: string
+        brand:
+          type: string
+        cost_cny:
+          type: number
+        price_krw:
+          type: number
+        on_hand:
+          type: integer
+        images:
+          type: array
+          items:
+            type: string
+        active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          
+    ProductDetail:
+      allOf:
+        - $ref: '#/components/schemas/Product'
+        - type: object
+          properties:
+            reserved:
+              type: integer
+            available:
+              type: integer
+            threshold:
+              type: integer
+            description:
+              type: string
+            sales_stats:
+              type: object
+              properties:
+                total_sold:
+                  type: integer
+                last_30_days:
+                  type: integer
+                average_per_month:
+                  type: number
+            updated_at:
+              type: string
+              format: date-time
+              
+    CreateProductRequest:
+      type: object
+      required:
+        - name
+        - category
+        - cost_cny
+      properties:
+        name:
+          type: string
+        category:
+          type: string
+        model:
+          type: string
+        color:
+          type: string
+        manufacturer:
+          type: string
+        brand:
+          type: string
+        cost_cny:
+          type: number
+        price_krw:
+          type: number
+        initial_stock:
+          type: integer
+        threshold:
+          type: integer
+        description:
+          type: string
+        images:
+          type: array
+          items:
+            type: string
+            
+    UpdateProductRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        price_krw:
+          type: number
+        threshold:
+          type: integer
+        description:
+          type: string
+          
+    InventoryMovement:
+      type: object
+      properties:
+        id:
+          type: string
+        product:
+          type: object
+          properties:
+            id:
+              type: string
+            sku:
+              type: string
+            name:
+              type: string
+        movement_type:
+          type: string
+        quantity:
+          type: integer
+        before_qty:
+          type: integer
+        after_qty:
+          type: integer
+        reference_type:
+          type: string
+        reference_id:
+          type: string
+        notes:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          
+    InboundRequest:
+      type: object
+      required:
+        - product_id
+        - quantity
+      properties:
+        product_id:
+          type: string
+        quantity:
+          type: integer
+        cost_cny:
+          type: number
+        notes:
+          type: string
+        received_at:
+          type: string
+          format: date-time
+          
+    AdjustmentRequest:
+      type: object
+      required:
+        - product_id
+        - adjustment
+        - reason
+      properties:
+        product_id:
+          type: string
+        adjustment:
+          type: integer
+        reason:
+          type: string
+        notes:
+          type: string
+          
+    StockReport:
+      type: object
+      properties:
+        summary:
+          type: object
+          properties:
+            total_products:
+              type: integer
+            total_quantity:
+              type: integer
+            total_value_krw:
+              type: number
+            low_stock_count:
+              type: integer
+            out_of_stock_count:
+              type: integer
+        by_category:
+          type: array
+          items:
+            type: object
+            properties:
+              category:
+                type: string
+              product_count:
+                type: integer
+              total_quantity:
+                type: integer
+              total_value:
+                type: number
+        critical_items:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              sku:
+                type: string
+              name:
+                type: string
+              on_hand:
+                type: integer
+              threshold:
+                type: integer
+              days_until_stockout:
+                type: integer
+                
+    Shipment:
+      type: object
+      properties:
+        id:
+          type: string
+        order_id:
+          type: string
+        order_no:
+          type: string
+        tracking_no:
+          type: string
+        courier:
+          type: string
+        courier_name:
+          type: string
+        status:
+          type: string
+        recipient:
+          type: object
+          properties:
+            name:
+              type: string
+            phone:
+              type: string
+            address:
+              type: string
+        shipped_at:
+          type: string
+          format: date-time
+        delivered_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+          
+    CreateShipmentRequest:
+      type: object
+      required:
+        - order_id
+        - tracking_no
+        - courier
+      properties:
+        order_id:
+          type: string
+        tracking_no:
+          type: string
+        courier:
+          type: string
+        weight_kg:
+          type: number
+        shipping_cost:
+          type: number
+        notes:
+          type: string
+          
+    UpdateShipmentStatusRequest:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+        delivered_at:
+          type: string
+          format: date-time
+        delivered_by:
+          type: string
+        signature:
+          type: string
+          
+    Transaction:
+      type: object
+      properties:
+        id:
+          type: string
+        transaction_date:
+          type: string
+          format: date
+        type:
+          type: string
+        category:
+          type: string
+        amount:
+          type: number
+        description:
+          type: string
+        reference_type:
+          type: string
+        reference_id:
+          type: string
+        balance:
+          type: number
+        created_at:
+          type: string
+          format: date-time
+          
+    CashbookSummary:
+      type: object
+      properties:
+        period:
+          type: string
+        opening_balance:
+          type: number
+        total_income:
+          type: number
+        total_expense:
+          type: number
+        net_change:
+          type: number
+        closing_balance:
+          type: number
+        by_category:
+          type: object
+          properties:
+            income:
+              type: array
+              items:
+                type: object
+                properties:
+                  category:
+                    type: string
+                  amount:
+                    type: number
+                  count:
+                    type: integer
+            expense:
+              type: array
+              items:
+                type: object
+                properties:
+                  category:
+                    type: string
+                  amount:
+                    type: number
+                  count:
+                    type: integer
+                    
+    CreateTransactionRequest:
+      type: object
+      required:
+        - transaction_date
+        - type
+        - category
+        - amount
+        - description
+      properties:
+        transaction_date:
+          type: string
+          format: date
+        type:
+          type: string
+        category:
+          type: string
+        amount:
+          type: number
+        description:
+          type: string
+        payment_method:
+          type: string
+        notes:
+          type: string
+          
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+        department:
+          type: string
+        phone:
+          type: string
+        active:
+          type: boolean
+        last_login:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+          
+    CreateUserRequest:
+      type: object
+      required:
+        - email
+        - password
+        - name
+        - role
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+        department:
+          type: string
+        phone:
+          type: string
+          
+    UpdateUserRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        role:
+          type: string
+        department:
+          type: string
+        active:
+          type: boolean
+          
+    LoginResponse:
+      type: object
+      properties:
+        user:
+          type: object
+          properties:
+            id:
+              type: string
+            email:
+              type: string
+            name:
+              type: string
+            role:
+              type: string
+        token:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+          
+    TokenResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        refresh_token:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+          
+    CurrentUser:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+        permissions:
+          type: array
+          items:
+            type: string
+            
+    CustomerOrder:
+      type: object
+      properties:
+        order_no:
+          type: string
+        status:
+          type: string
+        status_text:
+          type: string
+        total_amount:
+          type: number
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              quantity:
+                type: integer
+        tracking:
+          type: object
+          properties:
+            courier:
+              type: string
+            tracking_no:
+              type: string
+            tracking_url:
+              type: string
+        created_at:
+          type: string
+          format: date-time
+        expected_delivery:
+          type: string
+          format: date
+          
+    SystemSettings:
+      type: object
+      properties:
+        company:
+          type: object
+          properties:
+            name:
+              type: string
+            registration_no:
+              type: string
+            address:
+              type: string
+            phone:
+              type: string
+            email:
+              type: string
+        system:
+          type: object
+          properties:
+            language:
+              type: string
+            timezone:
+              type: string
+            currency:
+              type: string
+            exchange_rate_cny:
+              type: number
+            low_stock_threshold:
+              type: integer
+        shipping:
+          type: object
+          properties:
+            default_courier:
+              type: string
+            free_shipping_threshold:
+              type: number
+            default_shipping_fee:
+              type: number
+        notification:
+          type: object
+          properties:
+            email_enabled:
+              type: boolean
+            sms_enabled:
+              type: boolean
+            low_stock_alert:
+              type: boolean
+            order_notification:
+              type: boolean
+              
+    UpdateSettingsRequest:
+      type: object
+      properties:
+        system:
+          type: object
+          properties:
+            language:
+              type: string
+            low_stock_threshold:
+              type: integer
+        shipping:
+          type: object
+          properties:
+            default_courier:
+              type: string
