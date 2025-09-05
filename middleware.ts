@@ -291,7 +291,7 @@ export async function middleware(request: NextRequest) {
 
   // Extract path without locale for auth check
   const pathWithoutLocale = pathnameHasLocale 
-    ? pathname.slice(locale.length + 1) || '/'
+    ? pathname.replace(`/${locale}`, '') || '/'  // Remove locale prefix
     : pathname
 
   // 4. Authentication Check - Cookie-based for development
