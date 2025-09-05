@@ -1,18 +1,17 @@
 /**
  * 다국어 지원 시스템
- * 한국어, 중국어, 영어 지원
+ * 한국어, 중국어 지원
  */
 
-export type Locale = 'ko' | 'zh-CN' | 'en';
+export type Locale = 'ko' | 'zh-CN';
 
-export const locales: Locale[] = ['ko', 'zh-CN', 'en'];
+export const locales: Locale[] = ['ko', 'zh-CN'];
 
 export const defaultLocale: Locale = 'ko';
 
 export const localeNames = {
   ko: '한국어',
-  'zh-CN': '中文',
-  en: 'English'
+  'zh-CN': '中文'
 } as const;
 
 export interface LocaleInfo {
@@ -40,14 +39,6 @@ export const localeConfig: Record<Locale, LocaleInfo> = {
     dateFormat: 'YYYY年MM月DD日',
     numberFormat: 'zh-CN',
     currencyFormat: 'CNY'
-  },
-  en: {
-    code: 'en',
-    name: 'English',
-    flag: '🇺🇸',
-    dateFormat: 'MM/DD/YYYY',
-    numberFormat: 'en-US',
-    currencyFormat: 'USD'
   }
 };
 
@@ -74,11 +65,10 @@ export function getBrowserLocale(): Locale {
   
   const browserLang = navigator.language || navigator.languages?.[0];
   
-  if (browserLang?.startsWith('ko')) return 'ko';
   if (browserLang?.startsWith('zh')) return 'zh-CN';
-  if (browserLang?.startsWith('en')) return 'en';
+  if (browserLang?.startsWith('ko')) return 'ko';
   
-  return defaultLocale;
+  return defaultLocale; // Default to Korean
 }
 
 export async function getDictionary(locale: Locale) {
@@ -154,10 +144,9 @@ export function detectLocaleFromHeaders(acceptLanguage: string | null): Locale {
   for (const lang of languages) {
     if (lang.startsWith('ko')) return 'ko';
     if (lang.startsWith('zh')) return 'zh-CN';
-    if (lang.startsWith('en')) return 'en';
   }
   
-  return defaultLocale;
+  return defaultLocale; // Default to Korean
 }
 
 // 메시지 템플릿 처리

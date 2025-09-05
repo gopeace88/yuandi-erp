@@ -202,8 +202,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Check if URL already has a locale
-  const pathnameHasLocale = ['ko', 'zh-CN', 'en'].some((locale) =>
+  // Check if URL already has a locale (Korean or Chinese only)
+  const pathnameHasLocale = ['ko', 'zh-CN'].some((locale) =>
     pathname.startsWith(`/${locale}/`) || pathname === `/${locale}`
   )
 
@@ -223,14 +223,10 @@ export async function middleware(request: NextRequest) {
       // Format: ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7
       const primaryLang = acceptLanguage.split(',')[0]?.toLowerCase() || ''
       
-      if (primaryLang.includes('ko')) {
-        locale = 'ko'
-      } else if (primaryLang.includes('zh')) {
+      if (primaryLang.includes('zh')) {
         locale = 'zh-CN'
-      } else if (primaryLang.includes('en')) {
-        locale = 'en'
       } else {
-        // Default to Korean for other languages
+        // Default to Korean for all other languages (including English)
         locale = 'ko'
       }
     }

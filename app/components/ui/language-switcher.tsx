@@ -7,8 +7,7 @@ import { type Locale } from '@/lib/i18n/config'
 
 const LANGUAGE_OPTIONS = [
   { code: 'ko' as Locale, name: '한국어', flag: '🇰🇷' },
-  { code: 'zh-CN' as Locale, name: '中文(简体)', flag: '🇨🇳' },
-  { code: 'en' as Locale, name: 'English', flag: '🇺🇸' }
+  { code: 'zh-CN' as Locale, name: '中文(简体)', flag: '🇨🇳' }
 ] as const
 
 interface LanguageSwitcherProps {
