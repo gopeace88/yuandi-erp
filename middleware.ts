@@ -219,11 +219,18 @@ export async function middleware(request: NextRequest) {
     
     if (!request.cookies.get('locale')) {
       const acceptLanguage = request.headers.get('accept-language') || ''
-      if (acceptLanguage.toLowerCase().includes('zh')) {
+      // Parse Accept-Language header more accurately
+      // Format: ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7
+      const primaryLang = acceptLanguage.split(',')[0]?.toLowerCase() || ''
+      
+      if (primaryLang.includes('ko')) {
+        locale = 'ko'
+      } else if (primaryLang.includes('zh')) {
         locale = 'zh-CN'
-      } else if (acceptLanguage.toLowerCase().includes('en')) {
+      } else if (primaryLang.includes('en')) {
         locale = 'en'
       } else {
+        // Default to Korean for other languages
         locale = 'ko'
       }
     }

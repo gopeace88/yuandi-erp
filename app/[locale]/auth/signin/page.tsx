@@ -94,8 +94,8 @@ export default function SignInPage() {
         console.log('Current cookies:', document.cookie)
       }
 
-      // 대시보드로 리디렉션
-      router.push('/dashboard')
+      // 대시보드로 리디렉션 (locale 포함)
+      router.push(`/${locale}/dashboard`)
       
     } catch (error) {
       console.error('로그인 오류:', error)
