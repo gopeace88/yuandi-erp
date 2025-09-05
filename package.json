@@ -34,6 +34,7 @@
     "@vercel/analytics": "^1.1.0",
     "@vercel/speed-insights": "^1.0.0",
     "autoprefixer": "^10.4.0",
+    "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
     "date-fns": "^4.1.0",
     "lucide-react": "^0.400.0",
