@@ -5,14 +5,18 @@
 
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { type Locale, defaultLocale, getDictionary, getBrowserLocale } from '@/lib/i18n';
-// useTranslation hook은 컴포넌트 내부에서 직접 구현
+import { interpolateMessage, formatCurrency, formatDate, formatNumber, pluralize } from '@/lib/i18n';
 
 interface TranslationContextValue {
-  t: (key: string) => string;
+  t: (key: string, values?: Record<string, string | number>, fallback?: string) => string;
   locale: Locale;
   setLocale: (locale: Locale) => void;
+  formatDate: (date: Date) => string;
+  formatNumber: (number: number) => string;
+  formatCurrency: (amount: number, currency?: string) => string;
+  pluralize: (count: number, messages: { zero?: string; one: string; other: string }) => string;
 }
 
 const TranslationContext = createContext<TranslationContextValue | null>(null);
@@ -69,14 +73,69 @@ export function TranslationProvider({
     }
   }, [initialLocale, locale]);
 
-  const translationValue = useTranslation({ locale, dictionary });
+  // Translation function
+  const t = useCallback((
+    key: string,
+    values?: Record<string, string | number>,
+    fallback?: string
+  ): string => {
+    try {
+      const keys = key.split('.');
+      let result: any = dictionary;
+      
+      for (const k of keys) {
+        result = result?.[k];
+        if (result === undefined) {
+          break;
+        }
+      }
+      
+      if (typeof result === 'string') {
+        if (values) {
+          return interpolateMessage(result, values);
+        }
+        return result;
+      }
+      
+      console.warn(`Translation missing for key: ${key} in locale: ${locale}`);
+      return fallback || key;
+    } catch (error) {
+      console.error(`Translation error for key: ${key}`, error);
+      return fallback || key;
+    }
+  }, [dictionary, locale]);
+
+  const formatDateFn = useCallback((date: Date) => {
+    return formatDate(date, locale);
+  }, [locale]);
+
+  const formatNumberFn = useCallback((number: number) => {
+    return formatNumber(number, locale);
+  }, [locale]);
+
+  const formatCurrencyFn = useCallback((amount: number, currency = 'KRW') => {
+    return formatCurrency(amount, currency, locale);
+  }, [locale]);
+
+  const pluralizeFn = useCallback((
+    count: number,
+    messages: { zero?: string; one: string; other: string }
+  ) => {
+    return pluralize(count, messages, locale);
+  }, [locale]);
 
   // Enhanced context value with locale switching
   const contextValue: TranslationContextValue & {
     switchLocale: (newLocale: Locale) => Promise<void>;
     loading: boolean;
   } = {
-    ...translationValue,
+    t,
+    locale,
+    setLocale,
+    formatDate: formatDateFn,
+    formatNumber: formatNumberFn,
+    formatCurrency: formatCurrencyFn,
+    pluralize: pluralizeFn,
     switchLocale: async (newLocale: Locale) => {
       if (newLocale === locale) return;
       
