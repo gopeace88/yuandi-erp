@@ -1,15 +1,29 @@
 /**
  * SMS 알림 서비스
- * Twilio API를 사용한 SMS 발송
+ * Twilio API를 사용한 SMS 발송 (선택적 의존성)
  */
 
-import twilio from 'twilio';
+// Twilio 클라이언트 초기화 (선택적)
+let twilioClient: any = null;
 
-// Twilio 클라이언트 초기화
-const twilioClient = twilio(
-  process.env.TWILIO_ACCOUNT_SID,
-  process.env.TWILIO_AUTH_TOKEN
-);
+// 빌드 타임에 Twilio 초기화를 방지하기 위해 함수로 래핑
+function getTwilioClient() {
+  if (twilioClient) return twilioClient;
+  
+  try {
+    if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
+      const twilio = require('twilio');
+      twilioClient = twilio(
+        process.env.TWILIO_ACCOUNT_SID,
+        process.env.TWILIO_AUTH_TOKEN
+      );
+    }
+  } catch (error) {
+    console.warn('Twilio not available:', error);
+  }
+  
+  return twilioClient;
+}
 
 // SMS 발송 옵션
 export interface SendSMSOptions {
@@ -128,8 +142,15 @@ export async function sendSMS(options: SendSMSOptions): Promise<boolean> {
       return false;
     }
     
+    // Twilio 클라이언트 가져오기
+    const client = getTwilioClient();
+    if (!client) {
+      console.error('Twilio client not initialized');
+      return false;
+    }
+    
     // SMS 발송
-    const message = await twilioClient.messages.create({
+    const message = await client.messages.create({
       body: options.message,
       from: fromNumber,
       to: normalizedTo
@@ -322,7 +343,13 @@ export async function shortenUrl(longUrl: string): Promise<string> {
 // SMS 발송 상태 확인
 export async function getSMSStatus(messageSid: string): Promise<string | null> {
   try {
-    const message = await twilioClient.messages(messageSid).fetch();
+    const client = getTwilioClient();
+    if (!client) {
+      console.error('Twilio client not initialized');
+      return null;
+    }
+    
+    const message = await client.messages(messageSid).fetch();
     return message.status;
   } catch (error) {
     console.error('Failed to get SMS status:', error);
