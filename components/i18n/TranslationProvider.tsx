@@ -7,7 +7,13 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { type Locale, defaultLocale, getDictionary, getBrowserLocale } from '@/lib/i18n';
-import { useTranslation, type TranslationContextValue } from '@/hooks/useTranslation';
+import useTranslation from '@/hooks/useTranslation';
+
+interface TranslationContextValue {
+  t: (key: string) => string;
+  locale: Locale;
+  setLocale: (locale: Locale) => void;
+}
 
 const TranslationContext = createContext<TranslationContextValue | null>(null);
 

@@ -3,8 +3,6 @@
  * 한국어, 중국어, 영어 지원
  */
 
-import { cookies } from 'next/headers';
-
 export type Locale = 'ko' | 'zh-CN' | 'en';
 
 export const locales: Locale[] = ['ko', 'zh-CN', 'en'];
