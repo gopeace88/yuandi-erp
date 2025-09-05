@@ -75,7 +75,8 @@ import {
   Cpu,
   MemoryStick,
   Wifi,
-  WifiOff
+  WifiOff,
+  ShoppingCart
 } from 'lucide-react';
 import { type Locale } from '@/lib/i18n';
 import LanguageSelector from '@/components/i18n/LanguageSelector';
