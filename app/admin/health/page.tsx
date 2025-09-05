@@ -14,7 +14,7 @@ import {
   Cpu, 
   Database, 
   HardDrive, 
-  Memory, 
+  MemoryStick as Memory, 
   Network, 
   RefreshCw, 
   Server,

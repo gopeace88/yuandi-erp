@@ -44,6 +44,9 @@ export async function createServerSupabaseClient() {
   )
 }
 
+// Alias for backward compatibility
+export const createClient = createServerSupabaseClient;
+
 export async function createServiceSupabaseClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 

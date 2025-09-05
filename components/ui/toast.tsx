@@ -98,6 +98,26 @@ type ToastProps = React.ComponentPropsWithoutRef<typeof Toast>;
 
 type ToastActionElement = React.ReactElement<typeof ToastAction>;
 
+// ToastProvider and ToastViewport
+const ToastProvider = ({ children }: { children: React.ReactNode }) => {
+  return <>{children}</>;
+};
+
+const ToastViewport = React.forwardRef<
+  HTMLOListElement,
+  React.HTMLAttributes<HTMLOListElement>
+>(({ className, ...props }, ref) => (
+  <ol
+    ref={ref}
+    className={cn(
+      'fixed top-0 z-[100] flex max-h-screen w-full flex-col-reverse p-4 sm:bottom-0 sm:right-0 sm:top-auto sm:flex-col md:max-w-[420px]',
+      className
+    )}
+    {...props}
+  />
+));
+ToastViewport.displayName = 'ToastViewport';
+
 export {
   type ToastProps,
   type ToastActionElement,
@@ -106,5 +126,7 @@ export {
   ToastClose,
   ToastTitle,
   ToastDescription,
+  ToastProvider,
+  ToastViewport,
   toastVariants,
 };

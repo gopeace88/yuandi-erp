@@ -5,8 +5,8 @@
 
 import { Resend } from 'resend';
 
-// Resend 클라이언트 초기화
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Resend 클라이언트 초기화 - API 키가 없으면 더미 값 사용
+const resend = new Resend(process.env.RESEND_API_KEY || 'dummy_key_for_build');
 
 // 이메일 템플릿 타입
 export interface EmailTemplate {
