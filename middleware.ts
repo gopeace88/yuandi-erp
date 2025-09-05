@@ -207,40 +207,40 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith(`/${locale}/`) || pathname === `/${locale}`
   )
 
-  // If already has locale, continue
+  // Determine locale
+  let locale = 'ko'
+  
   if (pathnameHasLocale) {
-    const currentLocale = pathname.split('/')[1]
-    const response = NextResponse.next()
-    response.headers.set('x-locale', currentLocale)
-    return response
-  }
-
-  // Detect locale from cookie or Accept-Language
-  let locale = request.cookies.get('locale')?.value || 'ko'
-  
-  if (!request.cookies.get('locale')) {
-    const acceptLanguage = request.headers.get('accept-language') || ''
-    if (acceptLanguage.toLowerCase().includes('zh')) {
-      locale = 'zh-CN'
-    } else if (acceptLanguage.toLowerCase().includes('en')) {
-      locale = 'en'
-    } else {
-      locale = 'ko'
+    // Already has locale in URL
+    locale = pathname.split('/')[1]
+  } else {
+    // Need to add locale to URL
+    locale = request.cookies.get('locale')?.value || 'ko'
+    
+    if (!request.cookies.get('locale')) {
+      const acceptLanguage = request.headers.get('accept-language') || ''
+      if (acceptLanguage.toLowerCase().includes('zh')) {
+        locale = 'zh-CN'
+      } else if (acceptLanguage.toLowerCase().includes('en')) {
+        locale = 'en'
+      } else {
+        locale = 'ko'
+      }
     }
-  }
 
-  // Redirect with locale prefix
-  const redirectUrl = new URL(`/${locale}${pathname}`, request.url)
-  redirectUrl.search = request.nextUrl.search
-  
-  const redirectResponse = NextResponse.redirect(redirectUrl)
-  redirectResponse.cookies.set('locale', locale, {
-    path: '/',
-    maxAge: 60 * 60 * 24 * 365,
-    sameSite: 'lax'
-  })
-  
-  return redirectResponse
+    // Redirect with locale prefix
+    const redirectUrl = new URL(`/${locale}${pathname}`, request.url)
+    redirectUrl.search = request.nextUrl.search
+    
+    const redirectResponse = NextResponse.redirect(redirectUrl)
+    redirectResponse.cookies.set('locale', locale, {
+      path: '/',
+      maxAge: 60 * 60 * 24 * 365,
+      sameSite: 'lax'
+    })
+    
+    return redirectResponse
+  }
 
   // 2. HTTPS Enforcement
   const httpsRedirect = enforceHTTPS(request)
@@ -286,8 +286,13 @@ export async function middleware(request: NextRequest) {
   // Add locale to response headers for server components
   response.headers.set('x-locale', locale)
 
+  // Extract path without locale for auth check
+  const pathWithoutLocale = pathnameHasLocale 
+    ? pathname.slice(locale.length + 1) || '/'
+    : pathname
+
   // 4. Authentication Check - Cookie-based for development
-  if (requiresAuth(pathname)) {
+  if (requiresAuth(pathWithoutLocale)) {
     if (process.env.NODE_ENV === 'development') {
       console.log('Middleware - checking auth for:', pathname)
     }
@@ -305,7 +310,7 @@ export async function middleware(request: NextRequest) {
       if (process.env.NODE_ENV === 'development') {
         console.log('Middleware - redirecting to /auth/signin (missing cookies)')
       }
-      const loginUrl = new URL('/auth/signin', request.url)
+      const loginUrl = new URL(`/${locale}/auth/signin`, request.url)
       return NextResponse.redirect(loginUrl)
     }
     
@@ -319,7 +324,7 @@ export async function middleware(request: NextRequest) {
         if (process.env.NODE_ENV === 'development') {
           console.log('Middleware - session expired, redirecting to /auth/signin')
         }
-        const loginUrl = new URL('/auth/signin', request.url)
+        const loginUrl = new URL(`/${locale}/auth/signin`, request.url)
         return NextResponse.redirect(loginUrl)
       }
       
@@ -328,7 +333,7 @@ export async function middleware(request: NextRequest) {
       }
       
       // Check user role for admin paths
-      if (pathname.startsWith('/dashboard/users') || pathname.startsWith('/api/users')) {
+      if (pathWithoutLocale.startsWith('/dashboard/users') || pathWithoutLocale.startsWith('/api/users')) {
         if (userData.role !== 'Admin') {
           return new NextResponse('Forbidden', {
             status: 403,
@@ -338,19 +343,19 @@ export async function middleware(request: NextRequest) {
       }
 
       // Add user info to request headers for API routes
-      if (pathname.startsWith('/api')) {
+      if (pathWithoutLocale.startsWith('/api')) {
         response.headers.set('x-user-id', userData.id)
         response.headers.set('x-user-role', userData.role || 'user')
       }
     } catch (error) {
       console.log('Middleware - session parse error, redirecting to /auth/signin')
-      const loginUrl = new URL('/auth/signin', request.url)
+      const loginUrl = new URL(`/${locale}/auth/signin`, request.url)
       return NextResponse.redirect(loginUrl)
     }
   }
 
   // 5. CORS for public API
-  if (isPublicAPI(pathname)) {
+  if (isPublicAPI(pathWithoutLocale)) {
     response.headers.set('Access-Control-Allow-Origin', '*')
     response.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
     response.headers.set('Access-Control-Allow-Headers', 'Content-Type')

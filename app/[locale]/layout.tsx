@@ -6,13 +6,20 @@
 import { Inter } from 'next/font/google';
 import { type Locale, locales, getDictionary } from '@/lib/i18n';
 import { TranslationProvider } from '@/components/i18n/TranslationProvider';
-import { Metadata } from 'next';
+import { Metadata, Viewport } from 'next';
 import './globals.css';
 
 const inter = Inter({ subsets: ['latin'] });
 
 export async function generateStaticParams() {
   return locales.map((locale) => ({ locale }));
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  themeColor: '#000000',
 }
 
 export async function generateMetadata({
@@ -44,12 +51,6 @@ export async function generateMetadata({
       index: false,
       follow: false,
     },
-    viewport: {
-      width: 'device-width',
-      initialScale: 1,
-      maximumScale: 1,
-    },
-    themeColor: '#000000',
     manifest: '/manifest.json',
   };
 }

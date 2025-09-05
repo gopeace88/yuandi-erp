@@ -8,6 +8,9 @@ import { createFullBackup, cleanupOldBackups } from '@/lib/backup';
 import { createClient } from '@/lib/supabase/server';
 import { sendNotification } from '@/lib/notifications';
 
+// This route uses request headers for authorization
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     // Cron secret 확인 (보안)
