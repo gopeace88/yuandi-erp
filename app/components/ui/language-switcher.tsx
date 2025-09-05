@@ -1,24 +1,34 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter, usePathname } from 'next/navigation'
 import { Globe, Check, ChevronDown } from 'lucide-react'
-import { useTranslation } from '@/lib/i18n/context'
-import { i18nConfig, type Locale } from '@/lib/i18n/config'
+import { type Locale } from '@/lib/i18n/config'
 
 const LANGUAGE_OPTIONS = [
-  { code: 'ko', name: '\m�', flag: '<�<�' },
-  { code: 'zh-CN', name: '-�(�S)', flag: '<�<�' },
-  { code: 'en', name: 'English', flag: '<�<�' }
+  { code: 'ko' as Locale, name: '한국어', flag: '🇰🇷' },
+  { code: 'zh-CN' as Locale, name: '中文(简体)', flag: '🇨🇳' },
+  { code: 'en' as Locale, name: 'English', flag: '🇺🇸' }
 ] as const
 
-export function LanguageSwitcher() {
-  const { locale, setLocale, t } = useTranslation()
-  const [isOpen, setIsOpen] = useState(false)
+interface LanguageSwitcherProps {
+  currentLocale?: Locale
+}
 
-  const currentLanguage = LANGUAGE_OPTIONS.find(lang => lang.code === locale)
+export function LanguageSwitcher({ currentLocale = 'ko' }: LanguageSwitcherProps) {
+  const [isOpen, setIsOpen] = useState(false)
+  const router = useRouter()
+  const pathname = usePathname()
+
+  const currentLanguage = LANGUAGE_OPTIONS.find(lang => lang.code === currentLocale)
 
   const handleLanguageChange = (newLocale: Locale) => {
-    setLocale(newLocale)
+    // 현재 경로에서 locale을 변경
+    const segments = pathname.split('/')
+    segments[1] = newLocale
+    const newPath = segments.join('/')
+    
+    router.push(newPath)
     setIsOpen(false)
   }
 
@@ -27,7 +37,7 @@ export function LanguageSwitcher() {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 px-3 py-2 text-sm border rounded-lg hover:bg-gray-50 transition-colors"
-        aria-label="��  �"
+        aria-label="언어 선택"
       >
         <Globe className="w-4 h-4" />
         <span className="hidden sm:inline">
@@ -41,40 +51,33 @@ export function LanguageSwitcher() {
 
       {isOpen && (
         <>
-          {/* 0� t� � */}
+          {/* 오버레이 */}
           <div 
             className="fixed inset-0 z-10"
             onClick={() => setIsOpen(false)}
           />
           
-          {/* �m� Tt */}
+          {/* 언어 메뉴 */}
           <div className="absolute right-0 mt-1 w-48 bg-white border rounded-lg shadow-lg z-20">
             <div className="py-1">
               {LANGUAGE_OPTIONS.map((language) => (
                 <button
                   key={language.code}
-                  onClick={() => handleLanguageChange(language.code as Locale)}
+                  onClick={() => handleLanguageChange(language.code)}
                   className={`
                     w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-gray-50 transition-colors
-                    ${locale === language.code ? 'bg-blue-50 text-blue-600' : 'text-gray-700'}
+                    ${currentLocale === language.code ? 'bg-blue-50 text-blue-600' : 'text-gray-700'}
                   `}
                 >
                   <div className="flex items-center gap-2">
                     <span className="text-lg">{language.flag}</span>
                     <span>{language.name}</span>
                   </div>
-                  {locale === language.code && (
+                  {currentLocale === language.code && (
                     <Check className="w-4 h-4 text-blue-600" />
                   )}
                 </button>
               ))}
-            </div>
-            
-            {/* l�  */}
-            <div className="border-t">
-              <div className="px-3 py-2 text-xs text-gray-500">
-                {t('nav.settings')} " {t('common.language')}
-              </div>
             </div>
           </div>
         </>
@@ -83,15 +86,21 @@ export function LanguageSwitcher() {
   )
 }
 
-// �\ � (DtX�)
-export function LanguageSwitcherMini() {
-  const { locale, setLocale } = useTranslation()
+// 미니 버전 (모바일용)
+export function LanguageSwitcherMini({ currentLocale = 'ko' }: LanguageSwitcherProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const router = useRouter()
+  const pathname = usePathname()
 
-  const currentLanguage = LANGUAGE_OPTIONS.find(lang => lang.code === locale)
+  const currentLanguage = LANGUAGE_OPTIONS.find(lang => lang.code === currentLocale)
 
   const handleLanguageChange = (newLocale: Locale) => {
-    setLocale(newLocale)
+    // 현재 경로에서 locale을 변경
+    const segments = pathname.split('/')
+    segments[1] = newLocale
+    const newPath = segments.join('/')
+    
+    router.push(newPath)
     setIsOpen(false)
   }
 
@@ -100,7 +109,7 @@ export function LanguageSwitcherMini() {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center justify-center w-8 h-8 text-lg hover:bg-gray-100 rounded transition-colors"
-        aria-label="��  �"
+        aria-label="언어 선택"
         title={currentLanguage?.name}
       >
         {currentLanguage?.flag}
@@ -118,10 +127,10 @@ export function LanguageSwitcherMini() {
               {LANGUAGE_OPTIONS.map((language) => (
                 <button
                   key={language.code}
-                  onClick={() => handleLanguageChange(language.code as Locale)}
+                  onClick={() => handleLanguageChange(language.code)}
                   className={`
                     w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50
-                    ${locale === language.code ? 'bg-blue-50 text-blue-600' : ''}
+                    ${currentLocale === language.code ? 'bg-blue-50 text-blue-600' : ''}
                   `}
                 >
                   <span>{language.flag}</span>
