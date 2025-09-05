@@ -7,7 +7,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { type Locale, defaultLocale, getDictionary, getBrowserLocale } from '@/lib/i18n';
-import useTranslation from '@/hooks/useTranslation';
+// useTranslation hook은 컴포넌트 내부에서 직접 구현
 
 interface TranslationContextValue {
   t: (key: string) => string;
