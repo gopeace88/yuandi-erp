@@ -14,28 +14,18 @@ import {
   validateEmail
 } from './email';
 
-import {
-  sendSMS,
-  sendNotificationSMS,
-  sendOrderConfirmationSMS,
-  sendOrderShippedSMS,
-  sendOrderDeliveredSMS,
-  sendLowStockSMS,
-  sendSystemAlertSMS,
-  normalizeKoreanPhoneNumber,
-  validatePhoneNumber
-} from './sms';
+// SMS 기능 제거됨 - 이메일 알림만 사용
 
-// 알림 채널 타입
-export type NotificationChannel = 'email' | 'sms' | 'push' | 'all';
+// 알림 채널 타입 (SMS 제거)
+export type NotificationChannel = 'email' | 'push' | 'all';
 
 // 알림 우선순위
 export type NotificationPriority = 'low' | 'normal' | 'high' | 'urgent';
 
 // 알림 타입
-export type NotificationType = 
+export type NotificationType =
   | 'order_confirmation'
-  | 'order_shipped' 
+  | 'order_shipped'
   | 'order_delivered'
   | 'order_cancelled'
   | 'order_refunded'
@@ -47,11 +37,10 @@ export type NotificationType =
   | 'welcome'
   | 'password_reset';
 
-// 사용자 알림 설정
+// 사용자 알림 설정 (SMS 제거)
 export interface UserNotificationSettings {
   userId: string;
   email?: string;
-  phone?: string;
   preferences: {
     [key in NotificationType]: {
       enabled: boolean;
@@ -62,12 +51,11 @@ export interface UserNotificationSettings {
   language: 'ko' | 'en' | 'zh-CN';
 }
 
-// 알림 요청
+// 알림 요청 (SMS 제거)
 export interface NotificationRequest {
   type: NotificationType;
   recipient: {
     email?: string;
-    phone?: string;
     userId?: string;
   };
   data: Record<string, any>;
@@ -77,12 +65,11 @@ export interface NotificationRequest {
   retryCount?: number;
 }
 
-// 알림 결과
+// 알림 결과 (SMS 제거)
 export interface NotificationResult {
   success: boolean;
   channels: {
     email?: { sent: boolean; messageId?: string; error?: string };
-    sms?: { sent: boolean; messageId?: string; error?: string };
     push?: { sent: boolean; messageId?: string; error?: string };
   };
   totalSent: number;
@@ -101,14 +88,14 @@ interface QueuedNotification extends NotificationRequest {
 // 메모리 기반 알림 큐 (실제로는 Redis나 데이터베이스 사용)
 const notificationQueue: QueuedNotification[] = [];
 
-// 기본 사용자 알림 설정
+// 기본 사용자 알림 설정 (SMS 제거)
 const defaultNotificationSettings: UserNotificationSettings['preferences'] = {
-  order_confirmation: { enabled: true, channels: ['email', 'sms'] },
-  order_shipped: { enabled: true, channels: ['email', 'sms'] },
-  order_delivered: { enabled: true, channels: ['sms'] },
-  order_cancelled: { enabled: true, channels: ['email', 'sms'] },
+  order_confirmation: { enabled: true, channels: ['email'] },
+  order_shipped: { enabled: true, channels: ['email'] },
+  order_delivered: { enabled: true, channels: ['email'] },
+  order_cancelled: { enabled: true, channels: ['email'] },
   order_refunded: { enabled: true, channels: ['email'] },
-  payment_failed: { enabled: true, channels: ['email', 'sms'] },
+  payment_failed: { enabled: true, channels: ['email'] },
   low_stock: { enabled: true, channels: ['email'] },
   system_alert: { enabled: true, channels: ['email'] },
   maintenance: { enabled: true, channels: ['email'] },
@@ -170,7 +157,7 @@ export async function sendNotification(request: NotificationRequest): Promise<No
       channels = userPrefs.channels;
     }
 
-    // 각 채널별 발송
+    // 각 채널별 발송 (SMS 제거)
     for (const channel of channels) {
       try {
         if (channel === 'email' && request.recipient.email) {
@@ -179,14 +166,7 @@ export async function sendNotification(request: NotificationRequest): Promise<No
           if (emailSent) result.totalSent++;
           else result.totalFailed++;
         }
-        
-        if (channel === 'sms' && request.recipient.phone) {
-          const smsSent = await sendSMSNotification(request.type, request.recipient.phone, request.data);
-          result.channels.sms = { sent: smsSent };
-          if (smsSent) result.totalSent++;
-          else result.totalFailed++;
-        }
-        
+
         // 푸시 알림은 향후 구현
         if (channel === 'push') {
           result.channels.push = { sent: false, error: 'Push notifications not implemented' };
@@ -196,15 +176,13 @@ export async function sendNotification(request: NotificationRequest): Promise<No
         console.error(`Failed to send ${channel} notification:`, error);
         if (channel === 'email') {
           result.channels.email = { sent: false, error: error instanceof Error ? error.message : 'Unknown error' };
-        } else if (channel === 'sms') {
-          result.channels.sms = { sent: false, error: error instanceof Error ? error.message : 'Unknown error' };
         }
         result.totalFailed++;
       }
     }
 
     result.success = result.totalSent > 0;
-    
+
     // 로깅
     console.log('Notification result:', {
       type: request.type,
@@ -243,28 +221,7 @@ async function sendEmailNotification(type: NotificationType, email: string, data
   }
 }
 
-// SMS 알림 발송
-async function sendSMSNotification(type: NotificationType, phone: string, data: Record<string, any>): Promise<boolean> {
-  if (!validatePhoneNumber(phone)) {
-    console.error('Invalid phone number:', phone);
-    return false;
-  }
-
-  switch (type) {
-    case 'order_confirmation':
-      return await sendOrderConfirmationSMS(phone, data);
-    case 'order_shipped':
-      return await sendOrderShippedSMS(phone, data);
-    case 'order_delivered':
-      return await sendOrderDeliveredSMS(phone, data);
-    case 'low_stock':
-      return await sendLowStockSMS(phone, data);
-    case 'system_alert':
-      return await sendSystemAlertSMS(phone, data);
-    default:
-      return await sendNotificationSMS(type as any, phone, data);
-  }
-}
+// SMS 기능 제거됨
 
 // 예약된 알림 발송
 export async function scheduleNotification(request: NotificationRequest): Promise<string> {
@@ -277,7 +234,7 @@ export async function scheduleNotification(request: NotificationRequest): Promis
   };
 
   notificationQueue.push(queuedItem);
-  
+
   console.log('Notification scheduled:', queuedItem.id);
   return queuedItem.id;
 }
@@ -285,8 +242,8 @@ export async function scheduleNotification(request: NotificationRequest): Promis
 // 알림 큐 처리 (백그라운드 작업)
 export async function processNotificationQueue(): Promise<void> {
   const now = new Date();
-  const pendingItems = notificationQueue.filter(item => 
-    item.status === 'pending' && 
+  const pendingItems = notificationQueue.filter(item =>
+    item.status === 'pending' &&
     (!item.scheduledAt || item.scheduledAt <= now)
   );
 
@@ -321,9 +278,9 @@ export async function sendBulkNotifications(
   for (let i = 0; i < notifications.length; i += batchSize) {
     const batch = notifications.slice(i, i + batchSize);
     const promises = batch.map(notification => sendNotification(notification));
-    
+
     const batchResults = await Promise.allSettled(promises);
-    
+
     batchResults.forEach(result => {
       if (result.status === 'fulfilled' && result.value.success) {
         results.success++;
@@ -341,25 +298,23 @@ export async function sendBulkNotifications(
   return results;
 }
 
-// 주문 관련 통합 알림
+// 주문 관련 통합 알림 (SMS 제거)
 export async function sendOrderNotification(
   type: 'confirmation' | 'shipped' | 'delivered',
   orderData: {
     customerEmail?: string;
-    customerPhone?: string;
     customerName: string;
     orderNumber: string;
     [key: string]: any;
   },
-  channels: NotificationChannel[] = ['email', 'sms']
+  channels: NotificationChannel[] = ['email']
 ): Promise<NotificationResult> {
   const notificationType = `order_${type}` as NotificationType;
-  
+
   return await sendNotification({
     type: notificationType,
     recipient: {
-      email: orderData.customerEmail,
-      phone: orderData.customerPhone
+      email: orderData.customerEmail
     },
     data: orderData,
     channels,
@@ -367,7 +322,7 @@ export async function sendOrderNotification(
   });
 }
 
-// 시스템 알림 (관리자용)
+// 시스템 알림 (관리자용, SMS 제거)
 export async function sendAdminAlert(
   alertData: {
     type: string;
@@ -375,10 +330,10 @@ export async function sendAdminAlert(
     severity: 'low' | 'medium' | 'high' | 'critical';
     details?: string;
   },
-  adminContacts: { email?: string; phone?: string }[]
+  adminContacts: { email?: string }[]
 ): Promise<NotificationResult[]> {
   const results: NotificationResult[] = [];
-  
+
   for (const contact of adminContacts) {
     const result = await sendNotification({
       type: 'system_alert',
@@ -392,17 +347,17 @@ export async function sendAdminAlert(
         timestamp: new Date().toLocaleString('ko-KR'),
         details: alertData.details
       },
-      channels: alertData.severity === 'critical' ? ['email', 'sms'] : ['email'],
+      channels: ['email'],
       priority: alertData.severity === 'critical' ? 'urgent' : 'high'
     });
-    
+
     results.push(result);
   }
-  
+
   return results;
 }
 
-// 알림 통계
+// 알림 통계 (SMS 제거)
 export async function getNotificationStats(
   startDate: Date,
   endDate: Date
@@ -418,7 +373,6 @@ export async function getNotificationStats(
     totalFailed: 0,
     byChannel: {
       email: { sent: 0, failed: 0 },
-      sms: { sent: 0, failed: 0 },
       push: { sent: 0, failed: 0 }
     },
     byType: {
@@ -429,21 +383,16 @@ export async function getNotificationStats(
   };
 }
 
-// 알림 서비스 상태 확인
+// 알림 서비스 상태 확인 (SMS 제거)
 export async function getNotificationServiceStatus(): Promise<{
   email: { available: boolean; lastCheck: Date };
-  sms: { available: boolean; lastCheck: Date };
   push: { available: boolean; lastCheck: Date };
 }> {
   const now = new Date();
-  
+
   return {
     email: {
       available: !!process.env.RESEND_API_KEY,
-      lastCheck: now
-    },
-    sms: {
-      available: !!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN),
       lastCheck: now
     },
     push: {
@@ -460,7 +409,7 @@ export function startNotificationQueueProcessor(intervalMs: number = 30000): voi
   if (queueProcessorInterval) {
     clearInterval(queueProcessorInterval);
   }
-  
+
   queueProcessorInterval = setInterval(processNotificationQueue, intervalMs);
   console.log('Notification queue processor started');
 }
@@ -473,6 +422,5 @@ export function stopNotificationQueueProcessor(): void {
   }
 }
 
-// 내보내기
+// 내보내기 (SMS 제거)
 export * from './email';
-export * from './sms';

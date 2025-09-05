@@ -6,23 +6,31 @@
 // Twilio 클라이언트 초기화 (선택적)
 let twilioClient: any = null;
 
-// 빌드 타임에 Twilio 초기화를 방지하기 위해 함수로 래핑
-function getTwilioClient() {
+// Twilio는 선택적 의존성이므로 동적 import 사용
+async function getTwilioClient() {
   if (twilioClient) return twilioClient;
-  
+
+  if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN) {
+    return null;
+  }
+
   try {
-    if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
-      const twilio = require('twilio');
-      twilioClient = twilio(
-        process.env.TWILIO_ACCOUNT_SID,
-        process.env.TWILIO_AUTH_TOKEN
-      );
+    // 동적 import를 사용하여 빌드 시점에 모듈을 찾지 않도록 함
+    const twilioModule = await import('twilio').catch(() => null);
+    if (!twilioModule) {
+      console.warn('Twilio module not available');
+      return null;
     }
+
+    twilioClient = twilioModule.default(
+      process.env.TWILIO_ACCOUNT_SID,
+      process.env.TWILIO_AUTH_TOKEN
+    );
+    return twilioClient;
   } catch (error) {
     console.warn('Twilio not available:', error);
+    return null;
   }
-  
-  return twilioClient;
 }
 
 // SMS 발송 옵션
@@ -43,35 +51,35 @@ export const SMS_TEMPLATES = {
   orderConfirmation: {
     message: '[YUANDI] {{customerName}}님, 주문 {{orderNumber}}이 접수되었습니다. 총 {{totalAmount}}원. 배송까지 3-5일 소요됩니다.'
   },
-  
+
   orderShipped: {
     message: '[YUANDI] {{customerName}}님, 주문 {{orderNumber}}이 발송되었습니다. 운송장: {{trackingNumber}} ({{courier}}). 추적: {{shortTrackingUrl}}'
   },
-  
+
   orderDelivered: {
     message: '[YUANDI] {{customerName}}님, 주문 {{orderNumber}}의 배송이 완료되었습니다. 이용해 주셔서 감사합니다!'
   },
-  
+
   // 배송 관련
   shipmentDelay: {
     message: '[YUANDI] {{customerName}}님, 주문 {{orderNumber}}의 배송이 지연되고 있습니다. 예상 도착일: {{newDeliveryDate}}. 양해 부탁드립니다.'
   },
-  
+
   // 재고 관련 (관리자용)
   lowStockAlert: {
     message: '[YUANDI 관리자] 재고 부족: {{productName}} (현재: {{currentStock}}개, 최소: {{minStock}}개). 즉시 보충 필요.'
   },
-  
+
   // 시스템 알림 (관리자용)
   systemAlert: {
     message: '[YUANDI 시스템] {{alertType}}: {{alertMessage}} ({{timestamp}})'
   },
-  
+
   // 고객 서비스
   customerService: {
     message: '[YUANDI] {{customerName}}님, 문의사항에 대한 답변: {{response}}'
   },
-  
+
   // 프로모션
   promotion: {
     message: '[YUANDI] {{customerName}}님을 위한 특별 혜택! {{promotionTitle}} {{promotionDetails}} 자세히: {{promotionUrl}}'
@@ -82,7 +90,7 @@ export const SMS_TEMPLATES = {
 export function normalizeKoreanPhoneNumber(phoneNumber: string): string {
   // 공백, 하이픈 제거
   let normalized = phoneNumber.replace(/[\s-]/g, '');
-  
+
   // 국가코드 처리
   if (normalized.startsWith('+82')) {
     normalized = '0' + normalized.slice(3);
@@ -91,12 +99,12 @@ export function normalizeKoreanPhoneNumber(phoneNumber: string): string {
   } else if (!normalized.startsWith('0')) {
     normalized = '0' + normalized;
   }
-  
+
   // 국제 형식으로 변환
   if (normalized.startsWith('0')) {
     normalized = '+82' + normalized.slice(1);
   }
-  
+
   return normalized;
 }
 
@@ -111,12 +119,12 @@ export function validatePhoneNumber(phoneNumber: string): boolean {
 // 템플릿 컴파일
 function compileTemplate(template: string, data: Record<string, any>): string {
   let compiled = template;
-  
+
   Object.entries(data).forEach(([key, value]) => {
     const regex = new RegExp(`{{${key}}}`, 'g');
     compiled = compiled.replace(regex, String(value || ''));
   });
-  
+
   return compiled;
 }
 
@@ -128,40 +136,40 @@ export async function sendSMS(options: SendSMSOptions): Promise<boolean> {
       console.error('Twilio credentials not configured');
       return false;
     }
-    
+
     const fromNumber = options.from || process.env.TWILIO_PHONE_NUMBER;
     if (!fromNumber) {
       console.error('Twilio phone number not configured');
       return false;
     }
-    
+
     // 전화번호 정규화 및 검증
     const normalizedTo = normalizeKoreanPhoneNumber(options.to);
     if (!validatePhoneNumber(options.to)) {
       console.error('Invalid phone number:', options.to);
       return false;
     }
-    
+
     // Twilio 클라이언트 가져오기
-    const client = getTwilioClient();
+    const client = await getTwilioClient();
     if (!client) {
       console.error('Twilio client not initialized');
       return false;
     }
-    
+
     // SMS 발송
     const message = await client.messages.create({
       body: options.message,
       from: fromNumber,
       to: normalizedTo
     });
-    
+
     console.log('SMS sent successfully:', {
       sid: message.sid,
       to: normalizedTo,
       status: message.status
     });
-    
+
     return true;
   } catch (error) {
     console.error('Failed to send SMS:', error);
@@ -179,9 +187,9 @@ export async function sendNotificationSMS(
   if (!template) {
     throw new Error(`Unknown SMS template: ${type}`);
   }
-  
+
   const message = compileTemplate(template.message, data);
-  
+
   return await sendSMS({
     to,
     message
@@ -295,16 +303,16 @@ export async function sendBulkSMS(
   batchSize: number = 5
 ): Promise<{ success: number; failed: number }> {
   const results = { success: 0, failed: 0 };
-  
+
   for (let i = 0; i < messages.length; i += batchSize) {
     const batch = messages.slice(i, i + batchSize);
     const promises = batch.map(msg => sendSMS({
       to: msg.to,
       message: msg.message
     }));
-    
+
     const batchResults = await Promise.allSettled(promises);
-    
+
     batchResults.forEach(result => {
       if (result.status === 'fulfilled' && result.value) {
         results.success++;
@@ -312,13 +320,13 @@ export async function sendBulkSMS(
         results.failed++;
       }
     });
-    
+
     // 배치 간 대기 (레이트 리밋 방지 - SMS는 더 제한적)
     if (i + batchSize < messages.length) {
       await new Promise(resolve => setTimeout(resolve, 2000));
     }
   }
-  
+
   return results;
 }
 
@@ -329,10 +337,10 @@ export async function shortenUrl(longUrl: string): Promise<string> {
     // 여기서는 간단한 구현
     const shortCode = Math.random().toString(36).substring(2, 8);
     const shortUrl = `https://yuandi.link/${shortCode}`;
-    
+
     // 실제 구현에서는 데이터베이스에 매핑 저장
     // await saveUrlMapping(shortCode, longUrl);
-    
+
     return shortUrl;
   } catch (error) {
     console.error('Failed to shorten URL:', error);
@@ -348,7 +356,7 @@ export async function getSMSStatus(messageSid: string): Promise<string | null> {
       console.error('Twilio client not initialized');
       return null;
     }
-    
+
     const message = await client.messages(messageSid).fetch();
     return message.status;
   } catch (error) {
@@ -367,18 +375,23 @@ export async function getSMSUsageStats(
   successRate: number;
 } | null> {
   try {
-    const usage = await twilioClient.usage.records.list({
+    const client = await getTwilioClient();
+    if (!client) {
+      return null;
+    }
+
+    const usage = await client.usage.records.list({
       category: 'sms',
       startDate,
       endDate
     });
-    
+
     const totalSent = usage.reduce((sum, record) => sum + parseInt(record.count), 0);
     const totalCost = usage.reduce((sum, record) => sum + parseFloat(record.price), 0);
-    
+
     // 성공률 계산 (실제로는 더 정교한 계산 필요)
     const successRate = 0.95; // 가정값
-    
+
     return {
       totalSent,
       totalCost,
