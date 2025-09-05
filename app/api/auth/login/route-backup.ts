@@ -1,66 +1,11 @@
 export const dynamic = 'force-dynamic'
 
 import { NextRequest, NextResponse } from 'next/server'
-
-// Mock user database for development/testing
-const MOCK_USERS = [
-  {
-    id: 'admin-001',
-    email: 'yuandi1020@gmail.com',
-    password: Buffer.from('yuandi123!').toString('base64'), // base64 encoded
-    name: 'YUANDI Admin',
-    role: 'admin',
-    locale: 'ko',
-    active: true,
-    created_at: '2024-08-01T00:00:00Z',
-    updated_at: '2024-08-01T00:00:00Z'
-  },
-  {
-    id: 'manager-001',
-    email: 'manager@yuandi.com',
-    password: Buffer.from('manager123').toString('base64'),
-    name: 'Order Manager',
-    role: 'order_manager',
-    locale: 'ko',
-    active: true,
-    created_at: '2024-08-01T00:00:00Z',
-    updated_at: '2024-08-01T00:00:00Z'
-  },
-  {
-    id: 'ship-001',
-    email: 'ship@yuandi.com',
-    password: Buffer.from('ship123').toString('base64'),
-    name: 'Ship Manager',
-    role: 'ship_manager',
-    locale: 'ko',
-    active: true,
-    created_at: '2024-08-01T00:00:00Z',
-    updated_at: '2024-08-01T00:00:00Z'
-  }
-]
+import { createServiceSupabaseClient } from '@/lib/supabase/server'
 
 export async function POST(request: NextRequest) {
   try {
-    // Debug: Read raw body first
-    const text = await request.text()
-    console.log('Raw request body:', text)
-    console.log('Raw body length:', text.length)
-    console.log('Raw body at position 54:', text.charAt(53), 'ASCII code:', text.charCodeAt(53))
-    
-    // Parse JSON manually
-    let parsedData
-    try {
-      parsedData = JSON.parse(text)
-    } catch (parseError) {
-      console.error('JSON parse error:', parseError)
-      console.error('Problematic text around position 54:', text.substring(50, 60))
-      return NextResponse.json(
-        { error: 'Invalid JSON in request body' },
-        { status: 400 }
-      )
-    }
-    
-    const { email, password } = parsedData
+    const { email, password } = await request.json()
 
     if (!email || !password) {
       return NextResponse.json(
@@ -71,21 +16,29 @@ export async function POST(request: NextRequest) {
 
     console.log('Login attempt:', { email })
 
-    // Find user in mock database
-    const user = MOCK_USERS.find(u => u.email === email)
-    
-    if (!user) {
-      console.log('User not found:', email)
+    // Create Supabase service client for database operations
+    const supabase = await createServiceSupabaseClient()
+
+    // Check credentials against database
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('email', email)
+      .single()
+
+    if (profileError || !profile) {
+      console.log('User not found:', profileError)
       return NextResponse.json(
         { error: '이메일 또는 비밀번호가 잘못되었습니다.' },
         { status: 401 }
       )
     }
 
-    // Check password (both base64 encoded and plain text)
+    // Development mode: Simple password check with base64 encoding
+    // In production, this would be handled by proper password hashing
     const encodedPassword = Buffer.from(password).toString('base64')
-    if (encodedPassword !== user.password && password !== user.password) {
-      console.log('Invalid password for:', email)
+    if (encodedPassword !== (profile as any).password && password !== (profile as any).password) {
+      // Check both encoded and plain password for backward compatibility
       return NextResponse.json(
         { error: '이메일 또는 비밀번호가 잘못되었습니다.' },
         { status: 401 }
@@ -93,25 +46,35 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user is active
-    if (!user.active) {
+    if (!(profile as any).active) {
       return NextResponse.json(
         { error: '비활성화된 계정입니다. 관리자에게 문의하세요.' },
         { status: 403 }
       )
     }
 
+    // Update last login time
+    // TODO: Fix TypeScript issue with Supabase types
+    // await supabase
+    //   .from('profiles')
+    //   .update({ 
+    //     last_login_at: new Date().toISOString(),
+    //     updated_at: new Date().toISOString()
+    //   } as any)
+    //   .eq('id', (profile as any).id)
+
     console.log('Login successful for:', email)
 
     // Return user data and session info
     const userData = {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      locale: user.locale,
-      active: user.active,
-      created_at: user.created_at,
-      updated_at: user.updated_at
+      id: (profile as any).id,
+      name: (profile as any).name,
+      email: (profile as any).email,
+      role: (profile as any).role,
+      locale: (profile as any).locale || 'ko',
+      active: (profile as any).active,
+      created_at: (profile as any).created_at,
+      updated_at: (profile as any).updated_at
     }
 
     const sessionData = {
