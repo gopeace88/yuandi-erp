@@ -7,6 +7,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { MobileBottomNav } from '@/components/Navigation';
 
 interface CashbookPageProps {
   params: { locale: string };
@@ -392,7 +393,7 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
   };
 
   return (
-    <div style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto' }}>
+    <div style={{ padding: '2rem', paddingBottom: '5rem', maxWidth: '1400px', margin: '0 auto' }}>
       {/* 헤더 */}
       <div style={{ marginBottom: '2rem' }}>
         <h1 style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '1rem' }}>
@@ -1081,6 +1082,9 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
           </div>
         </div>
       )}
+      
+      {/* 표준화된 모바일 하단 네비게이션 */}
+      <MobileBottomNav locale={locale} />
     </div>
   );
 }
