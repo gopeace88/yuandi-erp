@@ -665,18 +665,17 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
             </tbody>
           </table>
         </div>
+      )}
         
-        {/* 페이지네이션 */}
-        {filteredTransactions.length > itemsPerPage && (
-          <Pagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-            totalItems={filteredTransactions.length}
-            itemsPerPage={itemsPerPage}
-            className="mt-4"
-          />
-        )}
+      {/* 페이지네이션 */}
+      {filteredTransactions.length > itemsPerPage && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+          totalItems={filteredTransactions.length}
+          itemsPerPage={itemsPerPage}
+        />
       )}
 
       {/* 거래 추가 모달 */}

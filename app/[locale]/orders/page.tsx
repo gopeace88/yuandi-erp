@@ -61,8 +61,6 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 20;
   
   // 새 주문 폼 상태
   const [newOrder, setNewOrder] = useState({
