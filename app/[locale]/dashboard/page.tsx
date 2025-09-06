@@ -292,27 +292,8 @@ export default function DashboardPage({ params: { locale } }: DashboardPageProps
             </h2>
             <button
               onClick={() => {
-                const orders = [
-                  { date: '2024-01-05', name: locale === 'ko' ? '김철수' : '张三', status: 'PAID', amount: locale === 'ko' ? '₩89,000' : '¥520' },
-                  { date: '2024-01-05', name: locale === 'ko' ? '이영희' : '李四', status: 'SHIPPED', amount: locale === 'ko' ? '₩125,000' : '¥730' },
-                  { date: '2024-01-05', name: locale === 'ko' ? '박지민' : '王五', status: 'DONE', amount: locale === 'ko' ? '₩67,000' : '¥390' },
-                  { date: '2024-01-04', name: locale === 'ko' ? '최수현' : '赵六', status: 'PAID', amount: locale === 'ko' ? '₩156,000' : '¥910' },
-                  { date: '2024-01-04', name: locale === 'ko' ? '정하나' : '钱七', status: 'SHIPPED', amount: locale === 'ko' ? '₩98,000' : '¥573' },
-                  { date: '2024-01-04', name: locale === 'ko' ? '강민준' : '孙八', status: 'PAID', amount: locale === 'ko' ? '₩234,000' : '¥1,370' },
-                  { date: '2024-01-03', name: locale === 'ko' ? '윤서연' : '周九', status: 'DONE', amount: locale === 'ko' ? '₩45,000' : '¥263' },
-                  { date: '2024-01-03', name: locale === 'ko' ? '임도윤' : '吴十', status: 'PAID', amount: locale === 'ko' ? '₩187,000' : '¥1,095' },
-                  { date: '2024-01-03', name: locale === 'ko' ? '황예진' : '郑一', status: 'SHIPPED', amount: locale === 'ko' ? '₩76,000' : '¥445' },
-                  { date: '2024-01-02', name: locale === 'ko' ? '송지우' : '冯二', status: 'DONE', amount: locale === 'ko' ? '₩134,000' : '¥784' },
-                  { date: '2024-01-02', name: locale === 'ko' ? '한승우' : '陈三', status: 'PAID', amount: locale === 'ko' ? '₩298,000' : '¥1,744' },
-                  { date: '2024-01-02', name: locale === 'ko' ? '조예린' : '楚四', status: 'SHIPPED', amount: locale === 'ko' ? '₩167,000' : '¥977' },
-                  { date: '2024-01-01', name: locale === 'ko' ? '서준혁' : '魏五', status: 'PAID', amount: locale === 'ko' ? '₩223,000' : '¥1,305' },
-                  { date: '2024-01-01', name: locale === 'ko' ? '안소희' : '蒋六', status: 'DONE', amount: locale === 'ko' ? '₩89,000' : '¥520' },
-                  { date: '2024-01-01', name: locale === 'ko' ? '류태양' : '沈七', status: 'PAID', amount: locale === 'ko' ? '₩145,000' : '¥848' },
-                  { date: '2023-12-31', name: locale === 'ko' ? '문지원' : '韩八', status: 'SHIPPED', amount: locale === 'ko' ? '₩201,000' : '¥1,176' },
-                  { date: '2023-12-31', name: locale === 'ko' ? '오현우' : '杨九', status: 'DONE', amount: locale === 'ko' ? '₩112,000' : '¥655' },
-                  { date: '2023-12-30', name: locale === 'ko' ? '배수진' : '朱十', status: 'PAID', amount: locale === 'ko' ? '₩178,000' : '¥1,041' },
-                  { date: '2023-12-30', name: locale === 'ko' ? '신유나' : '秦一', status: 'SHIPPED', amount: locale === 'ko' ? '₩256,000' : '¥1,498' },
-                  { date: '2023-12-30', name: locale === 'ko' ? '권민석' : '许二', status: 'PAID', amount: locale === 'ko' ? '₩94,000' : '¥550' }
+                const orders = recentOrders.length > 0 ? recentOrders : [
+                  { date: new Date().toISOString().split('T')[0], name: locale === 'ko' ? '데이터 없음' : '无数据', status: 'PAID', amount: '₩0' }
                 ];
                 
                 const columns = [
@@ -364,29 +345,10 @@ export default function DashboardPage({ params: { locale } }: DashboardPageProps
                 </tr>
               </thead>
               <tbody>
-                {/* 20 sample orders */}
-                {[
-                  { date: '2024-01-05', name: locale === 'ko' ? '김철수' : '张三', status: 'PAID', amount: locale === 'ko' ? '₩89,000' : '¥520' },
-                  { date: '2024-01-05', name: locale === 'ko' ? '이영희' : '李四', status: 'SHIPPED', amount: locale === 'ko' ? '₩125,000' : '¥730' },
-                  { date: '2024-01-05', name: locale === 'ko' ? '박지민' : '王五', status: 'DONE', amount: locale === 'ko' ? '₩67,000' : '¥390' },
-                  { date: '2024-01-04', name: locale === 'ko' ? '최수현' : '赵六', status: 'PAID', amount: locale === 'ko' ? '₩156,000' : '¥910' },
-                  { date: '2024-01-04', name: locale === 'ko' ? '정하나' : '钱七', status: 'SHIPPED', amount: locale === 'ko' ? '₩98,000' : '¥573' },
-                  { date: '2024-01-04', name: locale === 'ko' ? '강민준' : '孙八', status: 'PAID', amount: locale === 'ko' ? '₩234,000' : '¥1,370' },
-                  { date: '2024-01-03', name: locale === 'ko' ? '윤서연' : '周九', status: 'DONE', amount: locale === 'ko' ? '₩45,000' : '¥263' },
-                  { date: '2024-01-03', name: locale === 'ko' ? '임도윤' : '吴十', status: 'PAID', amount: locale === 'ko' ? '₩187,000' : '¥1,095' },
-                  { date: '2024-01-03', name: locale === 'ko' ? '황예진' : '郑一', status: 'SHIPPED', amount: locale === 'ko' ? '₩76,000' : '¥445' },
-                  { date: '2024-01-02', name: locale === 'ko' ? '송지우' : '冯二', status: 'DONE', amount: locale === 'ko' ? '₩134,000' : '¥784' },
-                  { date: '2024-01-02', name: locale === 'ko' ? '한승우' : '陈三', status: 'PAID', amount: locale === 'ko' ? '₩298,000' : '¥1,744' },
-                  { date: '2024-01-02', name: locale === 'ko' ? '조예린' : '楚四', status: 'SHIPPED', amount: locale === 'ko' ? '₩167,000' : '¥977' },
-                  { date: '2024-01-01', name: locale === 'ko' ? '서준혁' : '魏五', status: 'PAID', amount: locale === 'ko' ? '₩223,000' : '¥1,305' },
-                  { date: '2024-01-01', name: locale === 'ko' ? '안소희' : '蒋六', status: 'DONE', amount: locale === 'ko' ? '₩89,000' : '¥520' },
-                  { date: '2024-01-01', name: locale === 'ko' ? '류태양' : '沈七', status: 'PAID', amount: locale === 'ko' ? '₩145,000' : '¥848' },
-                  { date: '2023-12-31', name: locale === 'ko' ? '문지원' : '韩八', status: 'SHIPPED', amount: locale === 'ko' ? '₩201,000' : '¥1,176' },
-                  { date: '2023-12-31', name: locale === 'ko' ? '오현우' : '杨九', status: 'DONE', amount: locale === 'ko' ? '₩112,000' : '¥655' },
-                  { date: '2023-12-30', name: locale === 'ko' ? '배수진' : '朱十', status: 'PAID', amount: locale === 'ko' ? '₩178,000' : '¥1,041' },
-                  { date: '2023-12-30', name: locale === 'ko' ? '신유나' : '秦一', status: 'SHIPPED', amount: locale === 'ko' ? '₩256,000' : '¥1,498' },
-                  { date: '2023-12-30', name: locale === 'ko' ? '권민석' : '许二', status: 'PAID', amount: locale === 'ko' ? '₩94,000' : '¥550' }
-                ].map((order, index) => {
+                {/* 최근 주문 표시 */}
+                {(recentOrders.length > 0 ? recentOrders : 
+                  [{ date: new Date().toISOString().split('T')[0], name: locale === 'ko' ? '데이터 없음' : '无数据', status: 'PAID', amount: '₩0' }]
+                ).map((order, index) => {
                   const statusColors = {
                     'PAID': { bg: '#dbeafe', color: '#1e40af', text: locale === 'ko' ? '결제완료' : locale === 'zh-CN' ? '已付款' : 'Paid' },
                     'SHIPPED': { bg: '#fef3c7', color: '#92400e', text: locale === 'ko' ? '배송중' : locale === 'zh-CN' ? '配送中' : 'Shipping' },
