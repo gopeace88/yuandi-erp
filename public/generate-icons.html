@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>Generate Icons</title>
+</head>
+<body>
+    <h1>YUANDI ERP Icons Generator</h1>
+    <canvas id="canvas192" width="192" height="192"></canvas>
+    <canvas id="canvas512" width="512" height="512"></canvas>
+    
+    <script>
+        function generateIcon(canvasId, size) {
+            const canvas = document.getElementById(canvasId);
+            const ctx = canvas.getContext('2d');
+            
+            // Background
+            ctx.fillStyle = '#2563eb';
+            ctx.fillRect(0, 0, size, size);
+            
+            // Text
+            ctx.fillStyle = '#ffffff';
+            ctx.font = `bold ${size/4}px sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('YUANDI', size/2, size/2 - size/8);
+            
+            ctx.font = `${size/6}px sans-serif`;
+            ctx.fillText('ERP', size/2, size/2 + size/8);
+            
+            // Download link
+            canvas.toBlob(function(blob) {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `icon-${size}x${size}.png`;
+                a.textContent = `Download ${size}x${size} icon`;
+                document.body.appendChild(a);
+                document.body.appendChild(document.createElement('br'));
+            });
+        }
+        
+        generateIcon('canvas192', 192);
+        generateIcon('canvas512', 512);
+    </script>
+</body>
+</html>
