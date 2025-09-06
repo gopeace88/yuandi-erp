@@ -59,6 +59,7 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
     customerName: '',
     customerPhone: '',
     customerEmail: '',
+    kakaoId: '',  // 아이디 (카카오톡 등)
     pcccCode: '',
     shippingAddress: '',
     shippingAddressDetail: '',
@@ -94,8 +95,10 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
       shippingInfo: '배송 정보',
       productInfo: '상품 정보',
       email: '이메일',
+      kakaoId: '아이디',
       pccc: '해외통관부호',
       address: '주소',
+      searchAddress: '주소 검색',
       addressDetail: '상세주소',
       zipCode: '우편번호',
       selectProduct: '상품 선택',
@@ -140,8 +143,10 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
       shippingInfo: '配送信息',
       productInfo: '产品信息',
       email: '电子邮件',
+      kakaoId: 'ID',
       pccc: '海外通关号',
       address: '地址',
+      searchAddress: '搜索地址',
       addressDetail: '详细地址',
       zipCode: '邮政编码',
       selectProduct: '选择产品',
@@ -183,6 +188,18 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
   useEffect(() => {
     loadOrders();
     loadProducts();
+  }, []);
+
+  // Daum 우편번호 API 스크립트 로드
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.src = '//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
+    script.async = true;
+    document.body.appendChild(script);
+
+    return () => {
+      document.body.removeChild(script);
+    };
   }, []);
 
   const loadOrders = async () => {
@@ -336,6 +353,7 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
         customer_name: newOrder.customerName,
         customer_phone: newOrder.customerPhone,
         customer_email: newOrder.customerEmail || null,
+        customer_kakao_id: newOrder.kakaoId,  // 아이디 추가
         pccc_code: newOrder.pcccCode,
         shipping_address: newOrder.shippingAddress,
         shipping_address_detail: newOrder.shippingAddressDetail || null,
@@ -367,6 +385,7 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
       customerName: '',
       customerPhone: '',
       customerEmail: '',
+      kakaoId: '',
       pcccCode: '',
       shippingAddress: '',
       shippingAddressDetail: '',
@@ -375,6 +394,28 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
       quantity: 1,
       customerMemo: '',
     });
+  };
+
+  // 우편번호 검색 함수
+  const handleAddressSearch = () => {
+    // @ts-ignore
+    if (window.daum && window.daum.Postcode) {
+      // @ts-ignore
+      new window.daum.Postcode({
+        oncomplete: function(data: any) {
+          // 도로명 주소 우선, 없으면 지번 주소
+          const fullAddress = data.roadAddress || data.jibunAddress;
+          
+          setNewOrder({
+            ...newOrder,
+            zipCode: data.zonecode,
+            shippingAddress: fullAddress,
+          });
+        }
+      }).open();
+    } else {
+      alert(locale === 'ko' ? '우편번호 검색 서비스를 로드하는 중입니다. 잠시 후 다시 시도해주세요.' : '正在加载邮政编码搜索服务。请稍后再试。');
+    }
   };
 
   const handleStatusChange = async (orderId: string, newStatus: Order['status']) => {
@@ -597,6 +638,17 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
                   />
                 </div>
                 <div>
+                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.kakaoId} *</label>
+                  <input
+                    type="text"
+                    value={newOrder.kakaoId}
+                    onChange={(e) => setNewOrder({ ...newOrder, kakaoId: e.target.value })}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
+                    placeholder={locale === 'ko' ? '카카오톡 등' : 'KakaoTalk etc'}
+                    required
+                  />
+                </div>
+                <div>
                   <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.email}</label>
                   <input
                     type="email"
@@ -605,7 +657,7 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
                     style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
                   />
                 </div>
-                <div>
+                <div style={{ gridColumn: 'span 2' }}>
                   <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.pccc} *</label>
                   <input
                     type="text"
@@ -623,35 +675,55 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
             <div style={{ marginBottom: '1.5rem' }}>
               <h3 style={{ fontWeight: '600', marginBottom: '1rem' }}>{texts.shippingInfo}</h3>
               <div style={{ marginBottom: '0.5rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.zipCode} *</label>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <input
+                    type="text"
+                    value={newOrder.zipCode}
+                    onChange={(e) => setNewOrder({ ...newOrder, zipCode: e.target.value })}
+                    style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
+                    placeholder={locale === 'ko' ? '우편번호' : '邮政编码'}
+                    readOnly
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddressSearch}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      backgroundColor: '#6b7280',
+                      color: 'white',
+                      borderRadius: '0.375rem',
+                      border: 'none',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    {texts.searchAddress}
+                  </button>
+                </div>
+              </div>
+              <div style={{ marginBottom: '0.5rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.address} *</label>
                 <input
                   type="text"
                   value={newOrder.shippingAddress}
                   onChange={(e) => setNewOrder({ ...newOrder, shippingAddress: e.target.value })}
                   style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
+                  placeholder={locale === 'ko' ? '기본 주소' : '基本地址'}
+                  readOnly
                   required
                 />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem' }}>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.addressDetail}</label>
-                  <input
-                    type="text"
-                    value={newOrder.shippingAddressDetail}
-                    onChange={(e) => setNewOrder({ ...newOrder, shippingAddressDetail: e.target.value })}
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.zipCode} *</label>
-                  <input
-                    type="text"
-                    value={newOrder.zipCode}
-                    onChange={(e) => setNewOrder({ ...newOrder, zipCode: e.target.value })}
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
-                    required
-                  />
-                </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.addressDetail}</label>
+                <input
+                  type="text"
+                  value={newOrder.shippingAddressDetail}
+                  onChange={(e) => setNewOrder({ ...newOrder, shippingAddressDetail: e.target.value })}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
+                  placeholder={locale === 'ko' ? '상세 주소를 입력하세요' : '请输入详细地址'}
+                />
               </div>
             </div>
 
