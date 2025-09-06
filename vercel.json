@@ -5,14 +5,13 @@
   "devCommand": "npm run dev",
   "installCommand": "npm install --legacy-peer-deps",
   "outputDirectory": ".next",
-  
-  "regions": ["icn1"],
-  
+  "regions": [
+    "icn1"
+  ],
   "env": {
     "NODE_ENV": "production",
     "NEXT_TELEMETRY_DISABLED": "1"
   },
-  
   "functions": {
     "app/api/*/route.ts": {
       "maxDuration": 10
@@ -33,14 +32,12 @@
       "maxDuration": 60
     }
   },
-  
   "crons": [
     {
       "path": "/api/cron/backup",
       "schedule": "0 2 * * *"
     }
   ],
-  
   "headers": [
     {
       "source": "/(.*)",
@@ -110,7 +107,6 @@
       ]
     }
   ],
-  
   "rewrites": [
     {
       "source": "/robots.txt",
@@ -121,37 +117,35 @@
       "destination": "/api/sitemap"
     }
   ],
-  
-  "redirects": [
-    {
-      "source": "/admin",
-      "destination": "/dashboard",
-      "permanent": false
-    },
-    {
-      "source": "/home",
-      "destination": "/",
-      "permanent": true
-    }
-  ],
-  
+  "redirects": [],
   "github": {
     "enabled": true,
     "autoAlias": true,
     "silent": false,
     "autoJobCancelation": true
   },
-  
   "public": false,
-  
   "trailingSlash": false,
-  
   "cleanUrls": true,
-  
   "images": {
-    "sizes": [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
-    "domains": ["yuandi.com", "*.supabase.co"],
-    "formats": ["image/avif", "image/webp"],
+    "sizes": [
+      640,
+      750,
+      828,
+      1080,
+      1200,
+      1920,
+      2048,
+      3840
+    ],
+    "domains": [
+      "yuandi.com",
+      "*.supabase.co"
+    ],
+    "formats": [
+      "image/avif",
+      "image/webp"
+    ],
     "minimumCacheTTL": 60,
     "dangerouslyAllowSVG": false,
     "contentSecurityPolicy": "default-src 'self'; script-src 'none'; sandbox;"

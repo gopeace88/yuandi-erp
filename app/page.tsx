@@ -1,110 +1,85 @@
-'use client'
-
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
-
 export default function HomePage() {
-  const router = useRouter()
-  const [locale, setLocale] = useState<'ko' | 'zh-CN'>('ko')
-  const [isLoading, setIsLoading] = useState(true)
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      // localStorage에서 언어 설정 확인
-      const storedLocale = localStorage.getItem('locale')
-      
-      if (storedLocale && ['ko', 'zh-CN'].includes(storedLocale)) {
-        setLocale(storedLocale as 'ko' | 'zh-CN')
-        // 쿠키에도 저장
-        document.cookie = `locale=${storedLocale}; path=/; max-age=${60 * 60 * 24 * 365}`
-      } else {
-        // 쿠키 확인
-        const cookieValue = document.cookie
-          .split('; ')
-          .find(row => row.startsWith('locale='))
-          ?.split('=')[1] as 'ko' | 'zh-CN'
-        
-        if (cookieValue && ['ko', 'zh-CN'].includes(cookieValue)) {
-          setLocale(cookieValue)
-          localStorage.setItem('locale', cookieValue)
-        } else {
-          // 저장된 설정이 없으면 브라우저 언어 감지
-          const browserLang = navigator.language?.toLowerCase() || 'ko'
-          // ko, ko-kr 등 한국어 설정을 우선 체크
-          const detectedLocale = browserLang.includes('ko') ? 'ko' : 
-                                 browserLang.includes('zh') ? 'zh-CN' : 'ko'
-          setLocale(detectedLocale)
-          localStorage.setItem('locale', detectedLocale)
-          document.cookie = `locale=${detectedLocale}; path=/; max-age=${60 * 60 * 24 * 365}`
-        }
-      }
-      setIsLoading(false)
-    }
-  }, [])
-
-  const content = {
-    'ko': {
-      title: 'YUANDI Collection Management',
-      subtitle: 'YUANDI Collection 주문/재고/배송 관리 시스템',
-      dashboard: '대시보드로 이동',
-      track: '주문 조회',
-      language: '한국어',
-      switchTo: '中文'
-    },
-    'zh-CN': {
-      title: 'YUANDI Collection Management',
-      subtitle: 'YUANDI Collection 订单/库存/配送管理系统',
-      dashboard: '进入仪表板',
-      track: '订单查询',
-      language: '中文',
-      switchTo: '한국어'
-    }
-  }
-
-  const toggleLanguage = () => {
-    const newLocale = locale === 'ko' ? 'zh-CN' : 'ko'
-    setLocale(newLocale)
-    localStorage.setItem('locale', newLocale)
-    document.cookie = `locale=${newLocale}; path=/; max-age=${60 * 60 * 24 * 365}`
-    // 페이지 새로고침으로 모든 컴포넌트가 새 언어를 적용하도록 함
-    window.location.reload()
-  }
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="absolute top-4 right-4">
-        <button
-          onClick={toggleLanguage}
-          className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition flex items-center gap-2"
-          title={`Switch to ${content[locale].switchTo}`}
-        >
-          <span className="text-xl">{locale === 'ko' ? '🇰🇷' : '🇨🇳'}</span>
-          <span className="text-sm font-medium">{content[locale].language}</span>
-          <span className="text-xs text-gray-500">→ {content[locale].switchTo}</span>
-        </button>
-      </div>
-      
-      <div className="text-center">
-        <h1 className="text-4xl font-bold text-gray-900 mb-4">
-          {content[locale].title}
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4 sm:px-6 lg:px-8">
+      <div className="text-center max-w-4xl mx-auto">
+        {/* Logo/Icon */}
+        <div className="mb-8">
+          <div className="w-20 h-20 mx-auto bg-blue-600 rounded-full flex items-center justify-center mb-4">
+            <span className="text-3xl text-white font-bold">Y</span>
+          </div>
+        </div>
+
+        {/* Main Title */}
+        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-4 leading-tight">
+          YUANDI Collection
         </h1>
-        <p className="text-lg text-gray-600 mb-8">
-          {content[locale].subtitle}
+        <h2 className="text-xl sm:text-2xl lg:text-3xl font-semibold text-blue-600 mb-6">
+          Management System
+        </h2>
+
+        {/* Description */}
+        <p className="text-base sm:text-lg lg:text-xl text-gray-600 mb-8 max-w-2xl mx-auto leading-relaxed">
+          주문/재고/배송을 효율적으로 관리하는 통합 관리 시스템
         </p>
-        <div className="space-x-4">
+
+        {/* Action Buttons */}
+        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
           <a
-            href="/dashboard"
-            className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+            href="/ko"
+            className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-4 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
           >
-            {content[locale].dashboard}
+            <span className="mr-2">🇰🇷</span>
+            한국어로 시작하기
           </a>
           <a
-            href="/track"
-            className="inline-block px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
+            href="/zh-CN"
+            className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-4 bg-gray-600 text-white rounded-xl hover:bg-gray-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
           >
-            {content[locale].track}
+            <span className="mr-2">🇨🇳</span>
+            中文版开始
           </a>
+        </div>
+
+        {/* Features Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-4xl mx-auto">
+          <div className="bg-white rounded-xl p-6 shadow-md hover:shadow-lg transition-shadow">
+            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mx-auto mb-4">
+              <span className="text-2xl">📦</span>
+            </div>
+            <h3 className="font-semibold text-gray-900 mb-2">주문 관리</h3>
+            <p className="text-sm text-gray-600">실시간 주문 처리 및 추적</p>
+          </div>
+
+          <div className="bg-white rounded-xl p-6 shadow-md hover:shadow-lg transition-shadow">
+            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-4">
+              <span className="text-2xl">📊</span>
+            </div>
+            <h3 className="font-semibold text-gray-900 mb-2">재고 관리</h3>
+            <p className="text-sm text-gray-600">스마트 재고 추적 시스템</p>
+          </div>
+
+          <div className="bg-white rounded-xl p-6 shadow-md hover:shadow-lg transition-shadow">
+            <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mx-auto mb-4">
+              <span className="text-2xl">🚚</span>
+            </div>
+            <h3 className="font-semibold text-gray-900 mb-2">배송 관리</h3>
+            <p className="text-sm text-gray-600">자동화된 배송 추적</p>
+          </div>
+
+          <div className="bg-white rounded-xl p-6 shadow-md hover:shadow-lg transition-shadow">
+            <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center mx-auto mb-4">
+              <span className="text-2xl">💰</span>
+            </div>
+            <h3 className="font-semibold text-gray-900 mb-2">출납장부</h3>
+            <p className="text-sm text-gray-600">자동 매출/비용 관리</p>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="mt-12 pt-8 border-t border-gray-200">
+          <p className="text-sm text-gray-500">
+            © 2024 YUANDI Collection. All rights reserved.
+          </p>
         </div>
       </div>
     </div>

@@ -1,173 +1,277 @@
 /**
- * 홈 페이지 - 다국어 지원
- * 언어별 홈 페이지 제공
+ * 홈 페이지 - 로그인 화면
+ * PRD v2.0 요구사항: 사용자 인증 시스템
  */
 
-import { type Locale, getDictionary } from '@/lib/i18n';
-import { TranslationProvider } from '@/components/i18n/TranslationProvider';
-import LanguageSelector from '@/components/i18n/LanguageSelector';
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ShoppingCart, Package, Truck, BarChart3, Globe } from 'lucide-react';
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+// import { createClient } from '@/lib/supabase/client'; // 개발 모드에서는 비활성화
 
 interface HomePageProps {
-  params: { locale: Locale };
+  params: { locale: string };
 }
 
-export default async function HomePage({ params: { locale } }: HomePageProps) {
-  const dictionary = await getDictionary(locale);
+export default function HomePage({ params: { locale } }: HomePageProps) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const router = useRouter();
 
-  const features = [
-    {
-      icon: <ShoppingCart className="w-8 h-8 text-blue-600" />,
-      title: dictionary.navigation?.orders || 'Order Management',
-      description: locale === 'ko' 
-        ? '주문 생성부터 배송완료까지 전체 프로세스 관리'
-        : locale === 'zh-CN'
-        ? '从订单创建到配送完成的全流程管理'
-        : 'Complete process management from order creation to delivery'
+  // 다국어 텍스트
+  const texts = {
+    ko: {
+      title: 'YUANDI Collection',
+      subtitle: '통합 관리 시스템',
+      description: '해외 구매대행 전문 ERP 시스템',
+      email: '이메일',
+      password: '비밀번호',
+      login: '로그인',
+      guestAccess: '주문 조회 (고객용)',
+      error: '로그인 실패',
+      loading: '로그인 중...',
+      forgotPassword: '비밀번호를 잊으셨나요?',
+      testAccount: '테스트 계정',
+      adminRole: '관리자',
+      orderManagerRole: '주문 관리자',
+      shipManagerRole: '배송 관리자'
     },
-    {
-      icon: <Package className="w-8 h-8 text-green-600" />,
-      title: dictionary.navigation?.inventory || 'Inventory Management',
-      description: locale === 'ko'
-        ? '실시간 재고 현황 및 입출고 관리'
-        : locale === 'zh-CN'
-        ? '实时库存状态及进出库管理'
-        : 'Real-time inventory status and stock management'
-    },
-    {
-      icon: <Truck className="w-8 h-8 text-purple-600" />,
-      title: dictionary.navigation?.shipping || 'Shipping Management',
-      description: locale === 'ko'
-        ? '배송 추적 및 고객 알림 서비스'
-        : locale === 'zh-CN'
-        ? '物流跟踪及客户通知服务'
-        : 'Shipping tracking and customer notification service'
-    },
-    {
-      icon: <BarChart3 className="w-8 h-8 text-orange-600" />,
-      title: dictionary.navigation?.reports || 'Analytics & Reports',
-      description: locale === 'ko'
-        ? '매출 분석 및 비즈니스 인사이트'
-        : locale === 'zh-CN'
-        ? '销售分析及业务洞察'
-        : 'Sales analytics and business insights'
+    'zh-CN': {
+      title: 'YUANDI Collection',
+      subtitle: '综合管理系统',
+      description: '海外代购专业ERP系统',
+      email: '电子邮件',
+      password: '密码',
+      login: '登录',
+      guestAccess: '订单查询（客户）',
+      error: '登录失败',
+      loading: '登录中...',
+      forgotPassword: '忘记密码？',
+      testAccount: '测试账户',
+      adminRole: '管理员',
+      orderManagerRole: '订单经理',
+      shipManagerRole: '配送经理'
     }
-  ];
+  };
 
-  const getStartedText = locale === 'ko' 
-    ? '시작하기'
-    : locale === 'zh-CN'
-    ? '开始使用'
-    : 'Get Started';
+  const t = texts[locale as keyof typeof texts] || texts.ko;
 
-  const trackOrderText = locale === 'ko'
-    ? '주문 조회'
-    : locale === 'zh-CN'
-    ? '订单查询'  
-    : 'Track Order';
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError('');
+    
+    console.log('Login attempt:', { email, password, locale });
+    
+    // 테스트 계정으로 로그인 (개발 모드)
+    if (email === 'admin@yuandi.com' && password === 'admin123') {
+      console.log('Admin login successful');
+      localStorage.setItem('userRole', 'Admin');
+      localStorage.setItem('userName', 'Admin User');
+      setIsLoading(false);
+      // window.location.href 사용으로 변경
+      window.location.href = `/${locale}/dashboard`;
+      return;
+    } else if (email === 'order@yuandi.com' && password === 'order123') {
+      console.log('OrderManager login successful');
+      localStorage.setItem('userRole', 'OrderManager');
+      localStorage.setItem('userName', 'Order Manager');
+      setIsLoading(false);
+      window.location.href = `/${locale}/dashboard`;
+      return;
+    } else if (email === 'ship@yuandi.com' && password === 'ship123') {
+      console.log('ShipManager login successful');
+      localStorage.setItem('userRole', 'ShipManager');
+      localStorage.setItem('userName', 'Ship Manager');
+      setIsLoading(false);
+      window.location.href = `/${locale}/dashboard`;
+      return;
+    }
+    
+    console.log('Login failed: Invalid credentials');
+    // 잘못된 계정 정보
+    setError(t.error);
+    setIsLoading(false);
+  };
 
-  const welcomeTitle = locale === 'ko'
-    ? 'YUANDI 주문관리 시스템에 오신 것을 환영합니다'
-    : locale === 'zh-CN'
-    ? '欢迎使用 YUANDI 订单管理系统'
-    : 'Welcome to YUANDI Order Management System';
-
-  const welcomeSubtitle = locale === 'ko'
-    ? '해외 구매대행 전문 ERP 시스템으로 효율적인 비즈니스 운영을 시작하세요'
-    : locale === 'zh-CN'
-    ? '专业的海外代购 ERP 系统，开启高效的业务运营'
-    : 'Professional overseas purchasing ERP system for efficient business operations';
+  const handleQuickLogin = (email: string, password: string) => {
+    setEmail(email);
+    setPassword(password);
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      {/* Navigation */}
-      <nav className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <Globe className="w-8 h-8 text-blue-600" />
-              <span className="ml-2 text-2xl font-bold text-gray-900">YUANDI</span>
-            </div>
-            
-            <div className="flex items-center space-x-4">
-              <LanguageSelector currentLocale={locale} variant="compact" />
-              <Link href={`/${locale}/auth/signin`}>
-                <Button variant="outline">
-                  {dictionary.common?.login || 'Login'}
-                </Button>
-              </Link>
-              <Link href={`/${locale}/track`}>
-                <Button variant="default">
-                  {trackOrderText}
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </nav>
-
-      {/* Hero Section */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
-        <div className="text-center">
-          <h1 className="text-5xl font-bold text-gray-900 mb-8">
-            {welcomeTitle}
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4 py-8">
+      <div className="w-full max-w-md">
+        {/* 로고 및 타이틀 */}
+        <div className="text-center mb-8">
+          <h1 className="text-3xl sm:text-4xl font-bold text-gray-800 mb-2">
+            {t.title}
           </h1>
-          <p className="text-xl text-gray-600 mb-12 max-w-3xl mx-auto">
-            {welcomeSubtitle}
+          <p className="text-gray-600 text-sm sm:text-base">{t.subtitle}</p>
+          <p className="text-gray-500 text-xs sm:text-sm mt-2">
+            {t.description}
           </p>
-          
-          <div className="flex justify-center space-x-4">
-            <Link href={`/${locale}/dashboard`}>
-              <Button size="lg" className="px-8 py-3">
-                {getStartedText}
-              </Button>
-            </Link>
-            <Link href={`/${locale}/track`}>
-              <Button variant="outline" size="lg" className="px-8 py-3">
-                {trackOrderText}
-              </Button>
-            </Link>
+        </div>
+
+        {/* 로그인 폼 */}
+        <div className="bg-white p-6 sm:p-8 rounded-lg shadow-lg">
+          <form onSubmit={handleLogin}>
+            <div className="mb-4">
+              <label className="block mb-2 text-sm font-medium text-gray-700">
+                {t.email}
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="admin@yuandi.com"
+                autoComplete="email"
+                inputMode="email"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+              />
+            </div>
+
+            <div className="mb-6">
+              <label className="block mb-2 text-sm font-medium text-gray-700">
+                {t.password}
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="••••••••"
+                autoComplete="current-password"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+              />
+            </div>
+
+            {error && (
+              <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md text-sm">
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={isLoading}
+              className={`w-full py-3 px-4 rounded-md font-medium text-white text-base transition-colors ${
+                isLoading 
+                  ? 'bg-gray-400 cursor-not-allowed' 
+                  : 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800'
+              }`}
+            >
+              {isLoading ? t.loading : t.login}
+            </button>
+          </form>
+
+          {/* 구분선 */}
+          <div className="my-6 border-t border-gray-200"></div>
+
+          {/* 고객 조회 버튼 */}
+          <a
+            href={`/${locale}/track`}
+            className="block w-full py-3 px-4 bg-gray-600 hover:bg-gray-700 text-white rounded-md font-medium text-center transition-colors"
+          >
+            {t.guestAccess}
+          </a>
+        </div>
+
+        {/* 테스트 계정 정보 (개발 모드) */}
+        <div style={{
+          marginTop: '2rem',
+          padding: '1rem',
+          backgroundColor: '#fef3c7',
+          borderRadius: '0.375rem',
+          fontSize: '0.875rem'
+        }}>
+          <p style={{ fontWeight: '600', marginBottom: '0.5rem' }}>{t.testAccount}:</p>
+          <div style={{ marginBottom: '0.25rem' }}>
+            <button
+              type="button"
+              onClick={() => handleQuickLogin('admin@yuandi.com', 'admin123')}
+              style={{
+                color: '#1e40af',
+                textDecoration: 'underline',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: 0
+              }}
+            >
+              {t.adminRole}: admin@yuandi.com / admin123
+            </button>
+          </div>
+          <div style={{ marginBottom: '0.25rem' }}>
+            <button
+              type="button"
+              onClick={() => handleQuickLogin('order@yuandi.com', 'order123')}
+              style={{
+                color: '#1e40af',
+                textDecoration: 'underline',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: 0
+              }}
+            >
+              {t.orderManagerRole}: order@yuandi.com / order123
+            </button>
+          </div>
+          <div>
+            <button
+              type="button"
+              onClick={() => handleQuickLogin('ship@yuandi.com', 'ship123')}
+              style={{
+                color: '#1e40af',
+                textDecoration: 'underline',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: 0
+              }}
+            >
+              {t.shipManagerRole}: ship@yuandi.com / ship123
+            </button>
           </div>
         </div>
-      </div>
 
-      {/* Features Section */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-24">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-          {features.map((feature, index) => (
-            <Card key={index} className="text-center hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <div className="flex justify-center mb-4">
-                  {feature.icon}
-                </div>
-                <CardTitle className="text-lg">{feature.title}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CardDescription className="text-sm">
-                  {feature.description}
-                </CardDescription>
-              </CardContent>
-            </Card>
-          ))}
+        {/* 언어 선택 */}
+        <div style={{ 
+          textAlign: 'center',
+          marginTop: '1rem',
+          fontSize: '0.875rem'
+        }}>
+          <a
+            href="/ko"
+            style={{
+              color: locale === 'ko' ? '#2563eb' : '#6b7280',
+              marginRight: '1rem',
+              textDecoration: 'none'
+            }}
+          >
+            한국어
+          </a>
+          <a
+            href="/zh-CN"
+            style={{
+              color: locale === 'zh-CN' ? '#2563eb' : '#6b7280',
+              textDecoration: 'none'
+            }}
+          >
+            中文
+          </a>
         </div>
       </div>
-
-      {/* Footer */}
-      <footer className="bg-white border-t">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="text-center text-gray-600 text-sm">
-            <p>&copy; 2024 YUANDI. All rights reserved.</p>
-            <p className="mt-2">
-              {locale === 'ko' && '해외 구매대행 전문 주문관리 시스템'}
-              {locale === 'zh-CN' && '专业的海外代购订单管理系统'}
-              {locale === 'en' && 'Professional Overseas Purchase Order Management System'}
-            </p>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

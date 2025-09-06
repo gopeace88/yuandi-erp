@@ -1,66 +1,11 @@
-export const dynamic = 'force-dynamic'
-
+import { createServerSupabase } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 
-// Mock user database for development/testing
-const MOCK_USERS = [
-  {
-    id: 'admin-001',
-    email: 'yuandi1020@gmail.com',
-    password: Buffer.from('yuandi123!').toString('base64'), // base64 encoded
-    name: 'YUANDI Admin',
-    role: 'admin',
-    locale: 'ko',
-    active: true,
-    created_at: '2024-08-01T00:00:00Z',
-    updated_at: '2024-08-01T00:00:00Z'
-  },
-  {
-    id: 'manager-001',
-    email: 'manager@yuandi.com',
-    password: Buffer.from('manager123').toString('base64'),
-    name: 'Order Manager',
-    role: 'order_manager',
-    locale: 'ko',
-    active: true,
-    created_at: '2024-08-01T00:00:00Z',
-    updated_at: '2024-08-01T00:00:00Z'
-  },
-  {
-    id: 'ship-001',
-    email: 'ship@yuandi.com',
-    password: Buffer.from('ship123').toString('base64'),
-    name: 'Ship Manager',
-    role: 'ship_manager',
-    locale: 'ko',
-    active: true,
-    created_at: '2024-08-01T00:00:00Z',
-    updated_at: '2024-08-01T00:00:00Z'
-  }
-]
+export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
   try {
-    // Debug: Read raw body first
-    const text = await request.text()
-    console.log('Raw request body:', text)
-    console.log('Raw body length:', text.length)
-    console.log('Raw body at position 54:', text.charAt(53), 'ASCII code:', text.charCodeAt(53))
-    
-    // Parse JSON manually
-    let parsedData
-    try {
-      parsedData = JSON.parse(text)
-    } catch (parseError) {
-      console.error('JSON parse error:', parseError)
-      console.error('Problematic text around position 54:', text.substring(50, 60))
-      return NextResponse.json(
-        { error: 'Invalid JSON in request body' },
-        { status: 400 }
-      )
-    }
-    
-    const { email, password } = parsedData
+    const { email, password } = await request.json()
 
     if (!email || !password) {
       return NextResponse.json(
@@ -69,68 +14,83 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log('Login attempt:', { email })
+    const supabase = await createServerSupabase()
 
-    // Find user in mock database
-    const user = MOCK_USERS.find(u => u.email === email)
-    
-    if (!user) {
-      console.log('User not found:', email)
+    // Supabase 인증
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    })
+
+    if (authError) {
+      console.error('Auth error:', authError)
       return NextResponse.json(
         { error: '이메일 또는 비밀번호가 잘못되었습니다.' },
         { status: 401 }
       )
     }
 
-    // Check password (both base64 encoded and plain text)
-    const encodedPassword = Buffer.from(password).toString('base64')
-    if (encodedPassword !== user.password && password !== user.password) {
-      console.log('Invalid password for:', email)
+    // 프로필 정보 가져오기
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', authData.user.id)
+      .single()
+
+    if (profileError || !profile) {
+      console.error('Profile error:', profileError)
       return NextResponse.json(
-        { error: '이메일 또는 비밀번호가 잘못되었습니다.' },
-        { status: 401 }
+        { error: '프로필 정보를 찾을 수 없습니다.' },
+        { status: 404 }
       )
     }
 
-    // Check if user is active
-    if (!user.active) {
+    // 활성 상태 확인
+    if (!profile.active) {
       return NextResponse.json(
         { error: '비활성화된 계정입니다. 관리자에게 문의하세요.' },
         { status: 403 }
       )
     }
 
-    console.log('Login successful for:', email)
+    // 마지막 로그인 시간 업데이트
+    await supabase
+      .from('profiles')
+      .update({ last_login_at: new Date().toISOString() })
+      .eq('id', authData.user.id)
 
-    // Return user data and session info
+    // 사용자 데이터 구성
     const userData = {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      locale: user.locale,
-      active: user.active,
-      created_at: user.created_at,
-      updated_at: user.updated_at
+      id: profile.id,
+      name: profile.name,
+      email: profile.email,
+      role: profile.role,
+      locale: profile.locale,
+      active: profile.active,
+      phone: profile.phone,
+      created_at: profile.created_at,
+      updated_at: profile.updated_at
     }
 
+    // 세션 데이터
     const sessionData = {
-      token: 'dev-session-token-' + Date.now(),
-      expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-      refresh_token: 'dev-refresh-token-' + Date.now()
+      access_token: authData.session?.access_token,
+      refresh_token: authData.session?.refresh_token,
+      expires_at: authData.session?.expires_at,
+      expires_in: authData.session?.expires_in
     }
 
-    // Create response with user and session data
+    // 응답 생성
     const response = NextResponse.json({
       success: true,
       user: userData,
       session: sessionData
     })
 
-    // Set cookies server-side for better reliability
-    const maxAge = 24 * 60 * 60 // 24 hours in seconds
+    // 쿠키 설정
+    const maxAge = authData.session?.expires_in || 3600 // 기본 1시간
     
-    // Encode user data and session data as Base64 to handle Korean characters
+    // Base64 인코딩으로 한글 처리
     const userCookieValue = Buffer.from(JSON.stringify(userData), 'utf8').toString('base64')
     const sessionCookieValue = Buffer.from(JSON.stringify(sessionData), 'utf8').toString('base64')
     
@@ -138,18 +98,18 @@ export async function POST(request: NextRequest) {
       path: '/',
       maxAge: maxAge,
       sameSite: 'lax',
-      httpOnly: false // Need this for client-side access
+      httpOnly: false,
+      secure: process.env.NODE_ENV === 'production'
     })
     
     response.cookies.set('session', sessionCookieValue, {
       path: '/',
       maxAge: maxAge,
       sameSite: 'lax',
-      httpOnly: false // Need this for client-side access
+      httpOnly: true, // 세션은 보안을 위해 httpOnly
+      secure: process.env.NODE_ENV === 'production'
     })
 
-    console.log('Cookies set server-side for:', email)
-    
     return response
 
   } catch (error) {
