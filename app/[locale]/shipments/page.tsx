@@ -243,6 +243,111 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
 
   const t = texts[locale as keyof typeof texts] || texts.ko;
 
+  // 주문 데이터 로드 함수
+  const loadOrders = async () => {
+    try {
+      // Supabase 직접 호출
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
+      
+      const { data: ordersData, error: ordersError } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          order_items (
+            *,
+            products (
+              id,
+              name,
+              sku
+            )
+          )
+        `)
+        .in('status', ['PAID', 'SHIPPED', 'DONE'])
+        .order('created_at', { ascending: false });
+      
+      if (ordersError) {
+        console.error('주문 데이터 로드 실패:', ordersError);
+        return;
+      }
+      
+      if (ordersData) {
+        const formattedOrders: Order[] = ordersData.map(order => ({
+          id: order.id,
+          orderNo: order.order_no,
+          orderDate: order.order_date,
+          customerName: order.customer_name,
+          customerPhone: order.customer_phone,
+          shippingAddress: `${order.shipping_address} ${order.shipping_address_detail || ''}`.trim(),
+          status: order.status as 'PAID' | 'SHIPPED' | 'DONE' | 'CANCELLED' | 'REFUNDED',
+          totalAmount: order.total_amount_krw,
+          items: order.order_items.map((item: any) => ({
+            productName: item.products?.name || '',
+            quantity: item.quantity
+          }))
+        }));
+        
+        setOrders(formattedOrders);
+      }
+    } catch (error) {
+      console.error('주문 데이터 로드 중 오류:', error);
+    }
+  };
+
+  // 배송 데이터 로드 함수
+  const loadShipments = async () => {
+    try {
+      // Supabase 직접 호출
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
+      
+      const { data: shipmentsData, error: shipmentsError } = await supabase
+        .from('shipments')
+        .select(`
+          *,
+          orders (
+            order_no,
+            customer_name
+          )
+        `)
+        .order('created_at', { ascending: false });
+      
+      if (shipmentsError) {
+        console.error('배송 데이터 로드 실패:', shipmentsError);
+        return;
+      }
+      
+      if (shipmentsData) {
+        const formattedShipments: Shipment[] = shipmentsData.map(shipment => ({
+          id: shipment.id,
+          orderId: shipment.order_id,
+          orderNo: shipment.orders?.order_no || '',
+          customerName: shipment.orders?.customer_name || '',
+          courier: shipment.courier,
+          courierCode: shipment.courier_code,
+          trackingNo: shipment.tracking_no,
+          trackingBarcode: shipment.tracking_barcode,
+          trackingUrl: shipment.tracking_url,
+          courierCn: shipment.courier_cn,
+          trackingNoCn: shipment.tracking_no_cn,
+          trackingUrlCn: shipment.tracking_url_cn,
+          shippingFee: shipment.shipping_fee,
+          actualWeight: shipment.actual_weight,
+          volumeWeight: shipment.volume_weight,
+          shipmentPhotoUrl: shipment.shipment_photo_url,
+          receiptPhotoUrl: shipment.receipt_photo_url,
+          shippedAt: shipment.shipped_at,
+          deliveredAt: shipment.delivered_at,
+          createdAt: shipment.created_at
+        }));
+        
+        setShipments(formattedShipments);
+      }
+    } catch (error) {
+      console.error('배송 데이터 로드 중 오류:', error);
+    }
+  };
+
   useEffect(() => {
     const role = localStorage.getItem('userRole');
     if (!role) {
@@ -251,34 +356,26 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
     }
     setUserRole(role);
     
+    // 실제 데이터 로드
+    loadOrders();
+    loadShipments();
+    
     // 주문관리에서 전달받은 주문 데이터 확인
     const pendingShipmentData = sessionStorage.getItem('pendingShipment');
     if (pendingShipmentData) {
       const orderData = JSON.parse(pendingShipmentData);
       
-      // Mock 데이터에 추가 (실제로는 API에서 로드)
-      const newOrder: Order = {
-        id: orderData.id,
-        orderNo: orderData.orderNo,
-        orderDate: orderData.orderDate,
-        customerName: orderData.customerName,
-        customerPhone: orderData.customerPhone,
-        shippingAddress: `${orderData.shippingAddress} ${orderData.shippingAddressDetail || ''}`.trim(),
-        status: 'PAID',
-        totalAmount: orderData.totalAmount,
-        items: [
-          { productName: orderData.productName || '', quantity: orderData.quantity || 1 }
-        ]
-      };
-      
-      // 중복 체크 후 추가
-      if (!orders.find(o => o.id === newOrder.id)) {
-        setOrders(prev => [...prev, newOrder]);
-      }
-      
-      // 모달 열기
-      setSelectedOrder(newOrder);
-      setShowShipModal(true);
+      // 실제 주문 찾기
+      setTimeout(() => {
+        setOrders(currentOrders => {
+          const foundOrder = currentOrders.find(o => o.id === orderData.id);
+          if (foundOrder) {
+            setSelectedOrder(foundOrder);
+            setShowShipModal(true);
+          }
+          return currentOrders;
+        });
+      }, 1000); // 데이터 로드 완료를 기다림
       
       // sessionStorage 클리어
       sessionStorage.removeItem('pendingShipment');

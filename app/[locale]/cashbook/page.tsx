@@ -230,6 +230,50 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
     return t[type as keyof typeof t] || type;
   };
 
+  // 거래 내역 로드 함수
+  const loadTransactions = async () => {
+    try {
+      // Supabase 직접 호출
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
+      
+      const { data: transactions, error } = await supabase
+        .from('cashbook_transactions')
+        .select('*')
+        .order('transaction_date', { ascending: false });
+      
+      if (error) {
+        console.error('거래 내역 로드 실패:', error);
+        return;
+      }
+      
+      if (transactions) {
+        // 데이터 형식 변환
+        const formattedTransactions: Transaction[] = transactions.map(t => ({
+          id: t.id,
+          transactionDate: t.transaction_date,
+          type: t.type,
+          amount: t.amount,
+          currency: t.currency as 'KRW' | 'CNY',
+          fxRate: t.fx_rate,
+          amountKrw: t.amount_krw,
+          refType: t.ref_type,
+          refNo: t.ref_no,
+          description: t.description,
+          note: t.note,
+          bankName: t.bank_name,
+          accountNo: t.account_no,
+          createdAt: t.created_at,
+          createdBy: t.created_by || 'Unknown'
+        }));
+        
+        setTransactions(formattedTransactions);
+      }
+    } catch (error) {
+      console.error('거래 내역 로드 중 오류:', error);
+    }
+  };
+
   useEffect(() => {
     const role = localStorage.getItem('userRole');
     if (!role) {
@@ -237,6 +281,9 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
       return;
     }
     setUserRole(role);
+    
+    // 거래 내역 로드
+    loadTransactions();
     
     // Load transaction types from localStorage
     const savedTypes = localStorage.getItem('transactionTypes');

@@ -247,29 +247,27 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
 
   const loadProducts = async () => {
     try {
-      const response = await api.products.list();
+      // Supabase 직접 호출
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
       
-      // API 응답을 페이지 인터페이스에 맞게 변환
-      const transformedProducts = response.products?.map((product: any) => ({
-        id: product.id,
-        sku: product.sku,
-        name: product.name,
-        category: product.category,
-        model: product.model || '',
-        color: product.color || '',
-        brand: product.brand || '',
-        costCny: product.cost_cny,
-        salePriceKrw: product.sale_price_krw || product.cost_cny * 165,
-        onHand: product.on_hand,
-        lowStockThreshold: product.low_stock_threshold,
-        imageUrl: product.image_url || 'https://via.placeholder.com/150',
-        description: product.description,
-        active: product.active
-      })) || [];
+      const { data: products, error } = await supabase
+        .from('products')
+        .select(`
+          *,
+          inventory (
+            on_hand,
+            allocated
+          ),
+          product_categories (
+            name
+          )
+        `)
+        .eq('is_active', true);
       
-      setProducts(transformedProducts);
-    } catch (error) {
-      console.error('제품 로드 실패:', error);
+      if (error) {
+        console.error('제품 로드 에러:', error);
+        // 폴백으로 목 데이터 사용
       // 폴백으로 목 데이터 사용
       const mockProducts: Product[] = [
         {
@@ -319,26 +317,71 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
         },
       ];
       setProducts(mockProducts);
+      return;
+    }
+    
+    // 데이터 변환
+    const transformedProducts = products?.map((product: any) => ({
+      id: product.id,
+      sku: product.sku,
+      name: product.name,
+      category: product.product_categories?.name || '',
+      model: product.model || '',
+      color: product.color || '',
+      brand: product.brand || '',
+      costCny: product.cost_cny,
+      salePriceKrw: product.price_krw || product.cost_cny * 180,
+      onHand: product.inventory?.[0]?.on_hand || 0,
+      lowStockThreshold: product.low_stock_threshold,
+      imageUrl: product.image_urls?.[0] || 'https://via.placeholder.com/150',
+      description: product.description,
+      active: product.is_active
+    })) || [];
+    
+    setProducts(transformedProducts);
+    } catch (error) {
+      console.error('제품 로드 실패:', error);
+      setProducts([]);
     }
   };
 
   const loadMovements = async () => {
     try {
-      const response = await api.inventory.movements();
+      // Supabase 직접 호출
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
       
-      // API 응답을 페이지 인터페이스에 맞게 변환
-      const transformedMovements = response.movements?.map((movement: any) => ({
+      const { data: movements, error } = await supabase
+        .from('inventory_transactions')
+        .select(`
+          *,
+          products (
+            name,
+            sku
+          )
+        `)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      
+      if (error) {
+        console.error('재고 이동 로드 에러:', error);
+        setMovements([]);
+        return;
+      }
+      
+      // 데이터 변환
+      const transformedMovements = movements?.map((movement: any) => ({
         id: movement.id,
         productId: movement.product_id,
-        productName: movement.product_name || '',
-        type: movement.movement_type,
+        productName: movement.products?.name || '',
+        type: movement.transaction_type,
         quantity: movement.quantity,
-        balanceBefore: movement.balance_before,
-        balanceAfter: movement.balance_after,
-        unitCost: movement.unit_cost,
-        note: movement.note,
-        date: movement.movement_date || movement.created_at,
-        createdBy: movement.created_by || 'System'
+        balanceBefore: 0,
+        balanceAfter: 0,
+        unitCost: movement.cost_per_unit_cny,
+        note: movement.notes,
+        date: movement.created_at,
+        createdBy: 'System'
       })) || [];
       
       setMovements(transformedMovements);

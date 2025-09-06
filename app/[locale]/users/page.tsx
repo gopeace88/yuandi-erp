@@ -201,6 +201,45 @@ export default function UsersPage({ params: { locale } }: UsersPageProps) {
 
   const t = texts[locale as keyof typeof texts] || texts.ko;
 
+  // 사용자 데이터 로드 함수
+  const loadUsers = async () => {
+    try {
+      // Supabase 직접 호출
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
+      
+      const { data: usersData, error } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('사용자 데이터 로드 실패:', error);
+        return;
+      }
+      
+      if (usersData) {
+        // 데이터 형식 변환
+        const formattedUsers: User[] = usersData.map(user => ({
+          id: user.id,
+          name: user.name || user.email.split('@')[0],
+          email: user.email,
+          phone: user.phone || '',
+          role: user.role as 'Admin' | 'OrderManager' | 'ShipManager',
+          locale: user.locale as 'ko' | 'zh-CN',
+          active: user.active ?? true,
+          lastLoginAt: user.last_login_at,
+          createdAt: user.created_at,
+          updatedAt: user.updated_at
+        }));
+        
+        setUsers(formattedUsers);
+      }
+    } catch (error) {
+      console.error('사용자 데이터 로드 중 오류:', error);
+    }
+  };
+
   useEffect(() => {
     const role = localStorage.getItem('userRole');
     if (!role || role !== 'Admin') {
@@ -208,6 +247,9 @@ export default function UsersPage({ params: { locale } }: UsersPageProps) {
       return;
     }
     setUserRole(role);
+    
+    // 사용자 데이터 로드
+    loadUsers();
     
     // Load transaction types from localStorage
     const savedTypes = localStorage.getItem('transactionTypes');
