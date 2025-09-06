@@ -222,57 +222,80 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
 
   const loadOrders = async () => {
     try {
-      const response = await api.orders.list();
+      // Supabase 직접 호출
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
       
-      // API 응답을 페이지 인터페이스에 맞게 변환
-      const transformedOrders = response.orders?.map((order: any) => ({
+      const { data: orders, error } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          order_items (
+            *,
+            products (
+              id,
+              name,
+              sku
+            )
+          )
+        `)
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('주문 로드 에러:', error);
+        setOrders([]);
+        return;
+      }
+      
+      // 데이터 변환
+      const transformedOrders = orders?.map((order: any) => ({
         id: order.id,
-        orderNo: order.order_no,
-        orderDate: order.order_date || order.created_at,
+        orderNo: order.order_number,
+        orderDate: order.created_at,
         customerName: order.customer_name,
         customerPhone: order.customer_phone,
         customerEmail: order.customer_email,
-        pcccCode: order.pccc_code,
-        shippingAddress: order.shipping_address,
-        shippingAddressDetail: order.shipping_address_detail,
-        zipCode: order.zip_code,
-        status: order.status,
-        totalAmount: order.total_amount,
-        productName: order.order_items?.[0]?.product_name || '',
-        productSku: order.order_items?.[0]?.sku || '',
+        pcccCode: order.pccc,
+        shippingAddress: order.shipping_address_line1,
+        shippingAddressDetail: order.shipping_address_line2,
+        zipCode: order.shipping_postal_code,
+        status: order.status?.toUpperCase() || 'PAID',
+        totalAmount: order.total_krw,
+        productName: order.order_items?.[0]?.products?.name || '',
+        productSku: order.order_items?.[0]?.products?.sku || '',
         quantity: order.order_items?.[0]?.quantity || 0,
       })) || [];
       
       setOrders(transformedOrders);
     } catch (error) {
       console.error('주문 로드 실패:', error);
-      // 에러 발생 시 빈 배열로 설정
       setOrders([]);
     }
   };
 
   const loadProducts = async () => {
     try {
-      const response = await api.products.list({ active: true });
+      // Supabase 직접 호출
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
       
-      // API 응답을 페이지 인터페이스에 맞게 변환
-      const transformedProducts = response.products?.map((product: any) => ({
-        id: product.id,
-        sku: product.sku,
-        name: product.name,
-        category: product.category,
-        model: product.model || '',
-        color: product.color || '',
-        brand: product.brand || '',
-        onHand: product.on_hand,
-        salePrice: product.sale_price_krw || product.cost_cny * 165, // 환율 적용
-        image_url: product.image_url
-      })) || [];
+      const { data: products, error: productsError } = await supabase
+        .from('products')
+        .select(`
+          *,
+          inventory (
+            on_hand,
+            allocated
+          ),
+          product_categories (
+            name
+          )
+        `)
+        .eq('is_active', true);
       
-      setProducts(transformedProducts);
-    } catch (error) {
-      console.error('제품 로드 실패:', error);
-      // 폴백으로 목 데이터 사용
+      if (productsError) {
+        console.error('제품 로드 에러:', productsError);
+        // 폴백으로 목 데이터 사용
       const mockProducts: Product[] = [
         {
           id: '1',
@@ -309,6 +332,27 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
         },
       ];
       setProducts(mockProducts);
+      return;
+    }
+    
+    // 데이터 변환
+    const transformedProducts = products?.map((product: any) => ({
+      id: product.id,
+      sku: product.sku,
+      name: product.name,
+      category: product.product_categories?.name || '',
+      model: product.model || '',
+      color: product.color || '',
+      brand: product.brand || '',
+      onHand: product.inventory?.[0]?.on_hand || 0,
+      salePrice: product.price_krw || product.cost_cny * 180,
+      image_url: product.image_urls?.[0] || ''
+    })) || [];
+    
+    setProducts(transformedProducts);
+    } catch (error) {
+      console.error('제품 로드 실패:', error);
+      setProducts([]);
     }
   };
 

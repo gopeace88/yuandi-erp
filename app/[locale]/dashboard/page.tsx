@@ -57,34 +57,44 @@ export default function DashboardPage({ params: { locale } }: DashboardPageProps
 
   const loadDashboardStats = async () => {
     try {
-      const [ordersRes, productsRes] = await Promise.all([
-        fetch('/api/orders', { headers: { 'Accept-Language': locale } }),
-        fetch('/api/products', { headers: { 'Accept-Language': locale } })
-      ]);
+      // Supabase 직접 호출
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
+      
+      // 주문 데이터 가져오기
+      const { data: orders, error: ordersError } = await supabase
+        .from('orders')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      // 재고 데이터 가져오기
+      const { data: inventory, error: inventoryError } = await supabase
+        .from('inventory')
+        .select('*');
 
-      const orders = await ordersRes.json();
-      const products = await productsRes.json();
+      if (ordersError) console.error('주문 로드 에러:', ordersError);
+      if (inventoryError) console.error('재고 로드 에러:', inventoryError);
 
       const today = new Date().toISOString().split('T')[0];
-      const todayOrders = orders.filter((order: any) => order.order_date === today);
+      const todayOrders = orders?.filter((order: any) => 
+        order.created_at.split('T')[0] === today) || [];
       
-      const totalInventory = products.reduce((sum: number, product: any) => 
-        sum + (product.on_hand || 0), 0);
+      const totalInventory = inventory?.reduce((sum: number, item: any) => 
+        sum + (item.on_hand || 0), 0) || 0;
       
-      const totalRevenue = orders.reduce((sum: number, order: any) => 
-        sum + (order.total_amount || 0), 0);
+      const totalRevenue = orders?.reduce((sum: number, order: any) => 
+        sum + (order.total_krw || 0), 0) || 0;
 
       // 최근 주문 20건 설정
-      const sortedOrders = [...orders]
-        .sort((a: any, b: any) => new Date(b.order_date).getTime() - new Date(a.order_date).getTime())
+      const sortedOrders = (orders || [])
         .slice(0, 20)
         .map((order: any) => ({
-          date: order.order_date,
+          date: order.created_at.split('T')[0],
           name: order.customer_name,
-          status: order.status,
+          status: order.status?.toUpperCase() || 'PAID',
           amount: locale === 'ko' 
-            ? `₩${order.total_amount.toLocaleString()}` 
-            : `¥${Math.floor(order.total_amount / 170).toLocaleString()}`
+            ? `₩${(order.total_krw || 0).toLocaleString()}` 
+            : `¥${Math.floor((order.total_krw || 0) / 180).toLocaleString()}`
         }));
       
       setRecentOrders(sortedOrders);
@@ -95,11 +105,11 @@ export default function DashboardPage({ params: { locale } }: DashboardPageProps
         inventory: locale === 'ko' ? '재고 현황' : '库存状态',
         revenue: locale === 'ko' ? '매출 현황' : '销售现状',
         todayOrdersCount: locale === 'ko' ? `${todayOrders.length}건` : `${todayOrders.length}单`,
-        totalOrdersCount: locale === 'ko' ? `${orders.length}건` : `${orders.length}单`,
+        totalOrdersCount: locale === 'ko' ? `${orders?.length || 0}건` : `${orders?.length || 0}单`,
         inventoryCount: locale === 'ko' ? `${totalInventory}개` : `${totalInventory}个`,
         revenueAmount: locale === 'ko' 
           ? `₩${totalRevenue.toLocaleString()}` 
-          : `¥${Math.floor(totalRevenue / 170).toLocaleString()}`
+          : `¥${Math.floor(totalRevenue / 180).toLocaleString()}`
       });
     } catch (error) {
       console.error('대시보드 통계 로드 실패:', error);
