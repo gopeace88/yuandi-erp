@@ -5,6 +5,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { MobileBottomNav } from '@/components/Navigation';
 import './dashboard.css';
 
 interface DashboardPageProps {
@@ -12,6 +14,7 @@ interface DashboardPageProps {
 }
 
 export default function DashboardPage({ params: { locale } }: DashboardPageProps) {
+  const router = useRouter();
   const [currentTime, setCurrentTime] = useState('');
 
   useEffect(() => {
@@ -62,7 +65,7 @@ export default function DashboardPage({ params: { locale } }: DashboardPageProps
   const stats = getStats();
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f3f4f6' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: '#f3f4f6', paddingBottom: '5rem' }}>
       {/* Header */}
       <div style={{ 
         backgroundColor: 'white',
@@ -162,7 +165,7 @@ export default function DashboardPage({ params: { locale } }: DashboardPageProps
           </div>
         </div>
 
-        {/* Quick Actions */}
+        {/* Quick Actions - 제거됨 (사용자 요청)
         <div style={{
           backgroundColor: 'white',
           padding: '2rem',
@@ -239,9 +242,9 @@ export default function DashboardPage({ params: { locale } }: DashboardPageProps
               {locale === 'ko' ? '보고서' : locale === 'zh-CN' ? '报告' : 'Reports'}
             </a>
           </div>
-        </div>
+        </div> */}
 
-        {/* Recent Orders */}
+        {/* Recent Orders - Updated */}
         <div style={{
           backgroundColor: 'white',
           padding: '2rem',
@@ -256,12 +259,12 @@ export default function DashboardPage({ params: { locale } }: DashboardPageProps
               <thead>
                 <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
                   <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#374151' }}>
-                    {locale === 'ko' ? '주문번호' : locale === 'zh-CN' ? '订单号' : 'Order ID'}
+                    {locale === 'ko' ? '날짜' : locale === 'zh-CN' ? '日期' : 'Date'}
                   </th>
                   <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#374151' }}>
                     {locale === 'ko' ? '고객명' : locale === 'zh-CN' ? '客户' : 'Customer'}
                   </th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#374151' }}>
+                  <th style={{ padding: '0.75rem', textAlign: 'center', fontSize: '0.875rem', fontWeight: '600', color: '#374151' }}>
                     {locale === 'ko' ? '상태' : locale === 'zh-CN' ? '状态' : 'Status'}
                   </th>
                   <th style={{ padding: '0.75rem', textAlign: 'right', fontSize: '0.875rem', fontWeight: '600', color: '#374151' }}>
@@ -270,118 +273,87 @@ export default function DashboardPage({ params: { locale } }: DashboardPageProps
                 </tr>
               </thead>
               <tbody>
-                <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                  <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>ORD-240105-001</td>
-                  <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>
-                    {locale === 'ko' ? '김철수' : locale === 'zh-CN' ? '张三' : 'John Doe'}
-                  </td>
-                  <td style={{ padding: '0.75rem' }}>
-                    <span style={{
-                      padding: '0.25rem 0.5rem',
-                      backgroundColor: '#dbeafe',
-                      color: '#1e40af',
-                      borderRadius: '0.25rem',
-                      fontSize: '0.75rem'
-                    }}>
-                      {locale === 'ko' ? '처리중' : locale === 'zh-CN' ? '处理中' : 'Processing'}
-                    </span>
-                  </td>
-                  <td style={{ padding: '0.75rem', textAlign: 'right', fontSize: '0.875rem' }}>
-                    {locale === 'ko' ? '₩89,000' : locale === 'zh-CN' ? '¥520' : '$75'}
-                  </td>
-                </tr>
-                <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                  <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>ORD-240105-002</td>
-                  <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>
-                    {locale === 'ko' ? '이영희' : locale === 'zh-CN' ? '李四' : 'Jane Smith'}
-                  </td>
-                  <td style={{ padding: '0.75rem' }}>
-                    <span style={{
-                      padding: '0.25rem 0.5rem',
-                      backgroundColor: '#fef3c7',
-                      color: '#92400e',
-                      borderRadius: '0.25rem',
-                      fontSize: '0.75rem'
-                    }}>
-                      {locale === 'ko' ? '배송중' : locale === 'zh-CN' ? '配送中' : 'Shipping'}
-                    </span>
-                  </td>
-                  <td style={{ padding: '0.75rem', textAlign: 'right', fontSize: '0.875rem' }}>
-                    {locale === 'ko' ? '₩125,000' : locale === 'zh-CN' ? '¥730' : '$105'}
-                  </td>
-                </tr>
-                <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                  <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>ORD-240105-003</td>
-                  <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>
-                    {locale === 'ko' ? '박지민' : locale === 'zh-CN' ? '王五' : 'Bob Wilson'}
-                  </td>
-                  <td style={{ padding: '0.75rem' }}>
-                    <span style={{
-                      padding: '0.25rem 0.5rem',
-                      backgroundColor: '#d1fae5',
-                      color: '#065f46',
-                      borderRadius: '0.25rem',
-                      fontSize: '0.75rem'
-                    }}>
-                      {locale === 'ko' ? '완료' : locale === 'zh-CN' ? '完成' : 'Completed'}
-                    </span>
-                  </td>
-                  <td style={{ padding: '0.75rem', textAlign: 'right', fontSize: '0.875rem' }}>
-                    {locale === 'ko' ? '₩67,000' : locale === 'zh-CN' ? '¥390' : '$56'}
-                  </td>
-                </tr>
+                {/* 20 sample orders */}
+                {[
+                  { date: '2024-01-05', name: locale === 'ko' ? '김철수' : '张三', status: 'PAID', amount: locale === 'ko' ? '₩89,000' : '¥520' },
+                  { date: '2024-01-05', name: locale === 'ko' ? '이영희' : '李四', status: 'SHIPPED', amount: locale === 'ko' ? '₩125,000' : '¥730' },
+                  { date: '2024-01-05', name: locale === 'ko' ? '박지민' : '王五', status: 'DONE', amount: locale === 'ko' ? '₩67,000' : '¥390' },
+                  { date: '2024-01-04', name: locale === 'ko' ? '최수현' : '赵六', status: 'PAID', amount: locale === 'ko' ? '₩156,000' : '¥910' },
+                  { date: '2024-01-04', name: locale === 'ko' ? '정하나' : '钱七', status: 'SHIPPED', amount: locale === 'ko' ? '₩98,000' : '¥573' },
+                  { date: '2024-01-04', name: locale === 'ko' ? '강민준' : '孙八', status: 'PAID', amount: locale === 'ko' ? '₩234,000' : '¥1,370' },
+                  { date: '2024-01-03', name: locale === 'ko' ? '윤서연' : '周九', status: 'DONE', amount: locale === 'ko' ? '₩45,000' : '¥263' },
+                  { date: '2024-01-03', name: locale === 'ko' ? '임도윤' : '吴十', status: 'PAID', amount: locale === 'ko' ? '₩187,000' : '¥1,095' },
+                  { date: '2024-01-03', name: locale === 'ko' ? '황예진' : '郑一', status: 'SHIPPED', amount: locale === 'ko' ? '₩76,000' : '¥445' },
+                  { date: '2024-01-02', name: locale === 'ko' ? '송지우' : '冯二', status: 'DONE', amount: locale === 'ko' ? '₩134,000' : '¥784' },
+                  { date: '2024-01-02', name: locale === 'ko' ? '한승우' : '陈三', status: 'PAID', amount: locale === 'ko' ? '₩298,000' : '¥1,744' },
+                  { date: '2024-01-02', name: locale === 'ko' ? '조예린' : '楚四', status: 'SHIPPED', amount: locale === 'ko' ? '₩167,000' : '¥977' },
+                  { date: '2024-01-01', name: locale === 'ko' ? '서준혁' : '魏五', status: 'PAID', amount: locale === 'ko' ? '₩223,000' : '¥1,305' },
+                  { date: '2024-01-01', name: locale === 'ko' ? '안소희' : '蒋六', status: 'DONE', amount: locale === 'ko' ? '₩89,000' : '¥520' },
+                  { date: '2024-01-01', name: locale === 'ko' ? '류태양' : '沈七', status: 'PAID', amount: locale === 'ko' ? '₩145,000' : '¥848' },
+                  { date: '2023-12-31', name: locale === 'ko' ? '문지원' : '韩八', status: 'SHIPPED', amount: locale === 'ko' ? '₩201,000' : '¥1,176' },
+                  { date: '2023-12-31', name: locale === 'ko' ? '오현우' : '杨九', status: 'DONE', amount: locale === 'ko' ? '₩112,000' : '¥655' },
+                  { date: '2023-12-30', name: locale === 'ko' ? '배수진' : '朱十', status: 'PAID', amount: locale === 'ko' ? '₩178,000' : '¥1,041' },
+                  { date: '2023-12-30', name: locale === 'ko' ? '신유나' : '秦一', status: 'SHIPPED', amount: locale === 'ko' ? '₩256,000' : '¥1,498' },
+                  { date: '2023-12-30', name: locale === 'ko' ? '권민석' : '许二', status: 'PAID', amount: locale === 'ko' ? '₩94,000' : '¥550' }
+                ].map((order, index) => {
+                  const statusColors = {
+                    'PAID': { bg: '#dbeafe', color: '#1e40af', text: locale === 'ko' ? '결제완료' : locale === 'zh-CN' ? '已付款' : 'Paid' },
+                    'SHIPPED': { bg: '#fef3c7', color: '#92400e', text: locale === 'ko' ? '배송중' : locale === 'zh-CN' ? '配送中' : 'Shipping' },
+                    'DONE': { bg: '#d1fae5', color: '#065f46', text: locale === 'ko' ? '완료' : locale === 'zh-CN' ? '完成' : 'Completed' },
+                    'REFUNDED': { bg: '#fee2e2', color: '#991b1b', text: locale === 'ko' ? '환불' : locale === 'zh-CN' ? '已退款' : 'Refunded' }
+                  };
+                  
+                  const status = statusColors[order.status as keyof typeof statusColors];
+                  
+                  return (
+                    <tr 
+                      key={index} 
+                      style={{ 
+                        borderBottom: '1px solid #e5e7eb',
+                        cursor: order.status === 'PAID' ? 'pointer' : 'default'
+                      }}
+                      onClick={() => {
+                        if (order.status === 'PAID') {
+                          router.push(`/${locale}/shipments`);
+                        }
+                      }}
+                      onMouseEnter={(e) => {
+                        if (order.status === 'PAID') {
+                          e.currentTarget.style.backgroundColor = '#f9fafb';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                      }}
+                    >
+                      <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>{order.date}</td>
+                      <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>{order.name}</td>
+                      <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                        <span style={{
+                          padding: '0.25rem 0.5rem',
+                          backgroundColor: status.bg,
+                          color: status.color,
+                          borderRadius: '0.25rem',
+                          fontSize: '0.75rem',
+                          fontWeight: '500'
+                        }}>
+                          {status.text}
+                        </span>
+                      </td>
+                      <td style={{ padding: '0.75rem', textAlign: 'right', fontSize: '0.875rem', fontWeight: '500' }}>
+                        {order.amount}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         </div>
       </div>
 
-      {/* Footer Navigation */}
-      <div style={{
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        backgroundColor: 'white',
-        borderTop: '1px solid #e5e7eb',
-        padding: '1rem'
-      }}>
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-around',
-          maxWidth: '600px',
-          margin: '0 auto'
-        }}>
-          <a href={`/${locale}`} style={{ 
-            textDecoration: 'none',
-            color: '#6b7280',
-            fontSize: '0.875rem'
-          }}>
-            {locale === 'ko' ? '홈' : locale === 'zh-CN' ? '首页' : 'Home'}
-          </a>
-          <a href={`/${locale}/orders`} style={{ 
-            textDecoration: 'none',
-            color: '#6b7280',
-            fontSize: '0.875rem'
-          }}>
-            {locale === 'ko' ? '주문' : locale === 'zh-CN' ? '订单' : 'Orders'}
-          </a>
-          <a href={`/${locale}/inventory`} style={{ 
-            textDecoration: 'none',
-            color: '#6b7280',
-            fontSize: '0.875rem'
-          }}>
-            {locale === 'ko' ? '재고' : locale === 'zh-CN' ? '库存' : 'Inventory'}
-          </a>
-          <a href={`/${locale}/track`} style={{ 
-            textDecoration: 'none',
-            color: '#6b7280',
-            fontSize: '0.875rem'
-          }}>
-            {locale === 'ko' ? '조회' : locale === 'zh-CN' ? '查询' : 'Track'}
-          </a>
-        </div>
-      </div>
+      {/* 표준화된 모바일 하단 네비게이션 */}
+      <MobileBottomNav locale={locale} />
     </div>
   );
 }

@@ -8,6 +8,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api/client';
+import OrdersPageMobile from './OrdersPageMobile';
 
 interface OrdersPageProps {
   params: { locale: string };
@@ -46,6 +47,7 @@ interface Order {
 
 export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
   const router = useRouter();
+  const [isMobile, setIsMobile] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -170,6 +172,16 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
   };
 
   const texts = t[locale as keyof typeof t] || t.ko;
+
+  // 모바일 체크
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // 사용자 권한 체크
   useEffect(() => {
@@ -461,6 +473,11 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
     return matchesStatus && matchesSearch;
   });
 
+  // 모바일 화면일 경우 모바일 컴포넌트 렌더링
+  if (isMobile) {
+    return <OrdersPageMobile params={{ locale }} />;
+  }
+
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f3f4f6' }}>
       {/* 헤더 */}
@@ -681,7 +698,15 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
                     type="text"
                     value={newOrder.zipCode}
                     onChange={(e) => setNewOrder({ ...newOrder, zipCode: e.target.value })}
-                    style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
+                    style={{ 
+                      flex: '0 0 auto',
+                      width: '120px',
+                      maxWidth: '50%',
+                      padding: '0.5rem', 
+                      border: '1px solid #d1d5db', 
+                      borderRadius: '0.375rem',
+                      fontSize: '0.875rem'
+                    }}
                     placeholder={locale === 'ko' ? '우편번호' : '邮政编码'}
                     readOnly
                     required
@@ -696,7 +721,8 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
                       borderRadius: '0.375rem',
                       border: 'none',
                       cursor: 'pointer',
-                      whiteSpace: 'nowrap'
+                      whiteSpace: 'nowrap',
+                      fontSize: '0.875rem'
                     }}
                   >
                     {texts.searchAddress}

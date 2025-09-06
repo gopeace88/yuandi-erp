@@ -1,5 +1,5 @@
 import './globals.css';
-import Navigation from '@/components/NavigationMobile';
+import Navigation from '@/components/Navigation';
 
 export async function generateStaticParams() {
   return [

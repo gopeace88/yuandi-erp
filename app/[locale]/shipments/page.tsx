@@ -7,6 +7,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { MobileBottomNav } from '@/components/Navigation';
 
 interface ShipmentsPageProps {
   params: { locale: string };
@@ -463,24 +464,44 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
               <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
                 <thead>
                   <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>{t.orderNo}</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>{t.orderDate}</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>{t.customer}</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>{t.items}</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>{
+                      locale === 'ko' ? '전화번호' : locale === 'zh-CN' ? '电话号码' : 'Phone'
+                    }</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>{t.address}</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right', fontWeight: '600' }}>{t.amount}</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>{t.items}</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: '600' }}>{t.status}</th>
                     <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: '600' }}>{t.action}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {pendingOrders.map(order => (
-                    <tr key={order.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                      <td style={{ padding: '0.75rem', fontWeight: '500' }}>{order.orderNo}</td>
+                    <tr 
+                      key={order.id} 
+                      style={{ 
+                        borderBottom: '1px solid #e5e7eb',
+                        cursor: 'pointer'
+                      }}
+                      onClick={() => {
+                        setSelectedOrder(order);
+                        setShowShipModal(true);
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#f9fafb';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                      }}
+                    >
                       <td style={{ padding: '0.75rem', color: '#6b7280' }}>{order.orderDate}</td>
                       <td style={{ padding: '0.75rem' }}>
-                        <div>{order.customerName}</div>
-                        <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{order.customerPhone}</div>
+                        <div style={{ fontWeight: '500' }}>{order.customerName}</div>
                       </td>
+                      <td style={{ padding: '0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                        {order.customerPhone}
+                      </td>
+                      <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>{order.shippingAddress}</td>
                       <td style={{ padding: '0.75rem' }}>
                         {order.items.map((item, idx) => (
                           <div key={idx} style={{ fontSize: '0.875rem' }}>
@@ -488,13 +509,22 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
                           </div>
                         ))}
                       </td>
-                      <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>{order.shippingAddress}</td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: '500' }}>
-                        ₩{order.totalAmount.toLocaleString()}
+                      <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                        <span style={{
+                          padding: '0.25rem 0.75rem',
+                          borderRadius: '9999px',
+                          fontSize: '0.75rem',
+                          fontWeight: '500',
+                          backgroundColor: '#dbeafe',
+                          color: '#1e40af'
+                        }}>
+                          {t.pending}
+                        </span>
                       </td>
                       <td style={{ padding: '0.75rem', textAlign: 'center' }}>
                         <button
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setSelectedOrder(order);
                             setShowShipModal(true);
                           }}
@@ -1161,59 +1191,8 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
         </div>
       )}
 
-      {/* Footer Navigation - 다른 페이지와 통일 */}
-      <div style={{
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        backgroundColor: 'white',
-        borderTop: '1px solid #e5e7eb',
-        padding: '1rem'
-      }}>
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-around',
-          maxWidth: '600px',
-          margin: '0 auto'
-        }}>
-          <a href={`/${locale}`} style={{ 
-            textDecoration: 'none',
-            color: '#6b7280',
-            fontSize: '0.875rem'
-          }}>
-            {locale === 'ko' ? '홈' : locale === 'zh-CN' ? '首页' : 'Home'}
-          </a>
-          <a href={`/${locale}/orders`} style={{ 
-            textDecoration: 'none',
-            color: '#6b7280',
-            fontSize: '0.875rem'
-          }}>
-            {locale === 'ko' ? '주문' : locale === 'zh-CN' ? '订单' : 'Orders'}
-          </a>
-          <a href={`/${locale}/inventory`} style={{ 
-            textDecoration: 'none',
-            color: '#6b7280',
-            fontSize: '0.875rem'
-          }}>
-            {locale === 'ko' ? '재고' : locale === 'zh-CN' ? '库存' : 'Inventory'}
-          </a>
-          <a href={`/${locale}/shipments`} style={{ 
-            textDecoration: 'none',
-            color: '#3b82f6',
-            fontSize: '0.875rem'
-          }}>
-            {locale === 'ko' ? '배송' : locale === 'zh-CN' ? '配送' : 'Shipping'}
-          </a>
-          <a href={`/${locale}/track`} style={{ 
-            textDecoration: 'none',
-            color: '#6b7280',
-            fontSize: '0.875rem'
-          }}>
-            {locale === 'ko' ? '조회' : locale === 'zh-CN' ? '查询' : 'Track'}
-          </a>
-        </div>
-      </div>
+      {/* 표준화된 모바일 하단 네비게이션 */}
+      <MobileBottomNav locale={locale} />
     </div>
   );
 }

@@ -7,6 +7,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { MobileBottomNav } from '@/components/Navigation';
 
 interface OrdersPageProps {
   params: { locale: string };
@@ -35,6 +36,9 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
   const [filterStatus, setFilterStatus] = useState('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const itemsPerPage = 20;
 
   // 다국어 텍스트
   const t = {
@@ -93,54 +97,41 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
   }, []);
 
   const loadOrders = () => {
-    // 목 데이터
-    const mockOrders: Order[] = [
-      {
-        id: '1',
-        orderNo: 'ORD-240105-001',
-        orderDate: '2024-01-05',
-        customerName: '김철수',
-        customerPhone: '010-1234-5678',
-        pcccCode: 'P123456789012',
-        shippingAddress: '서울시 강남구 테헤란로 123',
-        zipCode: '06234',
-        status: 'PAID',
-        totalAmount: 125000,
-        productName: '프리미엄 가방',
-        productSku: 'BAG-001',
-        quantity: 1,
-      },
-      {
-        id: '2',
-        orderNo: 'ORD-240105-002',
-        orderDate: '2024-01-05',
-        customerName: '이영희',
-        customerPhone: '010-2345-6789',
-        pcccCode: 'P234567890123',
-        shippingAddress: '서울시 서초구 서초대로 456',
-        zipCode: '06578',
-        status: 'SHIPPED',
-        totalAmount: 89000,
-        productName: '스마트 워치',
-        productSku: 'WATCH-001',
-        quantity: 1,
-      },
-      {
-        id: '3',
-        orderNo: 'ORD-240105-003',
-        orderDate: '2024-01-05',
-        customerName: '박지민',
-        customerPhone: '010-3456-7890',
-        pcccCode: 'P345678901234',
-        shippingAddress: '서울시 송파구 올림픽로 789',
-        zipCode: '05502',
-        status: 'DONE',
-        totalAmount: 67000,
-        productName: '화장품 세트',
-        productSku: 'COSM-001',
-        quantity: 2,
-      },
+    // 더 많은 목 데이터 생성 (50개)
+    const mockOrders: Order[] = [];
+    const names = locale === 'ko' 
+      ? ['김철수', '이영희', '박지민', '최수현', '정하나', '강민준', '윤서연', '임도윤', '황예진', '송지우']
+      : ['张三', '李四', '王五', '赵六', '钱七', '孙八', '周九', '吴十', '郑一', '冯二'];
+    const products = [
+      { name: locale === 'ko' ? '프리미엄 가방' : '高级包', sku: 'BAG-001', price: 125000 },
+      { name: locale === 'ko' ? '스마트 워치' : '智能手表', sku: 'WATCH-001', price: 89000 },
+      { name: locale === 'ko' ? '화장품 세트' : '化妆品套装', sku: 'COSM-001', price: 67000 },
+      { name: locale === 'ko' ? '운동화' : '运动鞋', sku: 'SHOE-001', price: 156000 },
+      { name: locale === 'ko' ? '향수' : '香水', sku: 'PERF-001', price: 98000 },
     ];
+    const statuses: Order['status'][] = ['PAID', 'SHIPPED', 'DONE', 'REFUNDED'];
+    
+    for (let i = 0; i < 50; i++) {
+      const date = new Date(2024, 0, 5 - Math.floor(i / 10));
+      const product = products[i % products.length];
+      mockOrders.push({
+        id: `${i + 1}`,
+        orderNo: `ORD-${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}-${String(i + 1).padStart(3, '0')}`,
+        orderDate: date.toISOString().split('T')[0],
+        customerName: names[i % names.length],
+        customerPhone: `010-${String(1000 + i).padStart(4, '0')}-${String(5678 + i).padStart(4, '0')}`,
+        pcccCode: `P${String(123456789012 + i).padStart(13, '0')}`,
+        shippingAddress: locale === 'ko' 
+          ? `서울시 강남구 테헤란로 ${123 + i}`
+          : `北京市朝阳区建国路 ${123 + i}`,
+        zipCode: String(6234 + i).padStart(5, '0'),
+        status: statuses[i % statuses.length],
+        totalAmount: product.price + (i * 1000),
+        productName: product.name,
+        productSku: product.sku,
+        quantity: 1 + (i % 3),
+      });
+    }
     setOrders(mockOrders);
   };
 
@@ -155,6 +146,22 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
     
     return matchesSearch && matchesStatus;
   });
+
+  // 페이지네이션 계산
+  const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentOrders = filteredOrders.slice(startIndex, endIndex);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleOrderClick = (order: Order) => {
+    setSelectedOrder(order);
+    setShowDetailModal(true);
+  };
 
   const getStatusColor = (status: string) => {
     switch(status) {
@@ -186,7 +193,7 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-100 pb-20">
       {/* 헤더 */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="px-4 sm:px-6 lg:px-8 py-4">
@@ -228,22 +235,26 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
 
       {/* 주문 목록 */}
       <div className="px-4 sm:px-6 lg:px-8 pb-6">
-        {filteredOrders.length === 0 ? (
+        {currentOrders.length === 0 ? (
           <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">
             {t.noOrders}
           </div>
         ) : (
           <>
-            {/* 모바일 카드 레이아웃 (작은 화면) */}
-            <div className="block lg:hidden space-y-4">
-              {filteredOrders.map((order) => (
-                <div key={order.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            {/* 모바일 카드 레이아웃 */}
+            <div className="space-y-4">
+              {currentOrders.map((order) => (
+                <div 
+                  key={order.id} 
+                  className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden cursor-pointer"
+                  onClick={() => handleOrderClick(order)}
+                >
                   {/* 카드 헤더 */}
                   <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
                     <div className="flex justify-between items-start">
                       <div>
-                        <p className="text-base font-semibold text-gray-900">{order.orderNo}</p>
-                        <p className="text-sm text-gray-500 mt-1">{order.orderDate}</p>
+                        <p className="text-sm text-gray-500">{order.orderDate}</p>
+                        <p className="text-base font-semibold text-gray-900 mt-1">{order.customerName}</p>
                       </div>
                       <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(order.status)}`}>
                         {t[order.status as keyof typeof t]}
@@ -252,43 +263,79 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
                   </div>
 
                   {/* 카드 본문 */}
-                  <div className="px-4 py-4 space-y-3">
-                    {/* 고객 정보 */}
-                    <div>
-                      <p className="text-sm text-gray-500">{t.customer}</p>
-                      <p className="text-base font-medium text-gray-900">{order.customerName}</p>
-                      <p className="text-sm text-gray-600">{order.customerPhone}</p>
-                    </div>
-
-                    {/* 상품 정보 */}
-                    <div>
-                      <p className="text-sm text-gray-500">{t.product}</p>
-                      <p className="text-base font-medium text-gray-900">{order.productName}</p>
-                      <p className="text-sm text-gray-600">{t.quantity}: {order.quantity}개</p>
+                  <div className="px-4 py-3 space-y-2">
+                    {/* 전화번호 */}
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-500">{t.customer}</span>
+                      <span className="text-sm text-gray-900">{order.customerPhone}</span>
                     </div>
 
                     {/* 금액 */}
-                    <div>
-                      <p className="text-sm text-gray-500">{t.amount}</p>
-                      <p className="text-lg font-bold text-blue-600">₩{order.totalAmount.toLocaleString()}</p>
-                    </div>
-
-                    {/* 배송지 */}
-                    <div>
-                      <p className="text-sm text-gray-500">{t.address}</p>
-                      <p className="text-sm text-gray-700">{order.shippingAddress}</p>
-                    </div>
-
-                    {/* 액션 버튼 */}
-                    <div className="pt-3">
-                      {getActionButton(order)}
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-500">{t.amount}</span>
+                      <span className="text-base font-bold text-blue-600">
+                        {locale === 'ko' ? '₩' : '¥'}{order.totalAmount.toLocaleString()}
+                      </span>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
 
-            {/* 데스크탑 테이블 레이아웃 (큰 화면) */}
+            {/* 페이지네이션 */}
+            {totalPages > 1 && (
+              <div className="mt-6 flex justify-center">
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="px-3 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {locale === 'ko' ? '이전' : '上一页'}
+                  </button>
+                  
+                  {/* 페이지 번호 표시 */}
+                  <div className="flex items-center gap-1">
+                    {[...Array(Math.min(5, totalPages))].map((_, i) => {
+                      let pageNum;
+                      if (totalPages <= 5) {
+                        pageNum = i + 1;
+                      } else if (currentPage <= 3) {
+                        pageNum = i + 1;
+                      } else if (currentPage >= totalPages - 2) {
+                        pageNum = totalPages - 4 + i;
+                      } else {
+                        pageNum = currentPage - 2 + i;
+                      }
+                      
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => handlePageChange(pageNum)}
+                          className={`px-3 py-2 rounded-md text-sm font-medium ${
+                            currentPage === pageNum
+                              ? 'bg-blue-600 text-white'
+                              : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {locale === 'ko' ? '다음' : '下一页'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* 데스크탑 테이블 레이아웃 제거 - 모바일 페이지는 항상 카드 뷰만 사용
             <div className="hidden lg:block bg-white rounded-lg shadow overflow-hidden">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
@@ -354,10 +401,87 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
                   ))}
                 </tbody>
               </table>
-            </div>
+            </div> */}
           </>
         )}
       </div>
+
+      {/* 주문 상세 모달 */}
+      {showDetailModal && selectedOrder && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <h2 className="text-xl font-bold mb-4">
+                {locale === 'ko' ? '주문 상세' : '订单详情'}
+              </h2>
+              
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm text-gray-500">{t.orderNo}</p>
+                  <p className="text-base font-medium">{selectedOrder.orderNo}</p>
+                </div>
+                
+                <div>
+                  <p className="text-sm text-gray-500">{t.orderDate}</p>
+                  <p className="text-base">{selectedOrder.orderDate}</p>
+                </div>
+                
+                <div>
+                  <p className="text-sm text-gray-500">{t.customer}</p>
+                  <p className="text-base font-medium">{selectedOrder.customerName}</p>
+                  <p className="text-sm">{selectedOrder.customerPhone}</p>
+                </div>
+                
+                <div>
+                  <p className="text-sm text-gray-500">{t.product}</p>
+                  <p className="text-base font-medium">{selectedOrder.productName}</p>
+                  <p className="text-sm">{t.quantity}: {selectedOrder.quantity}개</p>
+                </div>
+                
+                <div>
+                  <p className="text-sm text-gray-500">{t.address}</p>
+                  <p className="text-base">{selectedOrder.shippingAddress}</p>
+                  <p className="text-sm">{locale === 'ko' ? '우편번호' : '邮编'}: {selectedOrder.zipCode}</p>
+                </div>
+                
+                <div>
+                  <p className="text-sm text-gray-500">{t.amount}</p>
+                  <p className="text-lg font-bold text-blue-600">
+                    {locale === 'ko' ? '₩' : '¥'}{selectedOrder.totalAmount.toLocaleString()}
+                  </p>
+                </div>
+                
+                <div>
+                  <p className="text-sm text-gray-500">{t.status}</p>
+                  <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(selectedOrder.status)}`}>
+                    {t[selectedOrder.status as keyof typeof t]}
+                  </span>
+                </div>
+              </div>
+              
+              <div className="mt-6 flex gap-2">
+                {selectedOrder.status === 'PAID' && (
+                  <button
+                    onClick={() => router.push(`/${locale}/shipments`)}
+                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md font-medium"
+                  >
+                    {t.ship}
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowDetailModal(false)}
+                  className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-md font-medium"
+                >
+                  {locale === 'ko' ? '닫기' : '关闭'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* 표준화된 모바일 하단 네비게이션 */}
+      <MobileBottomNav locale={locale} />
     </div>
   );
 }

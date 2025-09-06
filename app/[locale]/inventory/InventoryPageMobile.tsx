@@ -7,6 +7,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { MobileBottomNav } from '@/components/Navigation';
 import '../dashboard/dashboard.css';
 
 interface InventoryPageProps {
@@ -422,7 +423,7 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
   const categories = Array.from(new Set(products.map(p => p.category)));
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-100 pb-20">
       {/* 헤더 */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="px-4 sm:px-6 lg:px-8 py-4">
@@ -1027,52 +1028,8 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
       )}
 
       {/* 하단 네비게이션 바 */}
-      <div style={{
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        backgroundColor: 'white',
-        borderTop: '1px solid #e5e7eb',
-        padding: '1rem'
-      }}>
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-around',
-          maxWidth: '600px',
-          margin: '0 auto'
-        }}>
-          <a href={`/${locale}`} style={{ 
-            textDecoration: 'none',
-            color: '#6b7280',
-            fontSize: '0.875rem'
-          }}>
-            {locale === 'ko' ? '홈' : locale === 'zh-CN' ? '首页' : 'Home'}
-          </a>
-          <a href={`/${locale}/orders`} style={{ 
-            textDecoration: 'none',
-            color: '#6b7280',
-            fontSize: '0.875rem'
-          }}>
-            {locale === 'ko' ? '주문' : locale === 'zh-CN' ? '订单' : 'Orders'}
-          </a>
-          <a href={`/${locale}/inventory`} style={{ 
-            textDecoration: 'none',
-            color: '#2563eb',
-            fontSize: '0.875rem',
-            fontWeight: '600'
-          }}>
-            {locale === 'ko' ? '재고' : locale === 'zh-CN' ? '库存' : 'Inventory'}
-          </a>
-          <a href={`/${locale}/track`} style={{ 
-            textDecoration: 'none',
-            color: '#6b7280',
-            fontSize: '0.875rem'
-          }}>
-            {locale === 'ko' ? '조회' : locale === 'zh-CN' ? '查询' : 'Track'}
-          </a>
-        </div>
-      </div>
+      {/* 표준화된 모바일 하단 네비게이션 */}
+      <MobileBottomNav locale={locale} />
     </div>
   );
 }
