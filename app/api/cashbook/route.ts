@@ -52,25 +52,43 @@ export async function GET(request: NextRequest) {
       .from('cashbook_transactions')
       .select('*', { count: 'exact', head: true });
     
-    // 응답 데이터 변환
-    const transformedTransactions = transactions?.map(transaction => ({
-      id: transaction.id,
-      date: transaction.transaction_date,
-      type: transaction.type,
-      category: transaction.category,
-      description: transaction.description,
-      amountKrw: transaction.amount_krw,
-      amountCny: transaction.amount_cny,
-      exchangeRate: transaction.exchange_rate,
-      reference: transaction.reference_type,
-      notes: transaction.notes
-    })) || [];
+    // 잔액 계산을 위한 요약 정보
+    const { data: allTransactions } = await supabase
+      .from('cashbook_transactions')
+      .select('amount_krw, type')
+      .order('transaction_date', { ascending: true });
+    
+    const summary = allTransactions?.reduce((acc, t) => {
+      const amount = t.amount_krw || 0;
+      if (amount > 0) {
+        acc.income += amount;
+      } else {
+        acc.expense += Math.abs(amount);
+      }
+      acc.balance += amount;
+      return acc;
+    }, { balance: 0, income: 0, expense: 0 }) || { balance: 0, income: 0, expense: 0 };
+    
+    // 이번 달 수익
+    const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
+    const { data: monthlyTransactions } = await supabase
+      .from('cashbook_transactions')
+      .select('amount_krw')
+      .gte('transaction_date', currentMonth + '-01')
+      .lt('transaction_date', new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toISOString());
+    
+    const monthlyProfit = monthlyTransactions?.reduce((sum, t) => sum + (t.amount_krw || 0), 0) || 0;
+    summary.monthlyProfit = monthlyProfit;
     
     return NextResponse.json({
-      transactions: transformedTransactions,
-      total: count || 0,
-      page,
-      limit
+      transactions: transactions || [],
+      summary,
+      pagination: {
+        total: count || 0,
+        totalPages: Math.ceil((count || 0) / limit),
+        page,
+        limit
+      }
     });
   } catch (error) {
     console.error('Cashbook API error:', error);

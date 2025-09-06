@@ -245,10 +245,13 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
 
   // 주문 데이터 로드 함수
   const loadOrders = async () => {
+    console.log('🔄 주문 데이터 로드 시작...');
     try {
       // Supabase 직접 호출
       const { createClient } = await import('@/lib/supabase/client');
       const supabase = createClient();
+      
+      console.log('📊 Supabase 클라이언트 생성 완료');
       
       const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
@@ -266,8 +269,15 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
         .in('status', ['paid', 'shipped', 'done'])
         .order('created_at', { ascending: false });
       
+      console.log('📋 주문 조회 결과:', {
+        error: ordersError,
+        dataCount: ordersData?.length || 0,
+        firstOrder: ordersData?.[0]
+      });
+      
       if (ordersError) {
-        console.error('주문 데이터 로드 실패:', ordersError);
+        console.error('❌ 주문 데이터 로드 실패:', ordersError);
+        alert(`주문 데이터 로드 실패: ${ordersError.message}`);
         return;
       }
       
@@ -296,10 +306,13 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
 
   // 배송 데이터 로드 함수
   const loadShipments = async () => {
+    console.log('🚚 배송 데이터 로드 시작...');
     try {
       // Supabase 직접 호출
       const { createClient } = await import('@/lib/supabase/client');
       const supabase = createClient();
+      
+      console.log('📦 Supabase 클라이언트 생성 완료');
       
       const { data: shipmentsData, error: shipmentsError } = await supabase
         .from('shipments')
@@ -312,8 +325,15 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
         `)
         .order('created_at', { ascending: false });
       
+      console.log('🚛 배송 조회 결과:', {
+        error: shipmentsError,
+        dataCount: shipmentsData?.length || 0,
+        firstShipment: shipmentsData?.[0]
+      });
+      
       if (shipmentsError) {
-        console.error('배송 데이터 로드 실패:', shipmentsError);
+        console.error('❌ 배송 데이터 로드 실패:', shipmentsError);
+        alert(`배송 데이터 로드 실패: ${shipmentsError.message}`);
         return;
       }
       

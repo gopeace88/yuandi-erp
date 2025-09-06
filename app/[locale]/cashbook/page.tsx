@@ -232,18 +232,28 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
 
   // 거래 내역 로드 함수
   const loadTransactions = async () => {
+    console.log('💰 출납장부 데이터 로드 시작...');
     try {
       // Supabase 직접 호출
       const { createClient } = await import('@/lib/supabase/client');
       const supabase = createClient();
+      
+      console.log('💳 Supabase 클라이언트 생성 완료');
       
       const { data: transactions, error } = await supabase
         .from('cashbook_transactions')
         .select('*')
         .order('transaction_date', { ascending: false });
       
+      console.log('📊 출납장부 조회 결과:', {
+        error: error,
+        dataCount: transactions?.length || 0,
+        firstTransaction: transactions?.[0]
+      });
+      
       if (error) {
-        console.error('거래 내역 로드 실패:', error);
+        console.error('❌ 거래 내역 로드 실패:', error);
+        alert(`출납장부 데이터 로드 실패: ${error.message}`);
         return;
       }
       

@@ -7,7 +7,7 @@ export async function createServerSupabase() {
 
   return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co',
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder_key_for_build',
+    process.env.SUPABASE_API_KEY || 'placeholder_key_for_build',
     {
       cookies: {
         get(name: string) {
