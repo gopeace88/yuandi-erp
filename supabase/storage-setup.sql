@@ -1,239 +1,42 @@
--- ============================================================================
--- YUANDI ERP Storage Bucket Setup
--- Description: Creates storage buckets and policies for image uploads
--- ============================================================================
+-- Supabase Storage 버킷 생성 및 정책 설정
+-- 이 스크립트를 Supabase SQL Editor에서 실행하세요
 
--- Create storage buckets
+-- images 버킷 생성 (이미 존재하면 스킵)
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-VALUES 
-    (
-        'images',
-        'images',
-        true, -- Public bucket for product/shipment images
-        5242880, -- 5MB limit
-        ARRAY['image/jpeg', 'image/jpg', 'image/png', 'image/webp']::text[]
-    ),
-    (
-        'documents',
-        'documents',
-        false, -- Private bucket for sensitive documents
-        10485760, -- 10MB limit
-        ARRAY['application/pdf', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']::text[]
-    )
-ON CONFLICT (id) DO UPDATE
-SET 
-    public = EXCLUDED.public,
-    file_size_limit = EXCLUDED.file_size_limit,
-    allowed_mime_types = EXCLUDED.allowed_mime_types;
+VALUES (
+  'images',
+  'images',
+  true, -- 공개 버킷으로 설정
+  5242880, -- 5MB 제한
+  ARRAY['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
+)
+ON CONFLICT (id) DO NOTHING;
 
--- ============================================================================
--- Storage Policies for 'images' bucket
--- ============================================================================
+-- RLS 정책: 인증된 사용자만 업로드 가능
+CREATE POLICY "Authenticated users can upload images"
+ON storage.objects
+FOR INSERT
+TO authenticated
+WITH CHECK (bucket_id = 'images');
 
--- Allow authenticated users to view all images
-CREATE POLICY "Public images are viewable by everyone"
-ON storage.objects FOR SELECT
+-- RLS 정책: 모든 사용자가 이미지 조회 가능 (공개 버킷)
+CREATE POLICY "Anyone can view images"
+ON storage.objects
+FOR SELECT
+TO public
 USING (bucket_id = 'images');
 
--- Allow authenticated users to upload images to their own folder
-CREATE POLICY "Authenticated users can upload images"
-ON storage.objects FOR INSERT
-WITH CHECK (
-    bucket_id = 'images' 
-    AND auth.uid() IS NOT NULL
-    AND (
-        -- Allow uploads to product/ folder for Admin and OrderManager
-        (
-            storage.foldername(name)[1] = 'product'
-            AND EXISTS (
-                SELECT 1 FROM profiles 
-                WHERE id = auth.uid() 
-                AND role IN ('Admin', 'OrderManager')
-            )
-        )
-        OR
-        -- Allow uploads to shipment/ folder for Admin and ShipManager
-        (
-            storage.foldername(name)[1] = 'shipment'
-            AND EXISTS (
-                SELECT 1 FROM profiles 
-                WHERE id = auth.uid() 
-                AND role IN ('Admin', 'ShipManager')
-            )
-        )
-    )
-);
+-- RLS 정책: 인증된 사용자는 자신이 올린 이미지 삭제 가능
+CREATE POLICY "Users can delete own images"
+ON storage.objects
+FOR DELETE
+TO authenticated
+USING (bucket_id = 'images' AND auth.uid()::text = owner::text);
 
--- Allow users to update their own images
-CREATE POLICY "Users can update their own images"
-ON storage.objects FOR UPDATE
-USING (
-    bucket_id = 'images'
-    AND auth.uid() IS NOT NULL
-    AND (
-        -- Check if user uploaded this image (path contains their user ID)
-        storage.foldername(name)[2] = auth.uid()::text
-        OR
-        -- Admin can update any image
-        EXISTS (
-            SELECT 1 FROM profiles 
-            WHERE id = auth.uid() 
-            AND role = 'Admin'
-        )
-    )
-);
-
--- Allow users to delete their own images
-CREATE POLICY "Users can delete their own images"
-ON storage.objects FOR DELETE
-USING (
-    bucket_id = 'images'
-    AND auth.uid() IS NOT NULL
-    AND (
-        -- Check if user uploaded this image (path contains their user ID)
-        storage.foldername(name)[2] = auth.uid()::text
-        OR
-        -- Admin can delete any image
-        EXISTS (
-            SELECT 1 FROM profiles 
-            WHERE id = auth.uid() 
-            AND role = 'Admin'
-        )
-    )
-);
-
--- ============================================================================
--- Storage Policies for 'documents' bucket
--- ============================================================================
-
--- Only Admin can view documents
-CREATE POLICY "Admin can view all documents"
-ON storage.objects FOR SELECT
-USING (
-    bucket_id = 'documents'
-    AND EXISTS (
-        SELECT 1 FROM profiles 
-        WHERE id = auth.uid() 
-        AND role = 'Admin'
-    )
-);
-
--- Only Admin can upload documents
-CREATE POLICY "Admin can upload documents"
-ON storage.objects FOR INSERT
-WITH CHECK (
-    bucket_id = 'documents'
-    AND EXISTS (
-        SELECT 1 FROM profiles 
-        WHERE id = auth.uid() 
-        AND role = 'Admin'
-    )
-);
-
--- Only Admin can update documents
-CREATE POLICY "Admin can update documents"
-ON storage.objects FOR UPDATE
-USING (
-    bucket_id = 'documents'
-    AND EXISTS (
-        SELECT 1 FROM profiles 
-        WHERE id = auth.uid() 
-        AND role = 'Admin'
-    )
-);
-
--- Only Admin can delete documents
-CREATE POLICY "Admin can delete documents"
-ON storage.objects FOR DELETE
-USING (
-    bucket_id = 'documents'
-    AND EXISTS (
-        SELECT 1 FROM profiles 
-        WHERE id = auth.uid() 
-        AND role = 'Admin'
-    )
-);
-
--- ============================================================================
--- Helper Functions for Storage
--- ============================================================================
-
--- Function to get image URL
-CREATE OR REPLACE FUNCTION get_image_url(path TEXT)
-RETURNS TEXT AS $$
-BEGIN
-    IF path IS NULL OR path = '' THEN
-        RETURN NULL;
-    END IF;
-    
-    -- Return the public URL for the image
-    RETURN 'https://' || current_setting('app.settings.supabase_url', true) || 
-           '/storage/v1/object/public/images/' || path;
-END;
-$$ LANGUAGE plpgsql;
-
--- Function to clean up orphaned images (images not referenced in products or shipments)
-CREATE OR REPLACE FUNCTION cleanup_orphaned_images()
-RETURNS TABLE(deleted_path TEXT) AS $$
-DECLARE
-    image_path TEXT;
-BEGIN
-    -- Find orphaned product images
-    FOR image_path IN
-        SELECT DISTINCT unnest(storage.foldername(name)) as path
-        FROM storage.objects
-        WHERE bucket_id = 'images'
-        AND storage.foldername(name)[1] = 'product'
-        AND name NOT IN (
-            SELECT image_url FROM products WHERE image_url IS NOT NULL
-        )
-        AND created_at < NOW() - INTERVAL '7 days' -- Only delete if older than 7 days
-    LOOP
-        -- Delete the orphaned image
-        DELETE FROM storage.objects WHERE name = image_path;
-        deleted_path := image_path;
-        RETURN NEXT;
-    END LOOP;
-    
-    -- Find orphaned shipment images
-    FOR image_path IN
-        SELECT DISTINCT unnest(storage.foldername(name)) as path
-        FROM storage.objects
-        WHERE bucket_id = 'images'
-        AND storage.foldername(name)[1] = 'shipment'
-        AND name NOT IN (
-            SELECT shipment_photo_url FROM shipments WHERE shipment_photo_url IS NOT NULL
-            UNION
-            SELECT receipt_photo_url FROM shipments WHERE receipt_photo_url IS NOT NULL
-        )
-        AND created_at < NOW() - INTERVAL '7 days'
-    LOOP
-        -- Delete the orphaned image
-        DELETE FROM storage.objects WHERE name = image_path;
-        deleted_path := image_path;
-        RETURN NEXT;
-    END LOOP;
-    
-    RETURN;
-END;
-$$ LANGUAGE plpgsql;
-
--- ============================================================================
--- Usage Instructions
--- ============================================================================
-
--- 1. Run this script in Supabase SQL Editor after creating your project
--- 2. The storage structure will be:
---    images/
---      product/{user_id}/{timestamp}.{ext}  -- Product images
---      shipment/{user_id}/{timestamp}.{ext} -- Shipment photos
---    documents/
---      exports/{date}/{filename}.xlsx       -- Excel exports
---      reports/{date}/{filename}.pdf        -- PDF reports
-
--- 3. Image URLs will be publicly accessible at:
---    https://YOUR_PROJECT.supabase.co/storage/v1/object/public/images/...
-
--- 4. To clean up orphaned images periodically, you can run:
---    SELECT * FROM cleanup_orphaned_images();
---    (Consider setting this up as a scheduled job)
+-- RLS 정책: 인증된 사용자는 자신이 올린 이미지 수정 가능
+CREATE POLICY "Users can update own images"
+ON storage.objects
+FOR UPDATE
+TO authenticated
+USING (bucket_id = 'images' AND auth.uid()::text = owner::text)
+WITH CHECK (bucket_id = 'images' AND auth.uid()::text = owner::text);

@@ -8,6 +8,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { MobileBottomNav } from '@/components/Navigation';
+import { exportToExcel } from '@/lib/utils/excel';
 
 interface CashbookPageProps {
   params: { locale: string };
@@ -16,7 +17,7 @@ interface CashbookPageProps {
 interface Transaction {
   id: string;
   transactionDate: string;
-  type: 'sale' | 'inbound' | 'shipping' | 'adjustment' | 'refund';
+  type: string; // Changed to string to support dynamic types
   amount: number;
   currency: 'KRW' | 'CNY';
   fxRate: number;
@@ -29,6 +30,13 @@ interface Transaction {
   accountNo?: string;
   createdAt: string;
   createdBy: string;
+}
+
+interface TransactionType {
+  id: string;
+  name: { ko: string; 'zh-CN': string };
+  color: string;
+  active: boolean;
 }
 
 // Mock 데이터
@@ -139,12 +147,24 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
   const [filterType, setFilterType] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [userRole, setUserRole] = useState<string>('');
+  const [isMobile, setIsMobile] = useState(false);
   const router = useRouter();
+  
+  // 거래유형 설정 불러오기
+  const [transactionTypes, setTransactionTypes] = useState<TransactionType[]>([
+    { id: 'shipping', name: { ko: '배송', 'zh-CN': '配送' }, color: '#f59e0b', active: true },
+    { id: 'sale', name: { ko: '판매', 'zh-CN': '销售' }, color: '#10b981', active: true },
+    { id: 'inbound', name: { ko: '입고', 'zh-CN': '入库' }, color: '#3b82f6', active: true },
+    { id: 'order', name: { ko: '주문', 'zh-CN': '订单' }, color: '#8b5cf6', active: true },
+    { id: 'adjustment', name: { ko: '조정', 'zh-CN': '调整' }, color: '#f59e0b', active: true },
+    { id: 'refund', name: { ko: '환불', 'zh-CN': '退款' }, color: '#ef4444', active: true },
+    { id: 'cancel', name: { ko: '취소', 'zh-CN': '取消' }, color: '#6b7280', active: true },
+  ]);
 
   // 거래 추가 폼 상태
   const [addForm, setAddForm] = useState({
     transactionDate: new Date().toISOString().split('T')[0],
-    type: 'adjustment' as 'adjustment' | 'shipping',
+    type: 'adjustment', // Changed to string to support dynamic types
     amount: '',
     currency: 'KRW' as 'KRW' | 'CNY',
     fxRate: '1',
@@ -268,18 +288,32 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
 
   // 거래 유형별 색상
   const getTypeColor = (type: string) => {
-    switch (type) {
-      case 'sale': return { bg: '#dcfce7', text: '#166534' };
-      case 'inbound': return { bg: '#dbeafe', text: '#1e40af' };
-      case 'shipping': return { bg: '#fee2e2', text: '#dc2626' };
-      case 'adjustment': return { bg: '#fef3c7', text: '#92400e' };
-      case 'refund': return { bg: '#fce7f3', text: '#9f1239' };
-      default: return { bg: '#f3f4f6', text: '#374151' };
+    const transType = transactionTypes.find(t => t.id === type);
+    if (transType) {
+      // Convert hex to light background with darker text
+      const hexToRgb = (hex: string) => {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? {
+          r: parseInt(result[1], 16),
+          g: parseInt(result[2], 16),
+          b: parseInt(result[3], 16)
+        } : { r: 0, g: 0, b: 0 };
+      };
+      const rgb = hexToRgb(transType.color);
+      return { 
+        bg: `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.1)`, 
+        text: transType.color 
+      };
     }
+    return { bg: '#f3f4f6', text: '#374151' };
   };
 
   // 거래 유형 라벨
   const getTypeLabel = (type: string) => {
+    const transType = transactionTypes.find(t => t.id === type);
+    if (transType) {
+      return transType.name[locale as 'ko' | 'zh-CN'];
+    }
     return t[type as keyof typeof t] || type;
   };
 
@@ -290,7 +324,26 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
       return;
     }
     setUserRole(role);
+    
+    // Load transaction types from localStorage
+    const savedTypes = localStorage.getItem('transactionTypes');
+    if (savedTypes) {
+      try {
+        setTransactionTypes(JSON.parse(savedTypes));
+      } catch (e) {
+        console.error('Failed to parse saved transaction types:', e);
+      }
+    }
   }, [locale, router]);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   useEffect(() => {
     // 필터링 로직
@@ -444,11 +497,13 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
               }}
             >
               <option value="all">{t.all}</option>
-              <option value="sale">{t.sale}</option>
-              <option value="inbound">{t.inbound}</option>
-              <option value="shipping">{t.shipping}</option>
-              <option value="adjustment">{t.adjustment}</option>
-              <option value="refund">{t.refund}</option>
+              {transactionTypes
+                .filter(type => type.active)
+                .map(type => (
+                  <option key={type.id} value={type.id}>
+                    {type.name[locale as 'ko' | 'zh-CN']}
+                  </option>
+                ))}
             </select>
           </div>
 
@@ -551,6 +606,50 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
             {summary.count}
           </div>
         </div>
+      </div>
+
+      {/* 엑셀 내보내기 버튼 */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+        <button
+          onClick={() => {
+            const excelData = filteredTransactions.map(transaction => ({
+              ...transaction,
+              typeLabel: getTypeLabel(transaction.type),
+              amountIn: transaction.amountKrw > 0 ? transaction.amountKrw : 0,
+              amountOut: transaction.amountKrw < 0 ? Math.abs(transaction.amountKrw) : 0
+            }));
+            
+            exportToExcel({
+              data: excelData,
+              columns: [
+                { key: 'transactionDate', header: t.date },
+                { key: 'typeLabel', header: t.type },
+                { key: 'description', header: t.description },
+                { key: 'refNo', header: t.reference },
+                { key: 'amountIn', header: t.amountIn },
+                { key: 'amountOut', header: t.amountOut },
+                { key: 'note', header: t.note },
+                { key: 'createdBy', header: t.createdBy }
+              ],
+              fileName: `cashbook-${new Date().toISOString().split('T')[0]}.xlsx`,
+              sheetName: t.title
+            });
+          }}
+          style={{
+            padding: '0.5rem 1rem',
+            backgroundColor: '#10b981',
+            color: 'white',
+            border: 'none',
+            borderRadius: '0.375rem',
+            fontSize: '0.875rem',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem'
+          }}
+        >
+          📊 Excel
+        </button>
       </div>
 
       {/* 거래 목록 */}
@@ -697,7 +796,7 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
                 </label>
                 <select
                   value={addForm.type}
-                  onChange={(e) => setAddForm({ ...addForm, type: e.target.value as 'adjustment' | 'shipping' })}
+                  onChange={(e) => setAddForm({ ...addForm, type: e.target.value })}
                   style={{
                     width: '100%',
                     padding: '0.5rem',
@@ -706,8 +805,14 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
                     fontSize: '0.875rem'
                   }}
                 >
-                  <option value="adjustment">{t.adjustment}</option>
-                  <option value="shipping">{t.shipping}</option>
+                  <option value="">{t.selectType}</option>
+                  {transactionTypes
+                    .filter(type => type.active)
+                    .map(type => (
+                      <option key={type.id} value={type.id}>
+                        {type.name[locale as 'ko' | 'zh-CN']}
+                      </option>
+                    ))}
                 </select>
               </div>
 
@@ -1084,7 +1189,7 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
       )}
       
       {/* 표준화된 모바일 하단 네비게이션 */}
-      <MobileBottomNav locale={locale} />
+      {isMobile && <MobileBottomNav locale={locale} />}
     </div>
   );
 }

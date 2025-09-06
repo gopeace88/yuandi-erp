@@ -8,6 +8,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api/client';
+import { exportToExcel } from '@/lib/utils/excel';
 import OrdersPageMobile from './OrdersPageMobile';
 
 interface OrdersPageProps {
@@ -434,7 +435,36 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
 
   const handleStatusChange = async (orderId: string, newStatus: Order['status']) => {
     try {
-      await api.orders.updateStatus(orderId, newStatus);
+      // 배송등록 처리 - 배송관리 페이지로 이동
+      if (newStatus === 'SHIPPED') {
+        // selectedOrder를 sessionStorage에 저장
+        if (selectedOrder) {
+          sessionStorage.setItem('pendingShipment', JSON.stringify(selectedOrder));
+        }
+        // 배송관리 페이지로 이동
+        router.push(`/${locale}/shipments`);
+        return;
+      }
+      
+      // 주문취소 처리
+      if (newStatus === 'CANCELLED' && selectedOrder) {
+        // 주문 상태 변경
+        await api.orders.updateStatus(orderId, newStatus);
+        
+        // 출납장부에 환불 기록 추가 (실제 구현 시 API 호출)
+        console.log('환불 기록 추가:', {
+          type: 'refund',
+          amount: -selectedOrder.totalAmount,
+          refType: 'order',
+          refNo: selectedOrder.orderNo,
+          description: `주문 취소 - ${selectedOrder.customerName}`,
+        });
+        
+        alert(locale === 'ko' ? '주문이 취소되었습니다.' : '订单已取消');
+      } else {
+        // 기타 상태 변경
+        await api.orders.updateStatus(orderId, newStatus);
+      }
       
       // 주문 목록 새로고침
       await loadOrders();
@@ -511,7 +541,8 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
 
       {/* 필터 및 검색 */}
       <div style={{ maxWidth: '1200px', margin: '2rem auto', padding: '0 2rem' }}>
-        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', gap: '1rem', flex: 1 }}>
           <input
             type="text"
             placeholder={texts.search}
@@ -540,6 +571,41 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
             <option value="CANCELLED">{texts.cancelled}</option>
             <option value="REFUNDED">{texts.refunded}</option>
           </select>
+          </div>
+          <button
+            onClick={() => {
+              const columns = [
+                { header: texts.orderNo, key: 'orderNo', width: 20 },
+                { header: texts.orderDate, key: 'orderDate', width: 15 },
+                { header: texts.customerName, key: 'customerName', width: 20 },
+                { header: texts.customerPhone, key: 'customerPhone', width: 20 },
+                { header: texts.status, key: 'status', width: 15 },
+                { header: texts.totalAmount, key: 'totalAmount', width: 20 }
+              ];
+              
+              exportToExcel({
+                data: filteredOrders,
+                columns,
+                fileName: locale === 'ko' ? '주문내역' : 'orders',
+                sheetName: locale === 'ko' ? '주문' : 'Orders'
+              });
+            }}
+            style={{
+              padding: '0.5rem 1rem',
+              backgroundColor: '#10b981',
+              color: 'white',
+              border: 'none',
+              borderRadius: '0.375rem',
+              fontSize: '0.875rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            📥 {locale === 'ko' ? '엑셀 저장' : locale === 'zh-CN' ? '导出Excel' : 'Export'}
+          </button>
         </div>
 
         {/* 주문 목록 */}
@@ -948,13 +1014,17 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
                         fontSize: '0.875rem'
                       }}
                     >
-                      {texts.shipOrder}
+                      {locale === 'ko' ? '배송등록' : '配送登记'}
                     </button>
                     <button
-                      onClick={() => handleStatusChange(selectedOrder.id, 'CANCELLED')}
+                      onClick={() => {
+                        if (confirm(locale === 'ko' ? '정말 주문을 취소하시겠습니까?\n취소 시 출납장부에 환불 기록이 추가됩니다.' : '确定要取消订单吗？\n取消后将在现金日记账中添加退款记录。')) {
+                          handleStatusChange(selectedOrder.id, 'CANCELLED');
+                        }
+                      }}
                       style={{
                         padding: '0.5rem 1rem',
-                        backgroundColor: '#6b7280',
+                        backgroundColor: '#ef4444',
                         color: 'white',
                         borderRadius: '0.375rem',
                         border: 'none',
@@ -962,7 +1032,7 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
                         fontSize: '0.875rem'
                       }}
                     >
-                      {texts.cancelOrder}
+                      {locale === 'ko' ? '주문취소' : '取消订单'}
                     </button>
                   </>
                 )}

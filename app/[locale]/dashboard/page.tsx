@@ -7,6 +7,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { MobileBottomNav } from '@/components/Navigation';
+import { exportToExcel } from '@/lib/utils/excel';
 import './dashboard.css';
 
 interface DashboardPageProps {
@@ -16,6 +17,7 @@ interface DashboardPageProps {
 export default function DashboardPage({ params: { locale } }: DashboardPageProps) {
   const router = useRouter();
   const [currentTime, setCurrentTime] = useState('');
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     // 클라이언트 사이드에서만 시간 설정
@@ -25,6 +27,16 @@ export default function DashboardPage({ params: { locale } }: DashboardPageProps
       setCurrentTime(new Date().toLocaleString());
     }, 1000);
     return () => clearInterval(timer);
+  }, []);
+
+  // 모바일 체크
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
   const getTitle = () => {
@@ -251,9 +263,65 @@ export default function DashboardPage({ params: { locale } }: DashboardPageProps
           borderRadius: '0.5rem',
           boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
         }}>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1.5rem' }}>
-            {locale === 'ko' ? '최근 주문' : locale === 'zh-CN' ? '最近订单' : 'Recent Orders'}
-          </h2>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>
+              {locale === 'ko' ? '최근 주문' : locale === 'zh-CN' ? '最近订单' : 'Recent Orders'}
+            </h2>
+            <button
+              onClick={() => {
+                const orders = [
+                  { date: '2024-01-05', name: locale === 'ko' ? '김철수' : '张三', status: 'PAID', amount: locale === 'ko' ? '₩89,000' : '¥520' },
+                  { date: '2024-01-05', name: locale === 'ko' ? '이영희' : '李四', status: 'SHIPPED', amount: locale === 'ko' ? '₩125,000' : '¥730' },
+                  { date: '2024-01-05', name: locale === 'ko' ? '박지민' : '王五', status: 'DONE', amount: locale === 'ko' ? '₩67,000' : '¥390' },
+                  { date: '2024-01-04', name: locale === 'ko' ? '최수현' : '赵六', status: 'PAID', amount: locale === 'ko' ? '₩156,000' : '¥910' },
+                  { date: '2024-01-04', name: locale === 'ko' ? '정하나' : '钱七', status: 'SHIPPED', amount: locale === 'ko' ? '₩98,000' : '¥573' },
+                  { date: '2024-01-04', name: locale === 'ko' ? '강민준' : '孙八', status: 'PAID', amount: locale === 'ko' ? '₩234,000' : '¥1,370' },
+                  { date: '2024-01-03', name: locale === 'ko' ? '윤서연' : '周九', status: 'DONE', amount: locale === 'ko' ? '₩45,000' : '¥263' },
+                  { date: '2024-01-03', name: locale === 'ko' ? '임도윤' : '吴十', status: 'PAID', amount: locale === 'ko' ? '₩187,000' : '¥1,095' },
+                  { date: '2024-01-03', name: locale === 'ko' ? '황예진' : '郑一', status: 'SHIPPED', amount: locale === 'ko' ? '₩76,000' : '¥445' },
+                  { date: '2024-01-02', name: locale === 'ko' ? '송지우' : '冯二', status: 'DONE', amount: locale === 'ko' ? '₩134,000' : '¥784' },
+                  { date: '2024-01-02', name: locale === 'ko' ? '한승우' : '陈三', status: 'PAID', amount: locale === 'ko' ? '₩298,000' : '¥1,744' },
+                  { date: '2024-01-02', name: locale === 'ko' ? '조예린' : '楚四', status: 'SHIPPED', amount: locale === 'ko' ? '₩167,000' : '¥977' },
+                  { date: '2024-01-01', name: locale === 'ko' ? '서준혁' : '魏五', status: 'PAID', amount: locale === 'ko' ? '₩223,000' : '¥1,305' },
+                  { date: '2024-01-01', name: locale === 'ko' ? '안소희' : '蒋六', status: 'DONE', amount: locale === 'ko' ? '₩89,000' : '¥520' },
+                  { date: '2024-01-01', name: locale === 'ko' ? '류태양' : '沈七', status: 'PAID', amount: locale === 'ko' ? '₩145,000' : '¥848' },
+                  { date: '2023-12-31', name: locale === 'ko' ? '문지원' : '韩八', status: 'SHIPPED', amount: locale === 'ko' ? '₩201,000' : '¥1,176' },
+                  { date: '2023-12-31', name: locale === 'ko' ? '오현우' : '杨九', status: 'DONE', amount: locale === 'ko' ? '₩112,000' : '¥655' },
+                  { date: '2023-12-30', name: locale === 'ko' ? '배수진' : '朱十', status: 'PAID', amount: locale === 'ko' ? '₩178,000' : '¥1,041' },
+                  { date: '2023-12-30', name: locale === 'ko' ? '신유나' : '秦一', status: 'SHIPPED', amount: locale === 'ko' ? '₩256,000' : '¥1,498' },
+                  { date: '2023-12-30', name: locale === 'ko' ? '권민석' : '许二', status: 'PAID', amount: locale === 'ko' ? '₩94,000' : '¥550' }
+                ];
+                
+                const columns = [
+                  { header: locale === 'ko' ? '날짜' : locale === 'zh-CN' ? '日期' : 'Date', key: 'date', width: 15 },
+                  { header: locale === 'ko' ? '고객명' : locale === 'zh-CN' ? '客户' : 'Customer', key: 'name', width: 20 },
+                  { header: locale === 'ko' ? '상태' : locale === 'zh-CN' ? '状态' : 'Status', key: 'status', width: 15 },
+                  { header: locale === 'ko' ? '금액' : locale === 'zh-CN' ? '金额' : 'Amount', key: 'amount', width: 20 }
+                ];
+                
+                exportToExcel({
+                  data: orders,
+                  columns,
+                  fileName: locale === 'ko' ? '최근주문' : 'recent_orders',
+                  sheetName: locale === 'ko' ? '최근주문' : 'Recent Orders'
+                });
+              }}
+              style={{
+                padding: '0.5rem 1rem',
+                backgroundColor: '#10b981',
+                color: 'white',
+                border: 'none',
+                borderRadius: '0.375rem',
+                fontSize: '0.875rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}
+            >
+              📥 {locale === 'ko' ? '엑셀 저장' : locale === 'zh-CN' ? '导出Excel' : 'Export Excel'}
+            </button>
+          </div>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
@@ -352,8 +420,8 @@ export default function DashboardPage({ params: { locale } }: DashboardPageProps
         </div>
       </div>
 
-      {/* 표준화된 모바일 하단 네비게이션 */}
-      <MobileBottomNav locale={locale} />
+      {/* 모바일에서만 하단 네비게이션 표시 */}
+      {isMobile && <MobileBottomNav locale={locale} />}
     </div>
   );
 }

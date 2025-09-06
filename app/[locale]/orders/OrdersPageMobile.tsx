@@ -459,18 +459,39 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
                 </div>
               </div>
               
-              <div className="mt-6 flex gap-2">
+              <div className="mt-6 flex flex-col gap-2">
                 {selectedOrder.status === 'PAID' && (
-                  <button
-                    onClick={() => router.push(`/${locale}/shipments`)}
-                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md font-medium"
-                  >
-                    {t.ship}
-                  </button>
+                  <>
+                    <button
+                      onClick={() => {
+                        // sessionStorage에 주문 정보 저장
+                        sessionStorage.setItem('pendingShipment', JSON.stringify(selectedOrder));
+                        // 배송관리 페이지로 이동
+                        router.push(`/${locale}/shipments`);
+                      }}
+                      className="w-full px-4 py-2 bg-amber-500 text-white rounded-md font-medium"
+                    >
+                      {locale === 'ko' ? '배송등록' : '配送登记'}
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (confirm(locale === 'ko' ? '정말 주문을 취소하시겠습니까?\n취소 시 출납장부에 환불 기록이 추가됩니다.' : '确定要取消订单吗？\n取消后将在现金日记账中添加退款记录。')) {
+                          // 주문 취소 처리
+                          console.log('주문 취소:', selectedOrder.orderNo);
+                          console.log('환불 금액:', selectedOrder.totalAmount);
+                          alert(locale === 'ko' ? '주문이 취소되었습니다.' : '订单已取消');
+                          setShowDetailModal(false);
+                        }
+                      }}
+                      className="w-full px-4 py-2 bg-red-500 text-white rounded-md font-medium"
+                    >
+                      {locale === 'ko' ? '주문취소' : '取消订单'}
+                    </button>
+                  </>
                 )}
                 <button
                   onClick={() => setShowDetailModal(false)}
-                  className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-md font-medium"
+                  className="w-full px-4 py-2 bg-gray-200 text-gray-800 rounded-md font-medium"
                 >
                   {locale === 'ko' ? '닫기' : '关闭'}
                 </button>

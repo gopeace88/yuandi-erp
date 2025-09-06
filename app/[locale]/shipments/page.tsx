@@ -8,6 +8,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { MobileBottomNav } from '@/components/Navigation';
+import { exportToExcel } from '@/lib/utils/excel';
+import ImageUpload from '@/components/common/ImageUpload';
 
 interface ShipmentsPageProps {
   params: { locale: string };
@@ -140,7 +142,18 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
   const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [userRole, setUserRole] = useState<string>('');
+  const [isMobile, setIsMobile] = useState(false);
   const router = useRouter();
+
+  // 모바일 체크
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // 배송 등록 폼 상태
   const [shipForm, setShipForm] = useState({
@@ -170,6 +183,8 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
       orderNo: '주문번호',
       orderDate: '주문일',
       customer: '고객',
+      phone: '전화번호',
+      product: '상품',
       items: '상품',
       address: '배송지',
       amount: '금액',
@@ -278,6 +293,39 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
       return;
     }
     setUserRole(role);
+    
+    // 주문관리에서 전달받은 주문 데이터 확인
+    const pendingShipmentData = sessionStorage.getItem('pendingShipment');
+    if (pendingShipmentData) {
+      const orderData = JSON.parse(pendingShipmentData);
+      
+      // Mock 데이터에 추가 (실제로는 API에서 로드)
+      const newOrder: Order = {
+        id: orderData.id,
+        orderNo: orderData.orderNo,
+        orderDate: orderData.orderDate,
+        customerName: orderData.customerName,
+        customerPhone: orderData.customerPhone,
+        shippingAddress: `${orderData.shippingAddress} ${orderData.shippingAddressDetail || ''}`.trim(),
+        status: 'PAID',
+        totalAmount: orderData.totalAmount,
+        items: [
+          { productName: orderData.productName || '', quantity: orderData.quantity || 1 }
+        ]
+      };
+      
+      // 중복 체크 후 추가
+      if (!orders.find(o => o.id === newOrder.id)) {
+        setOrders(prev => [...prev, newOrder]);
+      }
+      
+      // 모달 열기
+      setSelectedOrder(newOrder);
+      setShowShipModal(true);
+      
+      // sessionStorage 클리어
+      sessionStorage.removeItem('pendingShipment');
+    }
   }, [locale, router]);
 
   // 배송 대기 주문 필터링
@@ -455,6 +503,46 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
       {/* 배송 대기 목록 */}
       {selectedTab === 'pending' && (
         <div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+            <button
+              onClick={() => {
+                const columns = [
+                  { header: t.orderDate, key: 'orderDate', width: 15 },
+                  { header: t.customer, key: 'customerName', width: 20 },
+                  { header: locale === 'ko' ? '전화번호' : '电话号码', key: 'customerPhone', width: 20 },
+                  { header: t.address, key: 'shippingAddress', width: 35 },
+                  { header: t.items, key: 'productName', width: 25 },
+                  { header: t.status, key: 'status', width: 15 }
+                ];
+                
+                const dataToExport = pendingOrders.map(order => ({
+                  ...order,
+                  productName: order.items.map(item => `${item.productName} x ${item.quantity}`).join(', ')
+                }));
+                
+                exportToExcel({
+                  data: dataToExport,
+                  columns,
+                  fileName: locale === 'ko' ? '배송대기' : 'pending_shipments',
+                  sheetName: locale === 'ko' ? '배송대기' : 'Pending'
+                });
+              }}
+              style={{
+                padding: '0.5rem 1rem',
+                backgroundColor: '#10b981',
+                color: 'white',
+                border: 'none',
+                borderRadius: '0.375rem',
+                fontSize: '0.875rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}
+            >
+              📥 {locale === 'ko' ? '엑셀 저장' : locale === 'zh-CN' ? '导出Excel' : 'Export'}
+            </button>
+          </div>
           {pendingOrders.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '3rem', color: '#6b7280' }}>
               {t.noOrders}
@@ -553,6 +641,40 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
       {/* 배송 중/완료 목록 */}
       {selectedTab === 'shipped' && (
         <div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+            <button
+              onClick={() => {
+                const columns = [
+                  { header: t.orderNo, key: 'orderNo', width: 20 },
+                  { header: t.customer, key: 'customerName', width: 20 },
+                  { header: t.trackingNo, key: 'trackingNo', width: 20 },
+                  { header: t.courier, key: 'courier', width: 20 },
+                  { header: t.shippingFee, key: 'shippingFee', width: 15 }
+                ];
+                
+                exportToExcel({
+                  data: shippedOrders,
+                  columns,
+                  fileName: locale === 'ko' ? '배송중' : 'shipped_orders',
+                  sheetName: locale === 'ko' ? '배송중' : 'Shipped'
+                });
+              }}
+              style={{
+                padding: '0.5rem 1rem',
+                backgroundColor: '#10b981',
+                color: 'white',
+                border: 'none',
+                borderRadius: '0.375rem',
+                fontSize: '0.875rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}
+            >
+              📥 {locale === 'ko' ? '엑셀 저장' : locale === 'zh-CN' ? '导出Excel' : 'Export'}
+            </button>
+          </div>
           {shippedOrders.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '3rem', color: '#6b7280' }}>
               {t.noShipments}
@@ -875,45 +997,21 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
               </div>
             </div>
 
-            {/* 사진 URL */}
+            {/* 사진 업로드 */}
             <div style={{ marginBottom: '1.5rem' }}>
               <div style={{ display: 'grid', gap: '1rem' }}>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: '500' }}>
-                    {t.shipmentPhoto}
-                  </label>
-                  <input
-                    type="text"
-                    value={shipForm.shipmentPhotoUrl}
-                    onChange={(e) => setShipForm({ ...shipForm, shipmentPhotoUrl: e.target.value })}
-                    style={{
-                      width: '100%',
-                      padding: '0.5rem',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '0.375rem',
-                      fontSize: '0.875rem'
-                    }}
-                    placeholder="https://..."
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: '500' }}>
-                    {t.receiptPhoto}
-                  </label>
-                  <input
-                    type="text"
-                    value={shipForm.receiptPhotoUrl}
-                    onChange={(e) => setShipForm({ ...shipForm, receiptPhotoUrl: e.target.value })}
-                    style={{
-                      width: '100%',
-                      padding: '0.5rem',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '0.375rem',
-                      fontSize: '0.875rem'
-                    }}
-                    placeholder="https://..."
-                  />
-                </div>
+                <ImageUpload
+                  label={t.shipmentPhoto}
+                  value={shipForm.shipmentPhotoUrl}
+                  onChange={(url) => setShipForm({ ...shipForm, shipmentPhotoUrl: url })}
+                  locale={locale}
+                />
+                <ImageUpload
+                  label={t.receiptPhoto}
+                  value={shipForm.receiptPhotoUrl}
+                  onChange={(url) => setShipForm({ ...shipForm, receiptPhotoUrl: url })}
+                  locale={locale}
+                />
               </div>
             </div>
 
@@ -1191,8 +1289,8 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
         </div>
       )}
 
-      {/* 표준화된 모바일 하단 네비게이션 */}
-      <MobileBottomNav locale={locale} />
+      {/* 모바일에서만 하단 네비게이션 표시 */}
+      {isMobile && <MobileBottomNav locale={locale} />}
     </div>
   );
 }

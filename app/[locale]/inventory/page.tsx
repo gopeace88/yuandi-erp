@@ -8,6 +8,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api/client';
+import { exportToExcel } from '@/lib/utils/excel';
 import InventoryPageMobile from './InventoryPageMobile';
 
 interface InventoryPageProps {
@@ -617,6 +618,48 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
 
         {/* 상품 목록 */}
         <div style={{ backgroundColor: 'white', borderRadius: '0.5rem', overflow: 'hidden' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '1rem' }}>
+            <button
+              onClick={() => {
+                const columns = [
+                  { header: texts.sku, key: 'sku', width: 25 },
+                  { header: texts.productName, key: 'name', width: 25 },
+                  { header: texts.category, key: 'category', width: 15 },
+                  { header: texts.model, key: 'model', width: 15 },
+                  { header: texts.color, key: 'color', width: 15 },
+                  { header: texts.brand, key: 'brand', width: 15 },
+                  { header: texts.stock, key: 'onHand', width: 10 },
+                  { header: texts.cost, key: 'costCny', width: 15 },
+                  { header: texts.price, key: 'salePriceKrw', width: 20 },
+                  { header: texts.status, key: 'active', width: 10 }
+                ];
+                
+                exportToExcel({
+                  data: filteredProducts.map(p => ({
+                    ...p,
+                    active: p.active ? texts.active : texts.inactive
+                  })),
+                  columns,
+                  fileName: locale === 'ko' ? '재고현황' : 'inventory',
+                  sheetName: locale === 'ko' ? '재고' : 'Inventory'
+                });
+              }}
+              style={{
+                padding: '0.5rem 1rem',
+                backgroundColor: '#10b981',
+                color: 'white',
+                border: 'none',
+                borderRadius: '0.375rem',
+                fontSize: '0.875rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}
+            >
+              📥 {locale === 'ko' ? '엑셀 저장' : locale === 'zh-CN' ? '导出Excel' : 'Export'}
+            </button>
+          </div>
           {filteredProducts.length === 0 ? (
             <div style={{ padding: '3rem', textAlign: 'center', color: '#6b7280' }}>
               {texts.noProducts}
@@ -705,7 +748,46 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
 
         {/* 재고 이동 내역 */}
         <div style={{ marginTop: '2rem' }}>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1rem' }}>{texts.stockMovements}</h2>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>{texts.stockMovements}</h2>
+            <button
+              onClick={() => {
+                const columns = [
+                  { header: texts.date, key: 'date', width: 15 },
+                  { header: texts.productName, key: 'productName', width: 25 },
+                  { header: texts.movementType, key: 'type', width: 15 },
+                  { header: texts.quantity, key: 'quantity', width: 10 },
+                  { header: texts.balance, key: 'balanceAfter', width: 10 },
+                  { header: texts.note, key: 'note', width: 30 },
+                  { header: texts.operator, key: 'createdBy', width: 15 }
+                ];
+                
+                exportToExcel({
+                  data: movements.map(m => ({
+                    ...m,
+                    type: m.type === 'inbound' ? texts.inboundType : m.type === 'sale' ? texts.saleType : texts.adjustmentType
+                  })),
+                  columns,
+                  fileName: locale === 'ko' ? '재고이동내역' : 'stock_movements',
+                  sheetName: locale === 'ko' ? '재고이동' : 'Stock Movements'
+                });
+              }}
+              style={{
+                padding: '0.5rem 1rem',
+                backgroundColor: '#10b981',
+                color: 'white',
+                border: 'none',
+                borderRadius: '0.375rem',
+                fontSize: '0.875rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}
+            >
+              📥 {locale === 'ko' ? '엑셀 저장' : locale === 'zh-CN' ? '导出Excel' : 'Export'}
+            </button>
+          </div>
           <div style={{ backgroundColor: 'white', borderRadius: '0.5rem', overflow: 'hidden' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
@@ -1050,6 +1132,227 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
                   borderRadius: '0.375rem',
                   border: 'none',
                   cursor: 'pointer'
+                }}
+              >
+                {texts.save}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 상품 등록 모달 */}
+      {showProductModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 50
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '0.5rem',
+            width: '90%',
+            maxWidth: '600px',
+            maxHeight: '90vh',
+            overflow: 'auto',
+            padding: '2rem'
+          }}>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1.5rem' }}>
+              {texts.newProduct}
+            </h2>
+
+            {/* 상품 정보 */}
+            <div style={{ marginBottom: '1.5rem' }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '1rem' }}>{texts.productInfo}</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div style={{ gridColumn: 'span 2' }}>
+                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.productName} *</label>
+                  <input
+                    type="text"
+                    value={newProduct.name}
+                    onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
+                    required
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.category} *</label>
+                  <input
+                    type="text"
+                    value={newProduct.category}
+                    onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
+                    required
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.model} *</label>
+                  <input
+                    type="text"
+                    value={newProduct.model}
+                    onChange={(e) => setNewProduct({ ...newProduct, model: e.target.value })}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
+                    required
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.color}</label>
+                  <input
+                    type="text"
+                    value={newProduct.color}
+                    onChange={(e) => setNewProduct({ ...newProduct, color: e.target.value })}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.brand} *</label>
+                  <input
+                    type="text"
+                    value={newProduct.brand}
+                    onChange={(e) => setNewProduct({ ...newProduct, brand: e.target.value })}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* 가격 정보 */}
+            <div style={{ marginBottom: '1.5rem' }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '1rem' }}>{texts.priceInfo}</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.cost} *</label>
+                  <input
+                    type="number"
+                    value={newProduct.costCny}
+                    onChange={(e) => setNewProduct({ ...newProduct, costCny: parseFloat(e.target.value) || 0 })}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
+                    required
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.price} *</label>
+                  <input
+                    type="number"
+                    value={newProduct.salePriceKrw}
+                    onChange={(e) => setNewProduct({ ...newProduct, salePriceKrw: parseFloat(e.target.value) || 0 })}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
+                    required
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.lowStockThreshold}</label>
+                  <input
+                    type="number"
+                    value={newProduct.lowStockThreshold}
+                    onChange={(e) => setNewProduct({ ...newProduct, lowStockThreshold: parseInt(e.target.value) || 5 })}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* 이미지 업로드 */}
+            <div style={{ marginBottom: '1.5rem' }}>
+              <ImageUpload
+                label={texts.imageUpload}
+                value={newProduct.imageUrl}
+                onChange={(url) => setNewProduct({ ...newProduct, imageUrl: url })}
+                locale={locale}
+              />
+            </div>
+
+            {/* 설명 */}
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.description}</label>
+              <textarea
+                value={newProduct.description}
+                onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem', minHeight: '80px' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+              <button
+                onClick={() => {
+                  setShowProductModal(false);
+                  setNewProduct({
+                    name: '',
+                    category: '',
+                    model: '',
+                    color: '',
+                    brand: '',
+                    costCny: 0,
+                    salePriceKrw: 0,
+                    lowStockThreshold: 5,
+                    description: '',
+                    imageUrl: '',
+                  });
+                }}
+                style={{
+                  padding: '0.5rem 1rem',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '0.375rem',
+                  backgroundColor: 'white',
+                  cursor: 'pointer'
+                }}
+              >
+                {texts.cancel}
+              </button>
+              <button
+                onClick={() => {
+                  // 상품 등록 로직
+                  const newId = Date.now().toString();
+                  const sku = `${newProduct.category.toUpperCase().slice(0, 3)}-${newProduct.model.toUpperCase().replace(/\s+/g, '')}-${newProduct.color?.toUpperCase().slice(0, 3) || 'NA'}-${newProduct.brand.toUpperCase().slice(0, 3)}-${newId.slice(-5)}`;
+                  
+                  const product: Product = {
+                    id: newId,
+                    sku,
+                    name: newProduct.name,
+                    category: newProduct.category,
+                    model: newProduct.model,
+                    color: newProduct.color,
+                    brand: newProduct.brand,
+                    costCny: newProduct.costCny,
+                    salePriceKrw: newProduct.salePriceKrw,
+                    onHand: 0,
+                    lowStockThreshold: newProduct.lowStockThreshold,
+                    imageUrl: newProduct.imageUrl,
+                    description: newProduct.description,
+                    active: true,
+                  };
+                  
+                  setProducts([...products, product]);
+                  setShowProductModal(false);
+                  setNewProduct({
+                    name: '',
+                    category: '',
+                    model: '',
+                    color: '',
+                    brand: '',
+                    costCny: 0,
+                    salePriceKrw: 0,
+                    lowStockThreshold: 5,
+                    description: '',
+                    imageUrl: '',
+                  });
+                }}
+                disabled={!newProduct.name || !newProduct.category || !newProduct.model || !newProduct.brand}
+                style={{
+                  padding: '0.5rem 1rem',
+                  backgroundColor: newProduct.name && newProduct.category && newProduct.model && newProduct.brand ? '#2563eb' : '#9ca3af',
+                  color: 'white',
+                  borderRadius: '0.375rem',
+                  border: 'none',
+                  cursor: newProduct.name && newProduct.category && newProduct.model && newProduct.brand ? 'pointer' : 'not-allowed'
                 }}
               >
                 {texts.save}
