@@ -266,7 +266,6 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
             )
           )
         `)
-        .in('status', ['paid', 'shipped', 'done'])
         .order('created_at', { ascending: false });
       
       console.log('📋 주문 조회 결과:', {
@@ -437,6 +436,7 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
 
   // 배송 대기 주문 필터링
   const pendingOrders = orders.filter(order => {
+    // PAID 상태이면서 아직 배송 정보가 없는 주문
     const isPaid = order.status === 'PAID';
     const hasNoShipment = !shipments.find(s => s.orderId === order.id);
     const matchesSearch = searchTerm === '' || 
@@ -534,12 +534,21 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
   
   // 디버깅: 필터링된 데이터 확인
   useEffect(() => {
+    // 상태별 주문 수 계산
+    const statusCounts = orders.reduce((acc, order) => {
+      acc[order.status] = (acc[order.status] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
     console.log('📊 현재 표시할 데이터:', {
       tab: selectedTab,
       pendingOrdersCount: pendingOrders.length,
       shippedOrdersCount: shippedOrders.length,
       totalOrdersLoaded: orders.length,
-      totalShipmentsLoaded: shipments.length
+      totalShipmentsLoaded: shipments.length,
+      statusBreakdown: statusCounts,
+      ordersWithShipment: orders.filter(o => shipments.find(s => s.orderId === o.id)).length,
+      ordersWithoutShipment: orders.filter(o => !shipments.find(s => s.orderId === o.id)).length
     });
   }, [selectedTab, pendingOrders.length, shippedOrders.length, orders.length, shipments.length]);
 
