@@ -275,6 +275,15 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
         firstOrder: ordersData?.[0]
       });
       
+      // 상태값 확인을 위한 디버깅
+      if (ordersData && ordersData.length > 0) {
+        console.log('🔍 주문 상태 확인:', ordersData.map(o => ({
+          order_number: o.order_number,
+          status: o.status,
+          status_type: typeof o.status
+        })));
+      }
+      
       if (ordersError) {
         console.error('❌ 주문 데이터 로드 실패:', ordersError);
         alert(`주문 데이터 로드 실패: ${ordersError.message}`);
@@ -289,7 +298,7 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
           customerName: order.customer_name,
           customerPhone: order.customer_phone,
           shippingAddress: `${order.shipping_address_line1} ${order.shipping_address_line2 || ''}`.trim(),
-          status: order.status as 'PAID' | 'SHIPPED' | 'DONE' | 'CANCELLED' | 'REFUNDED',
+          status: (order.status?.toUpperCase() || 'PAID') as 'PAID' | 'SHIPPED' | 'DONE' | 'CANCELLED' | 'REFUNDED',
           totalAmount: order.total_krw,
           items: order.order_items.map((item: any) => ({
             productName: item.products?.name || '',
@@ -297,7 +306,10 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
           }))
         }));
         
+        console.log('✅ 포맷된 주문 데이터:', formattedOrders.length + '개');
+        console.log('첫 번째 주문 상세:', formattedOrders[0]);
         setOrders(formattedOrders);
+        console.log('📝 상태 업데이트 완료');
       }
     } catch (error) {
       console.error('주문 데이터 로드 중 오류:', error);
@@ -424,14 +436,28 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
   }, [locale, router]);
 
   // 배송 대기 주문 필터링
-  const pendingOrders = orders.filter(order => 
-    order.status === 'PAID' && 
-    !shipments.find(s => s.orderId === order.id) &&
-    (searchTerm === '' || 
-     order.orderNo.includes(searchTerm) ||
-     order.customerName.includes(searchTerm) ||
-     order.customerPhone.includes(searchTerm))
-  );
+  const pendingOrders = orders.filter(order => {
+    const isPaid = order.status === 'PAID';
+    const hasNoShipment = !shipments.find(s => s.orderId === order.id);
+    const matchesSearch = searchTerm === '' || 
+      order.orderNo.includes(searchTerm) ||
+      order.customerName.includes(searchTerm) ||
+      order.customerPhone.includes(searchTerm);
+    
+    // 디버깅을 위한 로그
+    if (orders.indexOf(order) === 0) {
+      console.log('🔍 필터링 체크 (첫 번째 주문):', {
+        orderNo: order.orderNo,
+        status: order.status,
+        isPaid,
+        hasNoShipment,
+        matchesSearch,
+        willBeIncluded: isPaid && hasNoShipment && matchesSearch
+      });
+    }
+    
+    return isPaid && hasNoShipment && matchesSearch;
+  });
 
   // 배송 중/완료 주문 필터링
   const shippedOrders = shipments.filter(shipment =>
@@ -505,6 +531,17 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
   useEffect(() => {
     setCurrentPage(1);
   }, [selectedTab]);
+  
+  // 디버깅: 필터링된 데이터 확인
+  useEffect(() => {
+    console.log('📊 현재 표시할 데이터:', {
+      tab: selectedTab,
+      pendingOrdersCount: pendingOrders.length,
+      shippedOrdersCount: shippedOrders.length,
+      totalOrdersLoaded: orders.length,
+      totalShipmentsLoaded: shipments.length
+    });
+  }, [selectedTab, pendingOrders.length, shippedOrders.length, orders.length, shipments.length]);
 
   // 한국 택배 추적 URL 생성
   const generateTrackingUrl = (courierCode: string, trackingNo: string): string => {
