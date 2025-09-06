@@ -276,7 +276,12 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
       
       // 상태값 확인을 위한 디버깅
       if (ordersData && ordersData.length > 0) {
-        console.log('🔍 주문 상태 확인:', ordersData.map(o => ({
+        const statusCount = ordersData.reduce((acc: any, o: any) => {
+          acc[o.status] = (acc[o.status] || 0) + 1;
+          return acc;
+        }, {});
+        console.log('🔍 주문 상태 분포:', statusCount);
+        console.log('🔍 주문 상태 샘플:', ordersData.slice(0, 5).map(o => ({
           order_number: o.order_number,
           status: o.status,
           status_type: typeof o.status
@@ -436,8 +441,8 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
 
   // 배송 대기 주문 필터링
   const pendingOrders = orders.filter(order => {
-    // PAID 상태이면서 아직 배송 정보가 없는 주문
-    const isPaid = order.status === 'PAID';
+    // 배송 정보가 없는 모든 주문 (CANCELLED, REFUNDED 제외)
+    const isNotCancelledOrRefunded = order.status !== 'CANCELLED' && order.status !== 'REFUNDED';
     const hasNoShipment = !shipments.find(s => s.orderId === order.id);
     const matchesSearch = searchTerm === '' || 
       order.orderNo.includes(searchTerm) ||
@@ -449,14 +454,14 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
       console.log('🔍 필터링 체크 (첫 번째 주문):', {
         orderNo: order.orderNo,
         status: order.status,
-        isPaid,
+        isNotCancelledOrRefunded,
         hasNoShipment,
         matchesSearch,
-        willBeIncluded: isPaid && hasNoShipment && matchesSearch
+        willBeIncluded: isNotCancelledOrRefunded && hasNoShipment && matchesSearch
       });
     }
     
-    return isPaid && hasNoShipment && matchesSearch;
+    return isNotCancelledOrRefunded && hasNoShipment && matchesSearch;
   });
 
   // 배송 중/완료 주문 필터링
