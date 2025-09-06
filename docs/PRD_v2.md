@@ -498,18 +498,117 @@
 - 상품 이미지 샘플 데이터
 - 한국/중국 택배사 테스트 데이터
 
-## 10. 배포 체크리스트
+## 10. 데이터베이스 초기화 가이드
+
+### 10.1 개발 환경 설정
+
+#### 1단계: 데이터베이스 리셋 (선택사항)
+```sql
+-- /test/disable-rls.sql
+-- 개발 환경에서 RLS 비활성화 (테스트용)
+-- 주의: 프로덕션에서는 사용 금지!
+
+ALTER TABLE IF EXISTS product_categories DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS products DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS inventory DISABLE ROW LEVEL SECURITY;
+-- ... 모든 테이블의 RLS 비활성화
+```
+
+#### 2단계: 스키마 생성
+```sql
+-- /supabase/migrations/001_initial_schema.sql
+-- 모든 테이블, 함수, 트리거 생성
+-- Supabase Dashboard → SQL Editor에서 실행
+```
+
+#### 3단계: 테스트 사용자 생성
+```sql
+-- /test/create-test-user.sql
+-- 테스트 계정 생성:
+-- admin@test.com (Admin)
+-- order@test.com (OrderManager)  
+-- ship@test.com (ShipManager)
+-- 공통 비밀번호: Test1234!
+```
+
+#### 4단계: 테스트 데이터 생성
+```sql
+-- /test/generate-test-data-v2.sql
+-- 각 테이블당 100개씩의 테스트 데이터 생성
+-- 상품, 주문, 재고, 출납, 배송 등 모든 데이터
+```
+
+### 10.2 RLS (Row Level Security) 설정
+
+#### 개발 환경 - RLS 비활성화
+```sql
+-- /test/disable-rls.sql
+-- 개발/테스트 환경에서 RLS를 비활성화하여 자유롭게 데이터 접근
+-- ⚠️ 주의: 프로덕션에서는 절대 사용하지 마세요!
+```
+
+#### 개발 환경 - 간단한 RLS 정책
+```sql
+-- /test/fix-rls-policies.sql  
+-- 개발 환경용 간단한 정책 적용
+-- 모든 사용자가 모든 데이터에 접근 가능하지만 RLS는 활성화
+-- 기본 정책 구조를 유지하면서 개발 편의성 제공
+```
+
+#### 프로덕션 환경 - 완전한 RLS 정책
+```sql
+-- 사용자 역할별 접근 제어
+-- Admin: 모든 데이터 접근
+-- OrderManager: 주문, 재고, 출납 접근  
+-- ShipManager: 배송, 출납(읽기전용) 접근
+-- Customer: 본인 주문만 조회
+
+CREATE POLICY "Admin full access" ON orders
+  FOR ALL USING (auth.jwt() ->> 'role' = 'Admin');
+
+CREATE POLICY "OrderManager access" ON orders  
+  FOR ALL USING (auth.jwt() ->> 'role' IN ('Admin', 'OrderManager'));
+```
+
+### 10.3 초기화 실행 순서
+
+1. **Supabase 프로젝트 생성**
+2. **스키마 생성**: `001_initial_schema.sql` 실행
+3. **개발 환경**: `disable-rls.sql` 또는 `fix-rls-policies.sql` 실행
+4. **테스트 사용자**: `create-test-user.sql` 실행
+5. **테스트 데이터**: `generate-test-data-v2.sql` 실행
+6. **환경 변수**: `.env.local` 설정
+
+### 10.4 데이터 검증
+
+```sql
+-- 테이블별 데이터 개수 확인
+SELECT 
+  'products' as table_name, COUNT(*) as count FROM products
+UNION ALL
+SELECT 'orders', COUNT(*) FROM orders
+UNION ALL  
+SELECT 'inventory', COUNT(*) FROM inventory
+UNION ALL
+SELECT 'cashbook_transactions', COUNT(*) FROM cashbook_transactions;
+
+-- 사용자 계정 확인
+SELECT email, role, active FROM user_profiles;
+```
+
+## 11. 배포 체크리스트
 
 - [ ] 환경 변수 설정 (Vercel)
-- [ ] Supabase RLS 정책 적용
+- [ ] Supabase RLS 정책 적용 (프로덕션용)
 - [ ] Supabase Storage 버킷 생성
 - [ ] Realtime 구독 설정
 - [ ] CRON_SECRET 설정
 - [ ] 커스텀 도메인 연결
 - [ ] Analytics 활성화
 - [ ] Sentry 에러 트래킹
+- [ ] 테스트 데이터 생성 및 검증
 
-## 11. Phase 2 계획 (Future)
+## 12. Phase 2 계획 (Future)
 
 - SMS/Email 알림
 - 고객 등급별 할인
@@ -519,7 +618,7 @@
 - 외부 API 연동 (택배 추적, 환율)
 - AI 기반 수요 예측
 
-## 12. 구현 현황 (v2.2)
+## 13. 구현 현황 (v2.2)
 
 ### ✅ 완료된 기능
 - **인증 시스템**: 로그인/로그아웃, 역할 기반 접근 제어
@@ -563,7 +662,7 @@
 - **SMS/Email 알림**
 - **고객 등급별 할인**
 
-## 13. 반복적 개선 프로세스
+## 14. 반복적 개선 프로세스
 
 > **참조**: [ITERATIVE_DEVELOPMENT.md](./ITERATIVE_DEVELOPMENT.md)
 

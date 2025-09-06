@@ -248,21 +248,21 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
       }
       
       if (transactions) {
-        // 데이터 형식 변환
+        // 데이터 형식 변환 - 실제 스키마에 맞게 매핑
         const formattedTransactions: Transaction[] = transactions.map(t => ({
           id: t.id,
           transactionDate: t.transaction_date,
           type: t.type,
-          amount: t.amount,
-          currency: t.currency as 'KRW' | 'CNY',
-          fxRate: t.fx_rate,
+          amount: t.amount_krw, // amount_krw 컬럼 사용
+          currency: t.amount_cny ? 'CNY' : 'KRW', // CNY 금액이 있으면 CNY, 없으면 KRW
+          fxRate: t.exchange_rate || 1, // exchange_rate 컬럼 사용
           amountKrw: t.amount_krw,
-          refType: t.ref_type,
-          refNo: t.ref_no,
-          description: t.description,
-          note: t.note,
-          bankName: t.bank_name,
-          accountNo: t.account_no,
+          refType: t.reference_type, // reference_type 컬럼 사용
+          refNo: t.reference_id, // reference_id 컬럼 사용
+          description: t.description || '',
+          note: t.note || '', // note 컬럼이 있다면 사용, 없으면 빈 문자열
+          bankName: t.bank_name || '', // bank_name 컬럼이 있다면 사용, 없으면 빈 문자열
+          accountNo: t.account_number || '', // account_number 컬럼이 있다면 사용, 없으면 빈 문자열
           createdAt: t.created_at,
           createdBy: t.created_by || 'Unknown'
         }));

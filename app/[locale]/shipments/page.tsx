@@ -263,7 +263,7 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
             )
           )
         `)
-        .in('status', ['PAID', 'SHIPPED', 'DONE'])
+        .in('status', ['paid', 'shipped', 'done'])
         .order('created_at', { ascending: false });
       
       if (ordersError) {
@@ -274,13 +274,13 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
       if (ordersData) {
         const formattedOrders: Order[] = ordersData.map(order => ({
           id: order.id,
-          orderNo: order.order_no,
-          orderDate: order.order_date,
+          orderNo: order.order_number,
+          orderDate: order.created_at?.split('T')[0] || '',
           customerName: order.customer_name,
           customerPhone: order.customer_phone,
-          shippingAddress: `${order.shipping_address} ${order.shipping_address_detail || ''}`.trim(),
+          shippingAddress: `${order.shipping_address_line1} ${order.shipping_address_line2 || ''}`.trim(),
           status: order.status as 'PAID' | 'SHIPPED' | 'DONE' | 'CANCELLED' | 'REFUNDED',
-          totalAmount: order.total_amount_krw,
+          totalAmount: order.total_krw,
           items: order.order_items.map((item: any) => ({
             productName: item.products?.name || '',
             quantity: item.quantity
@@ -306,7 +306,7 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
         .select(`
           *,
           orders (
-            order_no,
+            order_number,
             customer_name
           )
         `)
@@ -321,23 +321,23 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
         const formattedShipments: Shipment[] = shipmentsData.map(shipment => ({
           id: shipment.id,
           orderId: shipment.order_id,
-          orderNo: shipment.orders?.order_no || '',
+          orderNo: shipment.orders?.order_number || '',
           customerName: shipment.orders?.customer_name || '',
           courier: shipment.courier,
-          courierCode: shipment.courier_code,
-          trackingNo: shipment.tracking_no,
-          trackingBarcode: shipment.tracking_barcode,
+          courierCode: shipment.courier,
+          trackingNo: shipment.tracking_number,
+          trackingBarcode: shipment.tracking_number, // fallback
           trackingUrl: shipment.tracking_url,
-          courierCn: shipment.courier_cn,
-          trackingNoCn: shipment.tracking_no_cn,
-          trackingUrlCn: shipment.tracking_url_cn,
-          shippingFee: shipment.shipping_fee,
-          actualWeight: shipment.actual_weight,
-          volumeWeight: shipment.volume_weight,
-          shipmentPhotoUrl: shipment.shipment_photo_url,
-          receiptPhotoUrl: shipment.receipt_photo_url,
-          shippedAt: shipment.shipped_at,
-          deliveredAt: shipment.delivered_at,
+          courierCn: '', // 현재 스키마에 없음
+          trackingNoCn: '', // 현재 스키마에 없음
+          trackingUrlCn: '', // 현재 스키마에 없음
+          shippingFee: shipment.shipping_cost_krw,
+          actualWeight: shipment.weight_g ? shipment.weight_g / 1000 : undefined, // g를 kg로 변환
+          volumeWeight: undefined, // 현재 스키마에 없음
+          shipmentPhotoUrl: shipment.package_images?.[0] || undefined,
+          receiptPhotoUrl: undefined, // 현재 스키마에 없음
+          shippedAt: shipment.created_at, // fallback
+          deliveredAt: shipment.actual_delivery_date ? `${shipment.actual_delivery_date}T00:00:00.000Z` : undefined,
           createdAt: shipment.created_at
         }));
         
