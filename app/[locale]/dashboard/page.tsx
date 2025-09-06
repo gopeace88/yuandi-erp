@@ -18,6 +18,16 @@ export default function DashboardPage({ params: { locale } }: DashboardPageProps
   const router = useRouter();
   const [currentTime, setCurrentTime] = useState('');
   const [isMobile, setIsMobile] = useState(false);
+  const [stats, setStats] = useState({
+    todayOrders: locale === 'ko' ? '오늘 주문' : '今日订单',
+    totalOrders: locale === 'ko' ? '전체 주문' : '总订单',
+    inventory: locale === 'ko' ? '재고 현황' : '库存状态',
+    revenue: locale === 'ko' ? '매출 현황' : '销售现状',
+    todayOrdersCount: '0건',
+    totalOrdersCount: '0건',
+    inventoryCount: '0개',
+    revenueAmount: '₩0'
+  });
 
   useEffect(() => {
     // 클라이언트 사이드에서만 시간 설정
@@ -39,6 +49,47 @@ export default function DashboardPage({ params: { locale } }: DashboardPageProps
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
+  // 대시보드 통계 로드
+  useEffect(() => {
+    loadDashboardStats();
+  }, [locale]);
+
+  const loadDashboardStats = async () => {
+    try {
+      const [ordersRes, productsRes] = await Promise.all([
+        fetch('/api/orders', { headers: { 'Accept-Language': locale } }),
+        fetch('/api/products', { headers: { 'Accept-Language': locale } })
+      ]);
+
+      const orders = await ordersRes.json();
+      const products = await productsRes.json();
+
+      const today = new Date().toISOString().split('T')[0];
+      const todayOrders = orders.filter((order: any) => order.order_date === today);
+      
+      const totalInventory = products.reduce((sum: number, product: any) => 
+        sum + (product.on_hand || 0), 0);
+      
+      const totalRevenue = orders.reduce((sum: number, order: any) => 
+        sum + (order.total_amount || 0), 0);
+
+      setStats({
+        todayOrders: locale === 'ko' ? '오늘 주문' : '今日订单',
+        totalOrders: locale === 'ko' ? '전체 주문' : '总订单',
+        inventory: locale === 'ko' ? '재고 현황' : '库存状态',
+        revenue: locale === 'ko' ? '매출 현황' : '销售现状',
+        todayOrdersCount: locale === 'ko' ? `${todayOrders.length}건` : `${todayOrders.length}单`,
+        totalOrdersCount: locale === 'ko' ? `${orders.length}건` : `${orders.length}单`,
+        inventoryCount: locale === 'ko' ? `${totalInventory}개` : `${totalInventory}个`,
+        revenueAmount: locale === 'ko' 
+          ? `₩${totalRevenue.toLocaleString()}` 
+          : `¥${Math.floor(totalRevenue / 170).toLocaleString()}`
+      });
+    } catch (error) {
+      console.error('대시보드 통계 로드 실패:', error);
+    }
+  };
+
   const getTitle = () => {
     switch(locale) {
       case 'ko': return 'YUANDI 대시보드';
@@ -47,34 +98,6 @@ export default function DashboardPage({ params: { locale } }: DashboardPageProps
     }
   };
 
-  const getStats = () => {
-    const stats = {
-      ko: {
-        todayOrders: '오늘 주문',
-        totalOrders: '전체 주문',
-        inventory: '재고 현황',
-        revenue: '매출 현황',
-        todayOrdersCount: '12건',
-        totalOrdersCount: '1,234건',
-        inventoryCount: '567개',
-        revenueAmount: '₩12,345,000'
-      },
-      'zh-CN': {
-        todayOrders: '今日订单',
-        totalOrders: '总订单',
-        inventory: '库存状态',
-        revenue: '销售现状',
-        todayOrdersCount: '12单',
-        totalOrdersCount: '1,234单',
-        inventoryCount: '567个',
-        revenueAmount: '¥72,323'
-      }
-    };
-
-    return stats[locale] || stats.ko;
-  };
-
-  const stats = getStats();
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f3f4f6', paddingBottom: '5rem' }}>

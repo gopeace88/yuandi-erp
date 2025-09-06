@@ -246,57 +246,8 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
       setOrders(transformedOrders);
     } catch (error) {
       console.error('주문 로드 실패:', error);
-      // 폴백으로 목 데이터 사용
-      const mockOrders: Order[] = [
-        {
-          id: '1',
-          orderNo: 'ORD-240105-001',
-          orderDate: '2024-01-05',
-          customerName: locale === 'ko' ? '김철수' : '张三',
-          customerPhone: '010-1234-5678',
-          customerEmail: 'kim@example.com',
-          pcccCode: 'P123456789012',
-          shippingAddress: locale === 'ko' ? '서울시 강남구 테헤란로 123' : '首尔市江南区德黑兰路123',
-          shippingAddressDetail: locale === 'ko' ? '5층 501호' : '5楼501室',
-          zipCode: '06234',
-          status: 'PAID',
-          totalAmount: 125000,
-          productName: locale === 'ko' ? '프리미엄 가방' : '高级包',
-          productSku: 'BAG-001',
-          quantity: 1,
-        },
-        {
-          id: '2',
-          orderNo: 'ORD-240105-002',
-          orderDate: '2024-01-05',
-          customerName: locale === 'ko' ? '이영희' : '李四',
-          customerPhone: '010-2345-6789',
-          pcccCode: 'P234567890123',
-          shippingAddress: locale === 'ko' ? '서울시 서초구 서초대로 456' : '首尔市瑞草区瑞草大路456',
-          zipCode: '06578',
-          status: 'SHIPPED',
-          totalAmount: 89000,
-          productName: locale === 'ko' ? '스마트 워치' : '智能手表',
-          productSku: 'WATCH-001',
-          quantity: 1,
-        },
-        {
-          id: '3',
-          orderNo: 'ORD-240105-003',
-          orderDate: '2024-01-05',
-          customerName: locale === 'ko' ? '박지민' : '王五',
-          customerPhone: '010-3456-7890',
-          pcccCode: 'P345678901234',
-        shippingAddress: locale === 'ko' ? '서울시 송파구 올림픽로 789' : '首尔市松坡区奥林匹克路789',
-        zipCode: '05502',
-        status: 'DONE',
-        totalAmount: 67000,
-        productName: locale === 'ko' ? '화장품 세트' : '化妆品套装',
-        productSku: 'COSM-001',
-        quantity: 2,
-      },
-    ];
-    setOrders(mockOrders);
+      // 에러 발생 시 빈 배열로 설정
+      setOrders([]);
     }
   };
 

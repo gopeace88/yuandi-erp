@@ -96,43 +96,40 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
     loadOrders();
   }, []);
 
-  const loadOrders = () => {
-    // 더 많은 목 데이터 생성 (50개)
-    const mockOrders: Order[] = [];
-    const names = locale === 'ko' 
-      ? ['김철수', '이영희', '박지민', '최수현', '정하나', '강민준', '윤서연', '임도윤', '황예진', '송지우']
-      : ['张三', '李四', '王五', '赵六', '钱七', '孙八', '周九', '吴十', '郑一', '冯二'];
-    const products = [
-      { name: locale === 'ko' ? '프리미엄 가방' : '高级包', sku: 'BAG-001', price: 125000 },
-      { name: locale === 'ko' ? '스마트 워치' : '智能手表', sku: 'WATCH-001', price: 89000 },
-      { name: locale === 'ko' ? '화장품 세트' : '化妆品套装', sku: 'COSM-001', price: 67000 },
-      { name: locale === 'ko' ? '운동화' : '运动鞋', sku: 'SHOE-001', price: 156000 },
-      { name: locale === 'ko' ? '향수' : '香水', sku: 'PERF-001', price: 98000 },
-    ];
-    const statuses: Order['status'][] = ['PAID', 'SHIPPED', 'DONE', 'REFUNDED'];
-    
-    for (let i = 0; i < 50; i++) {
-      const date = new Date(2024, 0, 5 - Math.floor(i / 10));
-      const product = products[i % products.length];
-      mockOrders.push({
-        id: `${i + 1}`,
-        orderNo: `ORD-${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}-${String(i + 1).padStart(3, '0')}`,
-        orderDate: date.toISOString().split('T')[0],
-        customerName: names[i % names.length],
-        customerPhone: `010-${String(1000 + i).padStart(4, '0')}-${String(5678 + i).padStart(4, '0')}`,
-        pcccCode: `P${String(123456789012 + i).padStart(13, '0')}`,
-        shippingAddress: locale === 'ko' 
-          ? `서울시 강남구 테헤란로 ${123 + i}`
-          : `北京市朝阳区建国路 ${123 + i}`,
-        zipCode: String(6234 + i).padStart(5, '0'),
-        status: statuses[i % statuses.length],
-        totalAmount: product.price + (i * 1000),
-        productName: product.name,
-        productSku: product.sku,
-        quantity: 1 + (i % 3),
+  const loadOrders = async () => {
+    try {
+      const response = await fetch('/api/orders', {
+        headers: { 'Accept-Language': locale }
       });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch orders');
+      }
+      
+      const data = await response.json();
+      const transformedOrders = data.map((order: any) => ({
+        id: order.id,
+        orderNo: order.order_no,
+        orderDate: order.order_date,
+        customerName: order.customer_name,
+        customerPhone: order.customer_phone,
+        customerEmail: order.customer_email,
+        pcccCode: order.pccc_code,
+        shippingAddress: order.shipping_address,
+        shippingAddressDetail: order.shipping_address_detail,
+        zipCode: order.zip_code,
+        status: order.status,
+        totalAmount: order.total_amount,
+        productName: order.order_items?.[0]?.product?.name || '',
+        productSku: order.order_items?.[0]?.product?.sku || '',
+        quantity: order.order_items?.[0]?.quantity || 0,
+      })) || [];
+      
+      setOrders(transformedOrders);
+    } catch (error) {
+      console.error('주문 로드 실패:', error);
+      setOrders([]);
     }
-    setOrders(mockOrders);
   };
 
   const filteredOrders = orders.filter(order => {
