@@ -439,11 +439,10 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
     }
   }, [locale, router]);
 
-  // 배송 대기 주문 필터링
+  // 배송 대기 주문 필터링 (PAID 상태인 주문만)
   const pendingOrders = orders.filter(order => {
-    // 배송 정보가 없는 모든 주문 (CANCELLED, REFUNDED 제외)
-    const isNotCancelledOrRefunded = order.status !== 'CANCELLED' && order.status !== 'REFUNDED';
-    const hasNoShipment = !shipments.find(s => s.orderId === order.id);
+    // PAID 상태인 주문만 배송대기로 표시
+    const isPaid = order.status === 'PAID';
     const matchesSearch = searchTerm === '' || 
       order.orderNo.includes(searchTerm) ||
       order.customerName.includes(searchTerm) ||
@@ -454,24 +453,25 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
       console.log('🔍 필터링 체크 (첫 번째 주문):', {
         orderNo: order.orderNo,
         status: order.status,
-        isNotCancelledOrRefunded,
-        hasNoShipment,
+        isPaid,
         matchesSearch,
-        willBeIncluded: isNotCancelledOrRefunded && hasNoShipment && matchesSearch
+        willBeIncluded: isPaid && matchesSearch
       });
     }
     
-    return isNotCancelledOrRefunded && hasNoShipment && matchesSearch;
+    return isPaid && matchesSearch;
   });
 
-  // 배송 중/완료 주문 필터링
-  const shippedOrders = shipments.filter(shipment =>
-    searchTerm === '' ||
-    shipment.orderNo.includes(searchTerm) ||
-    shipment.customerName.includes(searchTerm) ||
-    (shipment.trackingNo && shipment.trackingNo.includes(searchTerm)) ||
-    (shipment.trackingNoCn && shipment.trackingNoCn.includes(searchTerm))
-  );
+  // 배송 중/완료 주문 필터링 (SHIPPED, DONE 상태의 주문)
+  const shippedOrders = orders.filter(order => {
+    const isShippedOrDone = order.status === 'SHIPPED' || order.status === 'DONE';
+    const matchesSearch = searchTerm === '' || 
+      order.orderNo.includes(searchTerm) ||
+      order.customerName.includes(searchTerm) ||
+      order.customerPhone.includes(searchTerm);
+    
+    return isShippedOrDone && matchesSearch;
+  });
 
   // 배송 등록
   const handleShipRegister = () => {
@@ -587,15 +587,17 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
   };
 
   // 배송 완료 처리
-  const handleMarkDelivered = (shipmentId: string) => {
-    setShipments(shipments.map(s =>
-      s.id === shipmentId ? { ...s, deliveredAt: new Date().toISOString() } : s
+  const handleMarkDelivered = (orderId: string) => {
+    // 주문 상태를 DONE으로 업데이트
+    setOrders(orders.map(o =>
+      o.id === orderId ? { ...o, status: 'DONE' } : o
     ));
     
-    const shipment = shipments.find(s => s.id === shipmentId);
+    // 해당 주문의 배송 정보가 있으면 배송 완료 시간 업데이트
+    const shipment = shipments.find(s => s.orderId === orderId);
     if (shipment) {
-      setOrders(orders.map(o =>
-        o.id === shipment.orderId ? { ...o, status: 'DONE' } : o
+      setShipments(shipments.map(s =>
+        s.id === shipment.id ? { ...s, deliveredAt: new Date().toISOString() } : s
       ));
     }
   };
@@ -865,80 +867,87 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
                   </tr>
                 </thead>
                 <tbody>
-                  {paginatedShippedOrders.map(shipment => (
-                    <tr key={shipment.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                      <td style={{ padding: '0.75rem', fontWeight: '500' }}>{shipment.orderNo}</td>
-                      <td style={{ padding: '0.75rem' }}>{shipment.customerName}</td>
-                      <td style={{ padding: '0.75rem' }}>
-                        <div>{shipment.trackingNo}</div>
-                        {shipment.trackingNoCn && (
-                          <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                            CN: {shipment.trackingNoCn}
-                          </div>
-                        )}
-                      </td>
-                      <td style={{ padding: '0.75rem' }}>
-                        <div>{shipment.courier}</div>
-                        {shipment.courierCn && (
-                          <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                            {shipment.courierCn}
-                          </div>
-                        )}
-                      </td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                        {shipment.shippingFee ? `₩${shipment.shippingFee.toLocaleString()}` : '-'}
-                      </td>
-                      <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                        <span style={{
-                          padding: '0.25rem 0.75rem',
-                          borderRadius: '9999px',
-                          fontSize: '0.75rem',
-                          fontWeight: '500',
-                          backgroundColor: shipment.deliveredAt ? '#dcfce7' : '#fef3c7',
-                          color: shipment.deliveredAt ? '#166534' : '#92400e'
-                        }}>
-                          {shipment.deliveredAt ? t.delivered : t.shipped}
-                        </span>
-                      </td>
-                      <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
-                          <button
-                            onClick={() => {
-                              setSelectedShipment(shipment);
-                              setShowDetailModal(true);
-                            }}
-                            style={{
-                              padding: '0.25rem 0.75rem',
-                              backgroundColor: '#6b7280',
-                              color: 'white',
-                              border: 'none',
+                  {paginatedShippedOrders.map(order => {
+                    // 해당 주문의 배송 정보 찾기
+                    const shipment = shipments.find(s => s.orderId === order.id);
+                    
+                    return (
+                      <tr key={order.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                        <td style={{ padding: '0.75rem', fontWeight: '500' }}>{order.orderNo}</td>
+                        <td style={{ padding: '0.75rem' }}>{order.customerName}</td>
+                        <td style={{ padding: '0.75rem' }}>
+                          <div>{shipment?.trackingNo || '배송정보 미등록'}</div>
+                          {shipment?.trackingNoCn && (
+                            <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                              CN: {shipment.trackingNoCn}
+                            </div>
+                          )}
+                        </td>
+                        <td style={{ padding: '0.75rem' }}>
+                          <div>{shipment?.courier || '미등록'}</div>
+                          {shipment?.courierCn && (
+                            <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                              {shipment.courierCn}
+                            </div>
+                          )}
+                        </td>
+                        <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                          {shipment?.shippingFee ? `₩${shipment.shippingFee.toLocaleString()}` : '-'}
+                        </td>
+                        <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                          <span style={{
+                            padding: '0.25rem 0.75rem',
+                            borderRadius: '9999px',
+                            fontSize: '0.75rem',
+                            fontWeight: '500',
+                            backgroundColor: order.status === 'DONE' ? '#dcfce7' : '#fef3c7',
+                            color: order.status === 'DONE' ? '#166534' : '#92400e'
+                          }}>
+                            {order.status === 'DONE' ? t.delivered : t.shipped}
+                          </span>
+                        </td>
+                        <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                            {shipment && (
+                              <button
+                                onClick={() => {
+                                  setSelectedShipment(shipment);
+                                  setShowDetailModal(true);
+                                }}
+                                style={{
+                                  padding: '0.25rem 0.75rem',
+                                  backgroundColor: '#6b7280',
+                                  color: 'white',
+                                  border: 'none',
                               borderRadius: '0.375rem',
                               fontSize: '0.875rem',
                               cursor: 'pointer'
                             }}
-                          >
-                            {t.viewDetail}
-                          </button>
-                          {!shipment.deliveredAt && (
-                            <button
-                              onClick={() => handleMarkDelivered(shipment.id)}
-                              style={{
-                                padding: '0.25rem 0.75rem',
-                                backgroundColor: '#10b981',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '0.375rem',
-                                fontSize: '0.875rem',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              {t.markDelivered}
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                              >
+                                {t.viewDetail}
+                              </button>
+                            )}
+                            {order.status === 'SHIPPED' && (
+                              <button
+                                onClick={() => handleMarkDelivered(order.id)}
+                                style={{
+                                  padding: '0.25rem 0.75rem',
+                                  backgroundColor: '#10b981',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '0.375rem',
+                                  fontSize: '0.875rem',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                {t.markDelivered}
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
