@@ -93,8 +93,8 @@ export async function cachedFetch<T>(
  */
 export const getCachedProducts = unstable_cache(
   async (category?: string) => {
-    const { createServerSupabaseClient } = await import('@/lib/supabase/server')
-    const supabase = await createServerSupabaseClient()
+    const { createServerSupabase } = await import('@/lib/supabase/server')
+    const supabase = await createServerSupabase()
     
     let query = supabase.from('products').select('*')
     
@@ -116,8 +116,8 @@ export const getCachedProducts = unstable_cache(
 
 export const getCachedOrders = unstable_cache(
   async (status?: string, limit: number = 10) => {
-    const { createServerSupabaseClient } = await import('@/lib/supabase/server')
-    const supabase = await createServerSupabaseClient()
+    const { createServerSupabase } = await import('@/lib/supabase/server')
+    const supabase = await createServerSupabase()
     
     let query = supabase
       .from('orders')
@@ -146,8 +146,8 @@ export const getCachedOrders = unstable_cache(
  * Ensures same data isn't fetched multiple times in a single request
  */
 export const getUser = cache(async (userId: string) => {
-  const { createServerSupabaseClient } = await import('@/lib/supabase/server')
-  const supabase = await createServerSupabaseClient()
+  const { createServerSupabase } = await import('@/lib/supabase/server')
+  const supabase = await createServerSupabase()
   
   const { data, error } = await supabase
     .from('users')

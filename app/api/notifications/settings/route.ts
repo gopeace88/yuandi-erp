@@ -10,7 +10,7 @@ import {
   type UserNotificationSettings 
 } from '@/lib/notifications';
 import { headers } from 'next/headers';
-import { createClient } from '@/lib/supabase/server';
+import { createServerSupabase } from '@/lib/supabase/server';
 
 // 사용자 알림 설정 조회
 export async function GET(request: NextRequest) {
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Supabase에서 사용자 확인
-    const supabase = createClient();
+    const supabase = await createServerSupabase();
     const { data: user, error: userError } = await supabase
       .from('user_profiles')
       .select('*')
@@ -94,7 +94,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Supabase에서 사용자 확인
-    const supabase = createClient();
+    const supabase = await createServerSupabase();
     const { data: user, error: userError } = await supabase
       .from('user_profiles')
       .select('*')

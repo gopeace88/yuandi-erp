@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { getServerSession } from '@/lib/auth/session'
-import { createServiceSupabaseClient } from '@/lib/supabase/server'
+import { createServerSupabase } from '@/lib/supabase/server'
 import { UsersContent } from '@/components/dashboard/users-content'
 
 export const dynamic = 'force-dynamic'
@@ -34,7 +34,7 @@ export default async function UsersPage() {
     redirect('/dashboard')
   }
 
-  const supabase = await createServiceSupabaseClient()
+  const supabase = await createServerSupabase()
   
   // Fetch users and stats from database
   const [{ data: users, error }, stats] = await Promise.all([

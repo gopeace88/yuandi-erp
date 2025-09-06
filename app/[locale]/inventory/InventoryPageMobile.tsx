@@ -80,7 +80,7 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
   });
 
   // 다국어 텍스트
-  const t = {
+  const translations = {
     ko: {
       title: '재고 관리',
       addProduct: '상품 등록',
@@ -189,7 +189,9 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
       lowStockItems: '缺货产品',
       stockValue: '库存价值',
     }
-  }[locale] || t.ko;
+  };
+  
+  const t = translations[locale as keyof typeof translations] || translations.ko;
 
   // 사용자 권한 체크
   useEffect(() => {

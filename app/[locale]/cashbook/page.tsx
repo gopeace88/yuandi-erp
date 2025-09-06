@@ -315,7 +315,8 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
       .reduce((sum, t) => sum + t.amountKrw, 0),
     totalOut: Math.abs(filteredTransactions.filter(t => t.amountKrw < 0)
       .reduce((sum, t) => sum + t.amountKrw, 0)),
-    count: filteredTransactions.length
+    count: filteredTransactions.length,
+    netAmount: 0
   };
   summary.netAmount = summary.totalIn - summary.totalOut;
 

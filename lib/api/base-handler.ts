@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createServerSupabase } from '@/lib/supabase/server'
 import { getServerSession } from '@/lib/auth/session'
 import { getEventLogger } from '@/lib/middleware/event-logger'
 import { z } from 'zod'
@@ -74,7 +74,7 @@ export function createApiHandler<T = any>(
         }
 
         // Create context
-        const supabase = await createServerSupabaseClient()
+        const supabase = await createServerSupabase()
         const logger = getEventLogger(request)
         
         const context: ApiContext = {
@@ -103,7 +103,7 @@ export function createApiHandler<T = any>(
         return response
       } else {
         // No auth required
-        const supabase = await createServerSupabaseClient()
+        const supabase = await createServerSupabase()
         const logger = getEventLogger(request)
         
         const context: ApiContext = {

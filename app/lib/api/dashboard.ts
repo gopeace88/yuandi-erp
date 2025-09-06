@@ -1,4 +1,4 @@
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createServerSupabase } from '@/lib/supabase/server'
 import { getServerSession } from '@/lib/auth/session'
 
 export async function getDashboardData() {
@@ -7,7 +7,7 @@ export async function getDashboardData() {
     throw new Error('Unauthorized')
   }
 
-  const supabase = await createServerSupabaseClient()
+  const supabase = await createServerSupabase()
   const today = new Date()
   const yesterday = new Date(today)
   yesterday.setDate(yesterday.getDate() - 1)

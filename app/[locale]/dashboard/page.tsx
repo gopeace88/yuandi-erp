@@ -28,6 +28,7 @@ export default function DashboardPage({ params: { locale } }: DashboardPageProps
     inventoryCount: '0개',
     revenueAmount: '₩0'
   });
+  const [recentOrders, setRecentOrders] = useState<any[]>([]);
 
   useEffect(() => {
     // 클라이언트 사이드에서만 시간 설정
@@ -73,6 +74,21 @@ export default function DashboardPage({ params: { locale } }: DashboardPageProps
       const totalRevenue = orders.reduce((sum: number, order: any) => 
         sum + (order.total_amount || 0), 0);
 
+      // 최근 주문 20건 설정
+      const sortedOrders = [...orders]
+        .sort((a: any, b: any) => new Date(b.order_date).getTime() - new Date(a.order_date).getTime())
+        .slice(0, 20)
+        .map((order: any) => ({
+          date: order.order_date,
+          name: order.customer_name,
+          status: order.status,
+          amount: locale === 'ko' 
+            ? `₩${order.total_amount.toLocaleString()}` 
+            : `¥${Math.floor(order.total_amount / 170).toLocaleString()}`
+        }));
+      
+      setRecentOrders(sortedOrders);
+      
       setStats({
         todayOrders: locale === 'ko' ? '오늘 주문' : '今日订单',
         totalOrders: locale === 'ko' ? '전체 주문' : '总订单',

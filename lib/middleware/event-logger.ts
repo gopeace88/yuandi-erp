@@ -1,4 +1,4 @@
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createServerSupabase } from '@/lib/supabase/server'
 
 export interface EventLogEntry {
   event_type: string
@@ -19,7 +19,7 @@ export interface EventLogEntry {
 export class EventLogger {
   async logEvent(entry: EventLogEntry): Promise<void> {
     try {
-      const supabase = await createServerSupabaseClient()
+      const supabase = await createServerSupabase()
       
       const logEntry = {
         event_type: entry.event_type,

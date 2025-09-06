@@ -1,4 +1,4 @@
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createServerSupabase } from '@/lib/supabase/server'
 import { getServerSession } from '@/lib/auth/session'
 
 export async function getInventory() {
@@ -12,7 +12,7 @@ export async function getInventory() {
     throw new Error('Forbidden')
   }
 
-  const supabase = await createServerSupabaseClient()
+  const supabase = await createServerSupabase()
   
   // 상품 목록 조회
   const { data: products } = await supabase

@@ -1,4 +1,4 @@
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createServerSupabase } from '@/lib/supabase/server'
 import { Database } from '@/lib/supabase/database.types'
 import { cookies } from 'next/headers'
 import type { User, Session } from './types'
@@ -58,7 +58,7 @@ export function useSession() {
  * Sign out user
  */
 export async function signOut() {
-  const supabase = await createServerSupabaseClient()
+  const supabase = await createServerSupabase()
   const { error } = await supabase.auth.signOut()
   
   if (error) {

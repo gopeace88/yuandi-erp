@@ -3,7 +3,7 @@
  * 데이터베이스 백업, 복원, 내보내기 기능
  */
 
-import { createClient } from '@/lib/supabase/server';
+import { createServerSupabase } from '@/lib/supabase/server';
 import { format } from 'date-fns';
 import * as XLSX from 'xlsx';
 import JSZip from 'jszip';
@@ -51,7 +51,7 @@ export async function createFullBackup(
   options: BackupOptions = {}
 ): Promise<BackupResult> {
   try {
-    const supabase = createClient();
+    const supabase = await createServerSupabase();
     
     const {
       includeData = true,
@@ -194,7 +194,7 @@ export async function restoreBackup(
   options: RestoreOptions = {}
 ): Promise<{ success: boolean; error?: string; restored?: number }> {
   try {
-    const supabase = createClient();
+    const supabase = await createServerSupabase();
     
     const {
       dropExisting = false,
@@ -321,7 +321,7 @@ export async function exportData(
   options: ExportOptions
 ): Promise<{ success: boolean; downloadUrl?: string; error?: string }> {
   try {
-    const supabase = createClient();
+    const supabase = await createServerSupabase();
     const { format = 'xlsx', dateRange, locale = 'ko' } = options;
     
     const exportData: Record<string, any[]> = {};
@@ -719,7 +719,7 @@ export async function cleanupOldBackups(
   retentionDays: number = 30
 ): Promise<{ deleted: number }> {
   try {
-    const supabase = createClient();
+    const supabase = await createServerSupabase();
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
     

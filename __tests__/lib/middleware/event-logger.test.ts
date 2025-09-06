@@ -1,9 +1,9 @@
 import { EventLogger, EventLogCache } from '@/lib/middleware/event-logger';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { createServerSupabase } from '@/lib/supabase/server';
 
 // Mock Supabase client
 jest.mock('@/lib/supabase/server', () => ({
-  createServerSupabaseClient: jest.fn(),
+  createServerSupabase: jest.fn(),
 }));
 
 describe('EventLogger', () => {
@@ -35,7 +35,7 @@ describe('EventLogger', () => {
       }),
     };
 
-    (createServerSupabaseClient as jest.Mock).mockResolvedValue(mockSupabaseClient);
+    (createServerSupabase as jest.Mock).mockResolvedValue(mockSupabaseClient);
     eventLogger = new EventLogger();
   });
 

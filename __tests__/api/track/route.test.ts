@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { GET, POST } from '@/app/api/track/route';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { createServerSupabase } from '@/lib/supabase/server';
 import { getEventLogger } from '@/lib/middleware/event-logger';
 
 // Mock dependencies
@@ -22,7 +22,7 @@ describe('Track API Route', () => {
       limit: jest.fn().mockResolvedValue({ data: [], error: null }),
     };
 
-    (createServerSupabaseClient as jest.Mock).mockResolvedValue(mockSupabaseClient);
+    (createServerSupabase as jest.Mock).mockResolvedValue(mockSupabaseClient);
 
     // Mock EventLogger
     mockEventLogger = {

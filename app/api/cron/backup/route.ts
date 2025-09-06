@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createFullBackup, cleanupOldBackups } from '@/lib/backup';
-import { createClient } from '@/lib/supabase/server';
+import { createServerSupabase } from '@/lib/supabase/server';
 import { sendNotification } from '@/lib/notifications';
 
 // This route uses request headers for authorization
@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     console.log('Starting automatic backup...');
 
     // 시스템 설정 조회
-    const supabase = createClient();
+    const supabase = await createServerSupabase();
     const { data: settings } = await supabase
       .from('settings')
       .select('value')
