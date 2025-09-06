@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 import { Locale, LOCALE_STORAGE_KEY, defaultLocale } from '@/lib/i18n/config'
 import { translate } from '@/lib/i18n/translations'
 import { ProductAddModal } from '@/app/components/inventory/product-add-modal'
@@ -25,6 +27,7 @@ import {
 import { BottomNavigation } from '@/components/layout/mobile-navigation'
 
 export default function InventoryPage() {
+  const router = useRouter()
   const [locale, setLocale] = useState<Locale>(defaultLocale)
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [stockModal, setStockModal] = useState<{
@@ -35,6 +38,8 @@ export default function InventoryPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterCategory, setFilterCategory] = useState('')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
 
   // 샘플 재고 데이터
   const inventoryData = [
@@ -123,6 +128,22 @@ export default function InventoryPage() {
   })
 
   useEffect(() => {
+    const checkAuth = async () => {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+
+      if (user) {
+        setIsAuthenticated(true)
+      } else {
+        router.push('/login')
+      }
+      setIsLoading(false)
+    }
+
+    checkAuth()
+  }, [router])
+
+  useEffect(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem(LOCALE_STORAGE_KEY) as Locale
       if (stored && ['ko', 'zh-CN'].includes(stored)) {
@@ -156,6 +177,21 @@ export default function InventoryPage() {
       case 'out': return '품절'
       default: return '알 수 없음'
     }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">로딩 중...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!isAuthenticated) {
+    return null
   }
 
   return (

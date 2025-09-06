@@ -1,13 +1,14 @@
 import { redirect } from 'next/navigation'
-import { getServerSession } from '@/lib/auth/session'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { MobileDashboard } from '@/components/dashboard/mobile-dashboard'
 
 export const dynamic = 'force-dynamic'
 
 export default async function DashboardPage() {
-  const session = await getServerSession()
+  const supabase = await createServerSupabaseClient()
+  const { data: { user } } = await supabase.auth.getUser()
 
-  if (!session) {
+  if (!user) {
     redirect('/login')
   }
 

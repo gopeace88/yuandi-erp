@@ -36,22 +36,7 @@ export default function LoginPage() {
       }
 
       if (data.user) {
-        // Set session cookies for server-side auth
-        const sessionData = {
-          token: data.session?.access_token,
-          expires: data.session?.expires_at ? new Date(data.session.expires_at * 1000).toISOString() : new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-        }
-
-        const userData = {
-          id: data.user.id,
-          email: data.user.email,
-          role: 'Admin' // Default role, should be fetched from user profile
-        }
-
-        // Set cookies
-        document.cookie = `session=${Buffer.from(JSON.stringify(sessionData)).toString('base64')}; path=/; max-age=${24 * 60 * 60}; secure; samesite=lax`
-        document.cookie = `user=${Buffer.from(JSON.stringify(userData)).toString('base64')}; path=/; max-age=${24 * 60 * 60}; secure; samesite=lax`
-
+        // Supabase Auth handles session automatically
         router.push('/dashboard')
       }
     } catch (err) {
