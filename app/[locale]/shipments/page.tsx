@@ -475,54 +475,95 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
   });
 
   // 배송 등록
-  const handleShipRegister = () => {
+  const handleShipRegister = async () => {
     if (!selectedOrder || !shipForm.courier || !shipForm.trackingNo) return;
 
-    const newShipment: Shipment = {
-      id: Date.now().toString(),
-      orderId: selectedOrder.id,
-      orderNo: selectedOrder.orderNo,
-      customerName: selectedOrder.customerName,
-      courier: KOREAN_COURIERS.find(c => c.code === shipForm.courier)?.name,
-      courierCode: shipForm.courier,
-      trackingNo: shipForm.trackingNo,
-      trackingBarcode: shipForm.trackingBarcode,
-      trackingUrl: generateTrackingUrl(shipForm.courier, shipForm.trackingNo),
-      courierCn: shipForm.courierCn ? CHINESE_COURIERS.find(c => c.code === shipForm.courierCn)?.name : undefined,
-      trackingNoCn: shipForm.trackingNoCn || undefined,
-      trackingUrlCn: shipForm.courierCn && shipForm.trackingNoCn ? 
-        generateChineseTrackingUrl(shipForm.courierCn, shipForm.trackingNoCn) : undefined,
-      shippingFee: shipForm.shippingFee ? parseFloat(shipForm.shippingFee) : undefined,
-      actualWeight: shipForm.actualWeight ? parseFloat(shipForm.actualWeight) : undefined,
-      volumeWeight: shipForm.volumeWeight ? parseFloat(shipForm.volumeWeight) : undefined,
-      shipmentPhotoUrl: shipForm.shipmentPhotoUrl || undefined,
-      receiptPhotoUrl: shipForm.receiptPhotoUrl || undefined,
-      shippedAt: new Date().toISOString(),
-      createdAt: new Date().toISOString(),
-    };
+    try {
+      // Supabase 클라이언트 가져오기
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
+      
+      // 1. 배송 정보를 데이터베이스에 저장
+      const { data: shipmentData, error: shipmentError } = await supabase
+        .from('shipments')
+        .insert({
+          order_id: selectedOrder.id,
+          courier: shipForm.courier,
+          tracking_number: shipForm.trackingNo,
+          tracking_url: generateTrackingUrl(shipForm.courier, shipForm.trackingNo),
+          shipping_cost_krw: shipForm.shippingFee ? parseFloat(shipForm.shippingFee) : null,
+          weight_g: shipForm.actualWeight ? parseFloat(shipForm.actualWeight) * 1000 : null, // kg를 g로 변환
+          package_images: shipForm.shipmentPhotoUrl ? [shipForm.shipmentPhotoUrl] : [],
+          status: 'in_transit',
+          delivery_notes: `${selectedOrder.orderNo} 배송`
+        })
+        .select()
+        .single();
+      
+      if (shipmentError) {
+        console.error('배송 정보 저장 실패:', shipmentError);
+        alert('배송 정보 저장 중 오류가 발생했습니다.');
+        return;
+      }
+      
+      // 2. 주문 상태를 SHIPPED로 업데이트
+      const { error: orderError } = await supabase
+        .from('orders')
+        .update({ status: 'shipped' })
+        .eq('id', selectedOrder.id);
+      
+      if (orderError) {
+        console.error('주문 상태 업데이트 실패:', orderError);
+        alert('주문 상태 업데이트 중 오류가 발생했습니다.');
+        return;
+      }
+      
+      // 3. UI 상태 업데이트
+      const newShipment: Shipment = {
+        id: shipmentData.id,
+        orderId: selectedOrder.id,
+        orderNo: selectedOrder.orderNo,
+        customerName: selectedOrder.customerName,
+        courier: KOREAN_COURIERS.find(c => c.code === shipForm.courier)?.name,
+        courierCode: shipForm.courier,
+        trackingNo: shipForm.trackingNo,
+        trackingBarcode: shipForm.trackingBarcode,
+        trackingUrl: generateTrackingUrl(shipForm.courier, shipForm.trackingNo),
+        shippingFee: shipForm.shippingFee ? parseFloat(shipForm.shippingFee) : undefined,
+        actualWeight: shipForm.actualWeight ? parseFloat(shipForm.actualWeight) : undefined,
+        shipmentPhotoUrl: shipForm.shipmentPhotoUrl || undefined,
+        shippedAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+      };
 
-    setShipments([...shipments, newShipment]);
-    
-    // 주문 상태 업데이트
-    setOrders(orders.map(o => 
-      o.id === selectedOrder.id ? { ...o, status: 'SHIPPED' } : o
-    ));
+      setShipments([...shipments, newShipment]);
+      
+      // 주문 상태 업데이트
+      setOrders(orders.map(o => 
+        o.id === selectedOrder.id ? { ...o, status: 'SHIPPED' } : o
+      ));
 
-    // 모달 닫기 및 폼 초기화
-    setShowShipModal(false);
-    setSelectedOrder(null);
-    setShipForm({
-      courier: '',
-      trackingNo: '',
-      trackingBarcode: '',
-      courierCn: '',
-      trackingNoCn: '',
-      shippingFee: '',
-      actualWeight: '',
-      volumeWeight: '',
-      shipmentPhotoUrl: '',
-      receiptPhotoUrl: '',
-    });
+      // 모달 닫기 및 폼 초기화
+      setShowShipModal(false);
+      setSelectedOrder(null);
+      setShipForm({
+        courier: '',
+        trackingNo: '',
+        trackingBarcode: '',
+        courierCn: '',
+        trackingNoCn: '',
+        shippingFee: '',
+        actualWeight: '',
+        volumeWeight: '',
+        shipmentPhotoUrl: '',
+        receiptPhotoUrl: '',
+      });
+      
+      alert('배송 정보가 등록되었습니다.');
+    } catch (error) {
+      console.error('배송 등록 중 오류:', error);
+      alert('배송 등록 중 오류가 발생했습니다.');
+    }
   };
 
   // 페이지네이션 계산
@@ -589,18 +630,55 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
   };
 
   // 배송 완료 처리
-  const handleMarkDelivered = (orderId: string) => {
-    // 주문 상태를 DONE으로 업데이트
-    setOrders(orders.map(o =>
-      o.id === orderId ? { ...o, status: 'DONE' } : o
-    ));
-    
-    // 해당 주문의 배송 정보가 있으면 배송 완료 시간 업데이트
-    const shipment = shipments.find(s => s.orderId === orderId);
-    if (shipment) {
-      setShipments(shipments.map(s =>
-        s.id === shipment.id ? { ...s, deliveredAt: new Date().toISOString() } : s
+  const handleMarkDelivered = async (orderId: string) => {
+    try {
+      // Supabase 클라이언트 가져오기
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
+      
+      // 데이터베이스에서 주문 상태를 DONE으로 업데이트
+      const { error: orderError } = await supabase
+        .from('orders')
+        .update({ status: 'done' })
+        .eq('id', orderId);
+      
+      if (orderError) {
+        console.error('주문 상태 업데이트 실패:', orderError);
+        alert('배송완료 처리 중 오류가 발생했습니다.');
+        return;
+      }
+      
+      // 해당 주문의 배송 정보가 있으면 배송 완료 시간 업데이트
+      const shipment = shipments.find(s => s.orderId === orderId);
+      if (shipment) {
+        const { error: shipmentError } = await supabase
+          .from('shipments')
+          .update({ 
+            actual_delivery_date: new Date().toISOString(),
+            status: 'delivered'
+          })
+          .eq('id', shipment.id);
+        
+        if (shipmentError) {
+          console.error('배송 정보 업데이트 실패:', shipmentError);
+        }
+      }
+      
+      // UI 상태 업데이트
+      setOrders(orders.map(o =>
+        o.id === orderId ? { ...o, status: 'DONE' } : o
       ));
+      
+      if (shipment) {
+        setShipments(shipments.map(s =>
+          s.id === shipment.id ? { ...s, deliveredAt: new Date().toISOString() } : s
+        ));
+      }
+      
+      alert('배송완료 처리되었습니다.');
+    } catch (error) {
+      console.error('배송완료 처리 중 오류:', error);
+      alert('배송완료 처리 중 오류가 발생했습니다.');
     }
   };
 
