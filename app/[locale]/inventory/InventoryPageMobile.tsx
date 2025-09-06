@@ -1025,6 +1025,54 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
           </div>
         </div>
       )}
+
+      {/* 하단 네비게이션 바 */}
+      <div style={{
+        position: 'fixed',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        backgroundColor: 'white',
+        borderTop: '1px solid #e5e7eb',
+        padding: '1rem'
+      }}>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-around',
+          maxWidth: '600px',
+          margin: '0 auto'
+        }}>
+          <a href={`/${locale}`} style={{ 
+            textDecoration: 'none',
+            color: '#6b7280',
+            fontSize: '0.875rem'
+          }}>
+            {locale === 'ko' ? '홈' : locale === 'zh-CN' ? '首页' : 'Home'}
+          </a>
+          <a href={`/${locale}/orders`} style={{ 
+            textDecoration: 'none',
+            color: '#6b7280',
+            fontSize: '0.875rem'
+          }}>
+            {locale === 'ko' ? '주문' : locale === 'zh-CN' ? '订单' : 'Orders'}
+          </a>
+          <a href={`/${locale}/inventory`} style={{ 
+            textDecoration: 'none',
+            color: '#2563eb',
+            fontSize: '0.875rem',
+            fontWeight: '600'
+          }}>
+            {locale === 'ko' ? '재고' : locale === 'zh-CN' ? '库存' : 'Inventory'}
+          </a>
+          <a href={`/${locale}/track`} style={{ 
+            textDecoration: 'none',
+            color: '#6b7280',
+            fontSize: '0.875rem'
+          }}>
+            {locale === 'ko' ? '조회' : locale === 'zh-CN' ? '查询' : 'Track'}
+          </a>
+        </div>
+      </div>
     </div>
   );
 }
