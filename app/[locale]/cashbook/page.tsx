@@ -9,6 +9,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { MobileBottomNav } from '@/components/Navigation';
 import { exportToExcel } from '@/lib/utils/excel';
+import Pagination from '@/components/common/Pagination';
 
 interface CashbookPageProps {
   params: { locale: string };
@@ -39,100 +40,8 @@ interface TransactionType {
   active: boolean;
 }
 
-// Mock 데이터
-const MOCK_TRANSACTIONS: Transaction[] = [
-  {
-    id: '1',
-    transactionDate: '2024-12-25',
-    type: 'sale',
-    amount: 158000,
-    currency: 'KRW',
-    fxRate: 1,
-    amountKrw: 158000,
-    refType: 'order',
-    refNo: 'ORD-241225-001',
-    description: '주문 판매 - 김철수',
-    bankName: '국민은행',
-    accountNo: '****-****-1234',
-    createdAt: '2024-12-25T10:30:00',
-    createdBy: 'Admin User'
-  },
-  {
-    id: '2',
-    transactionDate: '2024-12-25',
-    type: 'inbound',
-    amount: 500,
-    currency: 'CNY',
-    fxRate: 190.5,
-    amountKrw: 95250,
-    refType: 'inventory',
-    refNo: 'INB-241225-001',
-    description: '재고 입고 - 나이키 운동화 10개',
-    note: 'Taobao 구매',
-    createdAt: '2024-12-25T09:15:00',
-    createdBy: 'Order Manager'
-  },
-  {
-    id: '3',
-    transactionDate: '2024-12-25',
-    type: 'shipping',
-    amount: -3500,
-    currency: 'KRW',
-    fxRate: 1,
-    amountKrw: -3500,
-    refType: 'shipment',
-    refNo: 'SHIP-241225-001',
-    description: 'CJ대한통운 배송비',
-    createdAt: '2024-12-25T14:30:00',
-    createdBy: 'Ship Manager'
-  },
-  {
-    id: '4',
-    transactionDate: '2024-12-24',
-    type: 'sale',
-    amount: 89000,
-    currency: 'KRW',
-    fxRate: 1,
-    amountKrw: 89000,
-    refType: 'order',
-    refNo: 'ORD-241224-003',
-    description: '주문 판매 - 이영희',
-    bankName: '신한은행',
-    accountNo: '****-****-5678',
-    createdAt: '2024-12-24T16:45:00',
-    createdBy: 'Admin User'
-  },
-  {
-    id: '5',
-    transactionDate: '2024-12-24',
-    type: 'adjustment',
-    amount: -5000,
-    currency: 'KRW',
-    fxRate: 1,
-    amountKrw: -5000,
-    description: '사무용품 구매',
-    note: '프린터 토너, A4용지',
-    createdAt: '2024-12-24T11:00:00',
-    createdBy: 'Admin User'
-  },
-  {
-    id: '6',
-    transactionDate: '2024-12-23',
-    type: 'refund',
-    amount: -45000,
-    currency: 'KRW',
-    fxRate: 1,
-    amountKrw: -45000,
-    refType: 'order',
-    refNo: 'ORD-241223-002',
-    description: '주문 환불 - 박민수',
-    note: '상품 하자',
-    bankName: '우리은행',
-    accountNo: '****-****-9012',
-    createdAt: '2024-12-23T10:20:00',
-    createdBy: 'Admin User'
-  }
-];
+// 초기화 - Mock 데이터 제거
+const MOCK_TRANSACTIONS: Transaction[] = [];
 
 export default function CashbookPage({ params: { locale } }: CashbookPageProps) {
   const [transactions, setTransactions] = useState<Transaction[]>(MOCK_TRANSACTIONS);
@@ -148,6 +57,10 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
   const [searchTerm, setSearchTerm] = useState('');
   const [userRole, setUserRole] = useState<string>('');
   const [isMobile, setIsMobile] = useState(false);
+  
+  // 페이지네이션 상태
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 30; // 페이지당 30개 항목 표시
   const router = useRouter();
   
   // 거래유형 설정 불러오기
@@ -377,7 +290,15 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
                            b.createdAt.localeCompare(a.createdAt));
 
     setFilteredTransactions(filtered);
+    // 필터 변경 시 첫 페이지로 리셋
+    setCurrentPage(1);
   }, [transactions, dateRange, filterType, searchTerm]);
+
+  // 페이지네이션 계산
+  const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedTransactions = filteredTransactions.slice(startIndex, endIndex);
 
   // 잔액 계산
   const calculateBalance = (index: number): number => {
@@ -673,9 +594,11 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
               </tr>
             </thead>
             <tbody>
-              {filteredTransactions.map((transaction, index) => {
+              {paginatedTransactions.map((transaction, index) => {
                 const typeColor = getTypeColor(transaction.type);
-                const balance = calculateBalance(index);
+                // 전체 리스트에서의 실제 인덱스 계산
+                const actualIndex = startIndex + index;
+                const balance = calculateBalance(actualIndex);
                 
                 return (
                   <tr key={transaction.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
@@ -742,6 +665,18 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
             </tbody>
           </table>
         </div>
+        
+        {/* 페이지네이션 */}
+        {filteredTransactions.length > itemsPerPage && (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            totalItems={filteredTransactions.length}
+            itemsPerPage={itemsPerPage}
+            className="mt-4"
+          />
+        )}
       )}
 
       {/* 거래 추가 모달 */}

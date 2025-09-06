@@ -11,6 +11,7 @@ import api from '@/lib/api/client';
 import { exportToExcel } from '@/lib/utils/excel';
 import InventoryPageMobile from './InventoryPageMobile';
 import ImageUpload from '@/components/common/ImageUpload';
+import Pagination from '@/components/common/Pagination';
 
 interface InventoryPageProps {
   params: { locale: string };
@@ -60,6 +61,10 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
   const [showLowStock, setShowLowStock] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  
+  // 페이지네이션 상태
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20; // 페이지당 20개 항목 표시
 
   // 상품 상세 클릭 핸들러
   const handleProductClick = (product: Product) => {
@@ -503,6 +508,17 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
     return matchesSearch && matchesCategory && matchesLowStock;
   });
 
+  // 페이지네이션 계산
+  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedProducts = filteredProducts.slice(startIndex, endIndex);
+
+  // 필터나 검색어 변경 시 첫 페이지로 리셋
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterCategory, showLowStock]);
+
   const categories = Array.from(new Set(products.map(p => p.category)));
 
   // 모바일일 때는 InventoryPageMobile 컴포넌트 사용
@@ -679,7 +695,7 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
                 </tr>
               </thead>
               <tbody>
-                {filteredProducts.map((product) => {
+                {paginatedProducts.map((product) => {
                   const stockStatus = getStockStatus(product);
                   return (
                     <tr 
@@ -744,6 +760,18 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
                 })}
               </tbody>
             </table>
+          )}
+          
+          {/* 페이지네이션 */}
+          {filteredProducts.length > itemsPerPage && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              totalItems={filteredProducts.length}
+              itemsPerPage={itemsPerPage}
+              className="mt-4 px-4 pb-4"
+            />
           )}
         </div>
 

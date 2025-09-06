@@ -10,6 +10,7 @@ import { useRouter } from 'next/navigation';
 import api from '@/lib/api/client';
 import { exportToExcel } from '@/lib/utils/excel';
 import OrdersPageMobile from './OrdersPageMobile';
+import Pagination from '@/components/common/Pagination';
 
 interface OrdersPageProps {
   params: { locale: string };
@@ -49,6 +50,10 @@ interface Order {
 export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
   const router = useRouter();
   const [isMobile, setIsMobile] = useState(false);
+  
+  // 페이지네이션 상태
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20; // 페이지당 20개 항목 표시
   const [orders, setOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -505,6 +510,17 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
     return matchesStatus && matchesSearch;
   });
 
+  // 페이지네이션 계산
+  const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedOrders = filteredOrders.slice(startIndex, endIndex);
+
+  // 필터나 검색어 변경 시 첫 페이지로 리셋
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterStatus]);
+
   // 테이블 행 클릭 핸들러
   const handleOrderClick = (order: Order) => {
     setSelectedOrder(order);
@@ -628,7 +644,7 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
                 </tr>
               </thead>
               <tbody>
-                {filteredOrders.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((order) => (
+                {paginatedOrders.map((order) => (
                   <tr 
                     key={order.id} 
                     onClick={() => handleOrderClick(order)}
@@ -667,37 +683,14 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
 
         {/* 페이지네이션 */}
         {filteredOrders.length > itemsPerPage && (
-          <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'center', gap: '0.5rem' }}>
-            <button
-              onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-              disabled={currentPage === 1}
-              style={{
-                padding: '0.5rem 1rem',
-                border: '1px solid #d1d5db',
-                borderRadius: '0.375rem',
-                backgroundColor: currentPage === 1 ? '#f3f4f6' : 'white',
-                cursor: currentPage === 1 ? 'not-allowed' : 'pointer'
-              }}
-            >
-              {locale === 'ko' ? '이전' : '上一页'}
-            </button>
-            <span style={{ padding: '0.5rem 1rem', display: 'flex', alignItems: 'center' }}>
-              {currentPage} / {Math.ceil(filteredOrders.length / itemsPerPage)}
-            </span>
-            <button
-              onClick={() => setCurrentPage(Math.min(Math.ceil(filteredOrders.length / itemsPerPage), currentPage + 1))}
-              disabled={currentPage === Math.ceil(filteredOrders.length / itemsPerPage)}
-              style={{
-                padding: '0.5rem 1rem',
-                border: '1px solid #d1d5db',
-                borderRadius: '0.375rem',
-                backgroundColor: currentPage === Math.ceil(filteredOrders.length / itemsPerPage) ? '#f3f4f6' : 'white',
-                cursor: currentPage === Math.ceil(filteredOrders.length / itemsPerPage) ? 'not-allowed' : 'pointer'
-              }}
-            >
-              {locale === 'ko' ? '다음' : '下一页'}
-            </button>
-          </div>
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            totalItems={filteredOrders.length}
+            itemsPerPage={itemsPerPage}
+            className="mt-4"
+          />
         )}
       </div>
 

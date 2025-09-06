@@ -10,6 +10,7 @@ import { useRouter } from 'next/navigation';
 import { MobileBottomNav } from '@/components/Navigation';
 import { exportToExcel } from '@/lib/utils/excel';
 import ImageUpload from '@/components/common/ImageUpload';
+import Pagination from '@/components/common/Pagination';
 
 interface ShipmentsPageProps {
   params: { locale: string };
@@ -79,58 +80,10 @@ const CHINESE_COURIERS = [
   { code: 'jd', name: '京东物流 (JD Logistics)' },
 ];
 
-// Mock 데이터
-const MOCK_ORDERS: Order[] = [
-  {
-    id: '1',
-    orderNo: 'ORD-241225-001',
-    orderDate: '2024-12-25',
-    customerName: '김철수',
-    customerPhone: '010-1234-5678',
-    shippingAddress: '서울특별시 강남구 테헤란로 123',
-    status: 'PAID',
-    totalAmount: 158000,
-    items: [
-      { productName: '나이키 운동화 에어맥스', quantity: 1 },
-      { productName: '아디다스 티셔츠', quantity: 2 }
-    ]
-  },
-  {
-    id: '2',
-    orderNo: 'ORD-241225-002',
-    orderDate: '2024-12-25',
-    customerName: '이영희',
-    customerPhone: '010-9876-5432',
-    shippingAddress: '부산광역시 해운대구 해운대로 456',
-    status: 'SHIPPED',
-    totalAmount: 89000,
-    items: [
-      { productName: '샤넬 향수 No.5', quantity: 1 }
-    ]
-  },
-];
+// 초기화 - Mock 데이터 제거
+const MOCK_ORDERS: Order[] = [];
 
-const MOCK_SHIPMENTS: Shipment[] = [
-  {
-    id: '1',
-    orderId: '2',
-    orderNo: 'ORD-241225-002',
-    customerName: '이영희',
-    courier: 'CJ대한통운',
-    courierCode: 'cj',
-    trackingNo: '1234567890123',
-    trackingBarcode: '1234567890123456789',
-    trackingUrl: 'https://www.cjlogistics.com/ko/tool/parcel/tracking?gnbInvcNo=1234567890123',
-    courierCn: '顺丰速运 (SF Express)',
-    trackingNoCn: 'SF1234567890',
-    trackingUrlCn: 'https://www.sf-express.com/cn/sc/dynamic_function/waybill/#search/bill-number/SF1234567890',
-    shippingFee: 3500,
-    actualWeight: 0.5,
-    volumeWeight: 0.8,
-    shippedAt: '2024-12-25T14:30:00',
-    createdAt: '2024-12-25T14:30:00',
-  },
-];
+const MOCK_SHIPMENTS: Shipment[] = [];
 
 export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps) {
   const [orders, setOrders] = useState<Order[]>(MOCK_ORDERS);
@@ -143,6 +96,10 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
   const [searchTerm, setSearchTerm] = useState('');
   const [userRole, setUserRole] = useState<string>('');
   const [isMobile, setIsMobile] = useState(false);
+  
+  // 페이지네이션 상태
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20; // 페이지당 20개 항목 표시
   const router = useRouter();
 
   // 모바일 체크
@@ -398,6 +355,19 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
     });
   };
 
+  // 페이지네이션 계산
+  const totalPendingPages = Math.ceil(pendingOrders.length / itemsPerPage);
+  const totalShippedPages = Math.ceil(shippedOrders.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedPendingOrders = pendingOrders.slice(startIndex, endIndex);
+  const paginatedShippedOrders = shippedOrders.slice(startIndex, endIndex);
+
+  // 탭 변경 시 첫 페이지로 리셋
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedTab]);
+
   // 한국 택배 추적 URL 생성
   const generateTrackingUrl = (courierCode: string, trackingNo: string): string => {
     const urls: { [key: string]: string } = {
@@ -564,7 +534,7 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
                   </tr>
                 </thead>
                 <tbody>
-                  {pendingOrders.map(order => (
+                  {paginatedPendingOrders.map(order => (
                     <tr 
                       key={order.id} 
                       style={{ 
@@ -635,6 +605,18 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
               </table>
             </div>
           )}
+          
+          {/* 페이지네이션 */}
+          {pendingOrders.length > itemsPerPage && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPendingPages}
+              onPageChange={setCurrentPage}
+              totalItems={pendingOrders.length}
+              itemsPerPage={itemsPerPage}
+              className="mt-4"
+            />
+          )}
         </div>
       )}
 
@@ -694,7 +676,7 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
                   </tr>
                 </thead>
                 <tbody>
-                  {shippedOrders.map(shipment => (
+                  {paginatedShippedOrders.map(shipment => (
                     <tr key={shipment.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
                       <td style={{ padding: '0.75rem', fontWeight: '500' }}>{shipment.orderNo}</td>
                       <td style={{ padding: '0.75rem' }}>{shipment.customerName}</td>
@@ -771,6 +753,18 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
                 </tbody>
               </table>
             </div>
+          )}
+          
+          {/* 페이지네이션 */}
+          {shippedOrders.length > itemsPerPage && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalShippedPages}
+              onPageChange={setCurrentPage}
+              totalItems={shippedOrders.length}
+              itemsPerPage={itemsPerPage}
+              className="mt-4"
+            />
           )}
         </div>
       )}

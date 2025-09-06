@@ -1,14 +1,29 @@
 # PRD v2.0 — YUANDI Collection Management System
 ## 1인 해외구매대행업 통합 관리 시스템
 
-> **Version**: 2.1.0  
-> **Last Updated**: 2025-01-06  
+> **Version**: 2.2.0  
+> **Last Updated**: 2025-01-09  
 > **Status**: Active Development (Iterative Refinement)  
 > **Reference**: [DATABASE_ERD.md](./DATABASE_ERD.md)
 
-## 📌 핵심 변경사항 (v2.1)
+## 📌 핵심 변경사항 (v2.2)
 
-### 🆕 New Features in v2.1
+### 🆕 New Features in v2.2 (2025-01-09)
+1. **이미지 업로드 기능**: 
+   - Supabase Storage 통합
+   - 드래그 앤 드롭 지원
+   - 상품 이미지, 송장 사진, 영수증 사진 업로드
+   - 이미지 미리보기 및 변경/삭제 기능
+2. **설정 페이지 개편**:
+   - 사용자 관리 → 설정 페이지로 변경
+   - 탭 UI로 사용자 관리와 출납유형 관리 통합
+3. **출납장부 거래유형 관리**:
+   - 기본 거래유형: 배송, 판매, 입고, 주문, 조정, 환불, 취소
+   - 거래유형 추가/수정/삭제 및 활성화 관리
+   - 거래유형별 색상 설정
+   - localStorage를 통한 설정 저장
+
+### 🆕 Previous Features (v2.1)
 1. **자동 언어 감지**: 브라우저 언어 설정에 따른 자동 리다이렉트
 2. **아이디 필드 추가**: 주문 생성 시 고객 아이디(카카오톡 등) 입력 필드
 3. **주소 검색 기능**: Daum 우편번호 API 통합으로 주소 자동 입력
@@ -20,9 +35,8 @@
 
 ### 🆕 Previous Features (v2.0)
 1. **이중 택배 시스템**: 한국 + 중국 택배사 동시 지원
-2. **상품 이미지 관리**: 상품별 이미지 업로드 및 표시
-3. **향상된 배송 관리**: 바코드, 배송비, 무게, 영수증 사진 등 상세 정보
-4. **Shipments 테이블 분리**: 배송 정보 독립 관리
+2. **향상된 배송 관리**: 바코드, 배송비, 무게 등 상세 정보
+3. **Shipments 테이블 분리**: 배송 정보 독립 관리
 
 ### 🔄 Changes from v1.0
 - orders 테이블에서 배송 정보를 shipments 테이블로 이관
@@ -303,6 +317,7 @@
 - 재고 부족 하이라이트
 - 재고 입고 버튼 → 모달
 - 재고 조정 버튼 → 모달
+- 🆕 신규 상품 등록 모달 (이미지 업로드 포함)
 
 **배송 관리**:
 - PAID 상태 주문 목록
@@ -344,7 +359,7 @@
 - 한국 택배 정보 섹션
 - 중국 택배 정보 섹션
 - 배송 상세 정보 섹션
-- 사진 업로드 섹션
+- 🆕 사진 업로드 섹션 (드래그 앤 드롭 지원)
 
 ### 4.4 반응형 디자인
 
@@ -378,12 +393,16 @@
 - **Charts**: Recharts
 - **API Client**: Fetch API + SWR
 - **i18n**: next-intl
-- **Image Upload**: Base64 → Supabase Storage
+- **Image Upload**: 🆕 Supabase Storage (드래그 앤 드롭)
+- **External APIs**: Daum Postcode API
 
 ### 5.2 Backend
 - **Database**: Supabase (PostgreSQL)
 - **Auth**: Supabase Auth
-- **Storage**: Supabase Storage
+- **Storage**: 🆕 Supabase Storage (이미지 파일 저장)
+  - images 버킷: 상품, 송장, 영수증 이미지
+  - 파일 크기 제한: 5MB
+  - 허용 형식: JPEG, PNG, GIF, WebP
 - **Realtime**: Supabase Realtime
 - **Functions**: Next.js API Routes
 - **Cron**: Vercel Cron Jobs
@@ -401,12 +420,15 @@
 
 ### 주요 테이블
 1. **profiles** - 사용자 프로필
-2. **products** - 상품 (image_url 포함)
+2. **products** - 상품 
+   - 🆕 image_url: 상품 이미지 URL
 3. **orders** - 주문
 4. **order_items** - 주문 상품
 5. **shipments** - 배송 정보 (분리됨)
+   - 🆕 shipment_photo_url: 송장 사진 URL
+   - 🆕 receipt_photo_url: 영수증 사진 URL
 6. **inventory_movements** - 재고 이동
-7. **cashbook** - 출납장부
+7. **cashbook** - 출납장부 (동적 거래유형)
 8. **event_logs** - 이벤트 로그
 
 ### 핵심 설계 원칙
@@ -497,7 +519,7 @@
 - 외부 API 연동 (택배 추적, 환율)
 - AI 기반 수요 예측
 
-## 12. 구현 현황 (v2.1)
+## 12. 구현 현황 (v2.2)
 
 ### ✅ 완료된 기능
 - **인증 시스템**: 로그인/로그아웃, 역할 기반 접근 제어
@@ -509,25 +531,37 @@
   - 상태 변경 (PAID → SHIPPED → DONE)
 - **재고 관리**: 
   - 상품 등록 및 재고 입고
+  - 🆕 이미지 업로드 (드래그 앤 드롭)
   - 재고 목록 및 검색
   - 재고 이동 내역
+- **배송 관리**: 
+  - 송장 등록 (한국/중국 이중 택배)
+  - 🆕 송장/영수증 사진 업로드
+  - 배송 추적 URL 생성
+- **출납장부**: 
+  - 거래 내역 및 집계
+  - 🆕 동적 거래유형 관리
+  - 엑셀 내보내기 기능
+- **설정 페이지** (🆕 v2.2):
+  - 사용자 관리 (Admin 전용)
+  - 출납유형 관리 (추가/수정/삭제)
+  - 탭 UI로 구성
 - **모바일 최적화**:
   - 반응형 네비게이션 (햄버거 메뉴)
   - 모바일 전용 카드 레이아웃
   - 하단 네비게이션 바
   - 페이지별 모바일 컴포넌트
 - **대시보드**: 매출 현황, 주문 상태, 재고 부족 알림
+- **엑셀 내보내기**: 주문, 재고, 출납장부, 사용자
 
 ### 🚧 개발 중
-- **배송 관리**: 송장 등록, 배송 추적
-- **출납장부**: 거래 내역 및 집계
 - **고객 조회**: /track 페이지
+- **실시간 알림**: Supabase Realtime
 
 ### ⏳ 계획됨
-- **사용자 관리**: Admin 전용
-- **엑셀 내보내기**: 주문, 재고, 출납장부
-- **실시간 알림**: Supabase Realtime
-- **상품 이미지**: 업로드 및 표시
+- **PWA 모바일 앱**
+- **SMS/Email 알림**
+- **고객 등급별 할인**
 
 ## 13. 반복적 개선 프로세스
 

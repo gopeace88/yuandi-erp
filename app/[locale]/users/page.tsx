@@ -27,68 +27,8 @@ interface User {
   updatedAt: string;
 }
 
-// Mock 데이터
-const MOCK_USERS: User[] = [
-  {
-    id: '1',
-    name: 'Admin User',
-    email: 'admin@yuandi.com',
-    phone: '010-1111-1111',
-    role: 'Admin',
-    locale: 'ko',
-    active: true,
-    lastLoginAt: '2024-12-25T10:30:00',
-    createdAt: '2024-01-01T00:00:00',
-    updatedAt: '2024-12-25T10:30:00'
-  },
-  {
-    id: '2',
-    name: 'Order Manager',
-    email: 'order@yuandi.com',
-    phone: '010-2222-2222',
-    role: 'OrderManager',
-    locale: 'ko',
-    active: true,
-    lastLoginAt: '2024-12-25T09:15:00',
-    createdAt: '2024-01-15T00:00:00',
-    updatedAt: '2024-12-25T09:15:00'
-  },
-  {
-    id: '3',
-    name: 'Ship Manager',
-    email: 'ship@yuandi.com',
-    phone: '010-3333-3333',
-    role: 'ShipManager',
-    locale: 'zh-CN',
-    active: true,
-    lastLoginAt: '2024-12-25T14:30:00',
-    createdAt: '2024-02-01T00:00:00',
-    updatedAt: '2024-12-25T14:30:00'
-  },
-  {
-    id: '4',
-    name: '김철수',
-    email: 'kim@yuandi.com',
-    phone: '010-4444-4444',
-    role: 'OrderManager',
-    locale: 'ko',
-    active: false,
-    lastLoginAt: '2024-11-30T16:45:00',
-    createdAt: '2024-03-01T00:00:00',
-    updatedAt: '2024-11-30T16:45:00'
-  },
-  {
-    id: '5',
-    name: '王小明',
-    email: 'wang@yuandi.com',
-    phone: '010-5555-5555',
-    role: 'ShipManager',
-    locale: 'zh-CN',
-    active: true,
-    createdAt: '2024-06-01T00:00:00',
-    updatedAt: '2024-06-01T00:00:00'
-  }
-];
+// 초기화 - Mock 데이터 제거
+const MOCK_USERS: User[] = [];
 
 export default function UsersPage({ params: { locale } }: UsersPageProps) {
   const [users, setUsers] = useState<User[]>(MOCK_USERS);
