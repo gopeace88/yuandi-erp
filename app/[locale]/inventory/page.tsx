@@ -10,6 +10,7 @@ import { useRouter } from 'next/navigation';
 import api from '@/lib/api/client';
 import { exportToExcel } from '@/lib/utils/excel';
 import InventoryPageMobile from './InventoryPageMobile';
+import ImageUpload from '@/components/common/ImageUpload';
 
 interface InventoryPageProps {
   params: { locale: string };
