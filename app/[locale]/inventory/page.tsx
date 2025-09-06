@@ -8,6 +8,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api/client';
+import InventoryPageMobile from './InventoryPageMobile';
 
 interface InventoryPageProps {
   params: { locale: string };
@@ -55,6 +56,19 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
   const [showLowStock, setShowLowStock] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // 모바일 감지
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // 새 상품 폼 상태
   const [newProduct, setNewProduct] = useState({
@@ -481,6 +495,11 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
   });
 
   const categories = Array.from(new Set(products.map(p => p.category)));
+
+  // 모바일일 때는 InventoryPageMobile 컴포넌트 사용
+  if (isMobile) {
+    return <InventoryPageMobile params={{ locale }} />;
+  }
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f3f4f6' }}>
