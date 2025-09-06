@@ -362,9 +362,7 @@ export default function DashboardPage({ params: { locale } }: DashboardPageProps
               </thead>
               <tbody>
                 {/* 최근 주문 표시 */}
-                {(recentOrders.length > 0 ? recentOrders : 
-                  [{ date: new Date().toISOString().split('T')[0], name: locale === 'ko' ? '데이터 없음' : '无数据', status: 'PAID', amount: '₩0' }]
-                ).map((order, index) => {
+                {recentOrders.map((order, index) => {
                   const statusColors = {
                     'PAID': { bg: '#dbeafe', color: '#1e40af', text: locale === 'ko' ? '결제완료' : locale === 'zh-CN' ? '已付款' : 'Paid' },
                     'SHIPPED': { bg: '#fef3c7', color: '#92400e', text: locale === 'ko' ? '배송중' : locale === 'zh-CN' ? '配送中' : 'Shipping' },

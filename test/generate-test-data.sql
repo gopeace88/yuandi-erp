@@ -2,17 +2,17 @@
 -- 100개씩의 테스트 데이터를 생성합니다.
 
 -- 1. 카테고리 데이터 (10개)
-INSERT INTO categories (name_ko, name_zh, description, display_order, is_active) VALUES
-('가방', '包', '각종 가방 제품', 1, true),
-('신발', '鞋', '운동화 및 구두', 2, true),
-('화장품', '化妆品', '스킨케어 및 메이크업', 3, true),
-('전자제품', '电子产品', '스마트폰 액세서리', 4, true),
-('의류', '服装', '남녀 의류', 5, true),
-('시계', '手表', '손목시계 및 스마트워치', 6, true),
-('액세서리', '配饰', '목걸이, 반지 등', 7, true),
-('건강식품', '保健品', '비타민 및 영양제', 8, true),
-('주방용품', '厨房用品', '조리도구 및 식기', 9, true),
-('완구', '玩具', '어린이 장난감', 10, true);
+INSERT INTO product_categories (name, description, is_active) VALUES
+('가방', '각종 가방 제품', true),
+('신발', '운동화 및 구두', true),
+('화장품', '스킨케어 및 메이크업', true),
+('전자제품', '스마트폰 액세서리', true),
+('의류', '남녀 의류', true),
+('시계', '손목시계 및 스마트워치', true),
+('액세서리', '목걸이, 반지 등', true),
+('건강식품', '비타민 및 영양제', true),
+('주방용품', '조리도구 및 식기', true),
+('완구', '어린이 장난감', true);
 
 -- 2. 상품 데이터 (100개)
 DO $$
@@ -25,7 +25,7 @@ DECLARE
 BEGIN
     FOR i IN 1..100 LOOP
         -- 랜덤 카테고리 선택
-        SELECT id INTO cat_id FROM categories ORDER BY RANDOM() LIMIT 1;
+        SELECT id INTO cat_id FROM product_categories ORDER BY RANDOM() LIMIT 1;
         
         INSERT INTO products (
             category_id,
@@ -33,12 +33,10 @@ BEGIN
             name,
             model,
             color,
-            size,
             manufacturer,
             brand,
             cost_cny,
             price_krw,
-            on_hand,
             low_stock_threshold,
             notes,
             is_active
@@ -48,16 +46,18 @@ BEGIN
             '상품명 ' || i,
             models[1 + (i % 10)],
             colors[1 + (i % 10)],
-            CASE WHEN i % 3 = 0 THEN 'S' WHEN i % 3 = 1 THEN 'M' ELSE 'L' END,
             '제조사 ' || ((i % 20) + 1),
             brand_names[1 + (i % 10)],
             100 + (i * 10),  -- 100 ~ 1100 CNY
             (100 + (i * 10)) * 180,  -- CNY를 KRW로 변환 (환율 180)
-            50 + (i % 100),  -- 재고: 50 ~ 149
             5,
             '테스트 상품 ' || i || '번 입니다.',
             true
         );
+        
+        -- inventory 테이블에 재고 추가
+        INSERT INTO inventory (product_id, on_hand, allocated)
+        SELECT id, 50 + (i % 100), 0 FROM products WHERE sku = 'SKU-' || LPAD(i::TEXT, 5, '0');
     END LOOP;
 END $$;
 
