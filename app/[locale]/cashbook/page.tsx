@@ -50,8 +50,8 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [dateRange, setDateRange] = useState({
-    startDate: '2024-12-01',
-    endDate: '2024-12-31'
+    startDate: '2025-01-01',
+    endDate: '2025-12-31'
   });
   const [filterType, setFilterType] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -277,7 +277,10 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
           createdBy: t.created_by || 'Unknown'
         }));
         
+        console.log('💾 포맷된 거래 데이터:', formattedTransactions.length + '개');
+        console.log('첫 번째 거래:', formattedTransactions[0]);
         setTransactions(formattedTransactions);
+        console.log('✅ 상태 업데이트 완료');
       }
     } catch (error) {
       console.error('거래 내역 로드 중 오류:', error);
