@@ -318,30 +318,51 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
       }
       
       if (shipmentsData) {
+        // Courier enum을 display용으로 변환하는 함수
+        const getCourierDisplayName = (courier: string) => {
+          switch (courier) {
+            case 'cj': return 'CJ대한통운';
+            case 'hanjin': return '한진택배';
+            case 'lotte': return '롯데택배';
+            case 'epost': return '우체국택배';
+            case 'logen': return '로젠택배';
+            default: return courier;
+          }
+        };
+
         const formattedShipments: Shipment[] = shipmentsData.map(shipment => ({
           id: shipment.id,
           orderId: shipment.order_id,
           orderNo: shipment.orders?.order_number || '',
           customerName: shipment.orders?.customer_name || '',
-          courier: shipment.courier,
-          courierCode: shipment.courier,
-          trackingNo: shipment.tracking_number,
-          trackingBarcode: shipment.tracking_number, // fallback
-          trackingUrl: shipment.tracking_url,
-          courierCn: '', // 현재 스키마에 없음
-          trackingNoCn: '', // 현재 스키마에 없음
-          trackingUrlCn: '', // 현재 스키마에 없음
-          shippingFee: shipment.shipping_cost_krw,
+          courier: getCourierDisplayName(shipment.courier), // Display용 이름으로 변환
+          courierCode: shipment.courier, // 원본 enum 값
+          trackingNo: shipment.tracking_number || '',
+          trackingBarcode: shipment.tracking_number || '',
+          trackingUrl: shipment.tracking_url || '',
+          courierCn: '', // 중국 택배사 (향후 확장용)
+          trackingNoCn: '', // 중국 운송장 (향후 확장용) 
+          trackingUrlCn: '', // 중국 추적 URL (향후 확장용)
+          shippingFee: shipment.shipping_cost_krw || 0,
           actualWeight: shipment.weight_g ? shipment.weight_g / 1000 : undefined, // g를 kg로 변환
-          volumeWeight: undefined, // 현재 스키마에 없음
-          shipmentPhotoUrl: shipment.package_images?.[0] || undefined,
-          receiptPhotoUrl: undefined, // 현재 스키마에 없음
-          shippedAt: shipment.created_at, // fallback
-          deliveredAt: shipment.actual_delivery_date ? `${shipment.actual_delivery_date}T00:00:00.000Z` : undefined,
+          volumeWeight: undefined, // 부피중량 (향후 추가)
+          shipmentPhotoUrl: Array.isArray(shipment.package_images) && shipment.package_images.length > 0 
+            ? shipment.package_images[0] 
+            : undefined,
+          receiptPhotoUrl: undefined, // 영수증 사진 (향후 추가)
+          shippedAt: shipment.created_at, // 배송 시작일
+          deliveredAt: shipment.actual_delivery_date 
+            ? (typeof shipment.actual_delivery_date === 'string' 
+                ? shipment.actual_delivery_date.includes('T') 
+                  ? shipment.actual_delivery_date 
+                  : `${shipment.actual_delivery_date}T00:00:00.000Z`
+                : undefined)
+            : undefined,
           createdAt: shipment.created_at
         }));
         
         setShipments(formattedShipments);
+        console.log(`✅ ${formattedShipments.length}개 배송 데이터 로드 완료`);
       }
     } catch (error) {
       console.error('배송 데이터 로드 중 오류:', error);

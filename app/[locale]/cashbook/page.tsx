@@ -254,15 +254,15 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
           transactionDate: t.transaction_date,
           type: t.type,
           amount: t.amount_krw, // amount_krw 컬럼 사용
-          currency: t.amount_cny ? 'CNY' : 'KRW', // CNY 금액이 있으면 CNY, 없으면 KRW
+          currency: t.amount_cny && t.amount_cny > 0 ? 'CNY' : 'KRW', // CNY 금액이 있으면 CNY, 없으면 KRW
           fxRate: t.exchange_rate || 1, // exchange_rate 컬럼 사용
           amountKrw: t.amount_krw,
-          refType: t.reference_type, // reference_type 컬럼 사용
-          refNo: t.reference_id, // reference_id 컬럼 사용
+          refType: t.reference_type || '', // reference_type 컬럼 사용
+          refNo: t.reference_id || '', // reference_id 컬럼 사용
           description: t.description || '',
-          note: t.note || '', // note 컬럼이 있다면 사용, 없으면 빈 문자열
-          bankName: t.bank_name || '', // bank_name 컬럼이 있다면 사용, 없으면 빈 문자열
-          accountNo: t.account_number || '', // account_number 컬럼이 있다면 사용, 없으면 빈 문자열
+          note: t.tags || '', // tags를 메모로 사용 (실제 note 컬럼 없음)
+          bankName: '', // 실제 스키마에 없는 컬럼 - 빈 문자열
+          accountNo: '', // 실제 스키마에 없는 컬럼 - 빈 문자열
           createdAt: t.created_at,
           createdBy: t.created_by || 'Unknown'
         }));
