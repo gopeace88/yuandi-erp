@@ -7,6 +7,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import '../dashboard/dashboard.css';
 
 interface InventoryPageProps {
   params: { locale: string };
@@ -445,161 +446,201 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
         </div>
       </div>
 
-      {/* 재고 통계 요약 */}
-      <div className="px-4 sm:px-6 lg:px-8 py-4">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="bg-white p-3 sm:p-4 rounded-lg shadow-sm">
-            <p className="text-xs sm:text-sm text-gray-500">{t.totalProducts}</p>
-            <p className="text-lg sm:text-xl font-bold text-gray-800">{products.length}</p>
+      {/* 재고 통계 요약 - 대시보드와 완전 동일한 스타일 및 배치 */}
+      <div style={{ 
+        padding: '1rem',
+        maxWidth: '1200px',
+        margin: '0 auto'
+      }}>
+        {/* Stats Grid - 대시보드와 동일 */}
+        <div className="stats-grid" style={{ marginBottom: '1rem' }}>
+          {/* 총 상품수 */}
+          <div className="stat-card" style={{
+            backgroundColor: 'white',
+            borderRadius: '0.5rem',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+          }}>
+            <div className="stat-label" style={{ color: '#6b7280' }}>
+              {t.totalProducts}
+            </div>
+            <div className="stat-value-large" style={{ 
+              fontWeight: 'bold', 
+              color: '#2563eb' 
+            }}>
+              {products.length}
+            </div>
           </div>
-          <div className="bg-white p-3 sm:p-4 rounded-lg shadow-sm">
-            <p className="text-xs sm:text-sm text-gray-500">{t.totalStock}</p>
-            <p className="text-lg sm:text-xl font-bold text-gray-800">
+
+          {/* 재고 수량 */}
+          <div className="stat-card" style={{
+            backgroundColor: 'white',
+            borderRadius: '0.5rem',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+          }}>
+            <div className="stat-label" style={{ color: '#6b7280' }}>
+              {t.totalStock}
+            </div>
+            <div className="stat-value-large" style={{ 
+              fontWeight: 'bold', 
+              color: '#10b981' 
+            }}>
               {products.reduce((sum, p) => sum + p.onHand, 0)}
-            </p>
+            </div>
           </div>
-          <div className="bg-white p-3 sm:p-4 rounded-lg shadow-sm">
-            <p className="text-xs sm:text-sm text-gray-500">{t.lowStockItems}</p>
-            <p className="text-lg sm:text-xl font-bold text-amber-600">
+
+          {/* 재고 부족 */}
+          <div className="stat-card" style={{
+            backgroundColor: 'white',
+            borderRadius: '0.5rem',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+          }}>
+            <div className="stat-label" style={{ color: '#6b7280' }}>
+              {t.lowStockItems}
+            </div>
+            <div className="stat-value-large" style={{ 
+              fontWeight: 'bold', 
+              color: '#f59e0b' 
+            }}>
               {products.filter(p => p.onHand <= p.lowStockThreshold).length}
-            </p>
+            </div>
           </div>
-          <div className="bg-white p-3 sm:p-4 rounded-lg shadow-sm">
-            <p className="text-xs sm:text-sm text-gray-500">{t.stockValue}</p>
-            <p className="text-lg sm:text-xl font-bold text-blue-600">
+
+          {/* 재고 가치 */}
+          <div className="stat-card" style={{
+            backgroundColor: 'white',
+            borderRadius: '0.5rem',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+          }}>
+            <div className="stat-label" style={{ color: '#6b7280' }}>
+              {t.stockValue}
+            </div>
+            <div className="revenue-value" style={{ 
+              fontWeight: 'bold', 
+              color: '#8b5cf6' 
+            }}>
               ₩{products.reduce((sum, p) => sum + p.onHand * p.salePriceKrw, 0).toLocaleString()}
-            </p>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* 검색 및 필터 */}
-      <div className="px-4 sm:px-6 lg:px-8 pb-4">
-        <div className="flex flex-col sm:flex-row gap-3">
+      {/* 검색 및 필터 - 모바일 최적화 (작은 크기, 깔끔한 배치) */}
+      <div className="px-3 sm:px-6 lg:px-8 pb-3">
+        <div className="space-y-1.5">
+          {/* 검색창 - 첫번째 줄 */}
           <input
             type="text"
             placeholder={t.search}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-2.5 py-1 border border-gray-300 rounded text-xs sm:text-base focus:outline-none focus:ring-1 focus:ring-blue-500"
+            style={{ height: '32px' }}
           />
-          <select
-            value={filterCategory}
-            onChange={(e) => setFilterCategory(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-md text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="all">{t.all}</option>
-            {categories.map(cat => (
-              <option key={cat} value={cat}>{cat}</option>
-            ))}
-          </select>
-          <button
-            onClick={() => setShowLowStock(!showLowStock)}
-            className={`px-4 py-2 rounded-md font-medium text-sm sm:text-base transition-colors ${
-              showLowStock 
-                ? 'bg-amber-600 hover:bg-amber-700 text-white' 
-                : 'bg-white hover:bg-gray-100 text-gray-700 border border-gray-300'
-            }`}
-          >
-            {t.lowStock}
-          </button>
+          {/* 필터 버튼들 - 두번째 줄 */}
+          <div className="flex gap-1.5">
+            <select
+              value={filterCategory}
+              onChange={(e) => setFilterCategory(e.target.value)}
+              className="flex-1 px-2 py-1 border border-gray-300 rounded text-xs sm:text-base focus:outline-none focus:ring-1 focus:ring-blue-500"
+              style={{ height: '32px' }}
+            >
+              <option value="all">{t.all}</option>
+              {categories.map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+            <button
+              onClick={() => setShowLowStock(!showLowStock)}
+              className={`px-2.5 py-1 rounded font-medium text-xs sm:text-base transition-colors ${
+                showLowStock 
+                  ? 'bg-amber-600 hover:bg-amber-700 text-white' 
+                  : 'bg-white hover:bg-gray-100 text-gray-700 border border-gray-300'
+              }`}
+              style={{ height: '32px', minWidth: '80px' }}
+            >
+              {t.lowStock}
+            </button>
+          </div>
         </div>
       </div>
 
       {/* 상품 목록 */}
-      <div className="px-4 sm:px-6 lg:px-8 pb-6">
+      <div className="px-3 sm:px-6 lg:px-8 pb-6">
         {filteredProducts.length === 0 ? (
           <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">
             {t.noProducts}
           </div>
         ) : (
           <>
-            {/* 모바일 카드 레이아웃 (작은 화면) */}
-            <div className="block lg:hidden space-y-4">
-              {filteredProducts.map((product) => {
-                const stockStatus = getStockStatus(product);
-                return (
-                  <div key={product.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                    {/* 카드 헤더 */}
-                    <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
-                      <div className="flex justify-between items-start">
-                        <div className="flex items-center gap-3">
-                          {product.imageUrl && (
-                            <img
-                              src={product.imageUrl}
-                              alt={product.name}
-                              className="w-12 h-12 object-cover rounded"
-                            />
-                          )}
-                          <div>
-                            <p className="text-base font-semibold text-gray-900">{product.name}</p>
-                            <p className="text-xs text-gray-500 font-mono">{product.sku}</p>
+            {/* 모바일 테이블 레이아웃 - 좌우 스크롤 가능 */}
+            <div className="block lg:hidden bg-white rounded-lg shadow" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+              <table style={{ minWidth: '600px', width: '100%' }} className="divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                      {t.productName}
+                    </th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                      {t.category}
+                    </th>
+                    <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                      {t.stock}
+                    </th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                      {t.cost}
+                    </th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                      {t.price}
+                    </th>
+                    <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                      {t.status}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredProducts.map((product) => {
+                    const stockStatus = getStockStatus(product);
+                    return (
+                      <tr key={product.id} onClick={() => setSelectedProduct(product)} className="hover:bg-gray-50">
+                        <td className="px-3 py-2 whitespace-nowrap">
+                          <div className="flex items-center">
+                            {product.imageUrl && (
+                              <img
+                                src={product.imageUrl}
+                                alt={product.name}
+                                className="w-8 h-8 object-cover rounded mr-2"
+                              />
+                            )}
+                            <div>
+                              <div className="text-xs font-medium text-gray-900">{product.name}</div>
+                              <div className="text-[10px] text-gray-500">{product.sku}</div>
+                            </div>
                           </div>
-                        </div>
-                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${stockStatus.color}`}>
-                          {stockStatus.text}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* 카드 본문 */}
-                    <div className="px-4 py-4 space-y-3">
-                      {/* 상품 정보 */}
-                      <div className="grid grid-cols-2 gap-2 text-sm">
-                        <div>
-                          <p className="text-gray-500">{t.category}</p>
-                          <p className="font-medium text-gray-900">{product.category}</p>
-                        </div>
-                        <div>
-                          <p className="text-gray-500">{t.brand}</p>
-                          <p className="font-medium text-gray-900">{product.brand}</p>
-                        </div>
-                        <div>
-                          <p className="text-gray-500">{t.model}</p>
-                          <p className="font-medium text-gray-900">{product.model}</p>
-                        </div>
-                        <div>
-                          <p className="text-gray-500">{t.color}</p>
-                          <p className="font-medium text-gray-900">{product.color}</p>
-                        </div>
-                      </div>
-
-                      {/* 재고 정보 */}
-                      <div className="border-t border-gray-200 pt-3">
-                        <p className="text-sm text-gray-500">{t.stock}</p>
-                        <p className="text-xl font-bold text-gray-900">
-                          {product.onHand}개
-                          <span className="text-sm text-gray-500 font-normal ml-2">
-                            (임계값: {product.lowStockThreshold})
+                        </td>
+                        <td className="px-3 py-2 whitespace-nowrap">
+                          <div className="text-xs text-gray-900">{product.category}</div>
+                          <div className="text-[10px] text-gray-500">{product.brand}</div>
+                        </td>
+                        <td className="px-3 py-2 whitespace-nowrap text-center">
+                          <div className="text-xs font-semibold text-gray-900">{product.onHand}</div>
+                          <div className="text-[10px] text-gray-500">/{product.lowStockThreshold}</div>
+                        </td>
+                        <td className="px-3 py-2 whitespace-nowrap text-right text-xs text-gray-900">
+                          ¥{product.costCny}
+                        </td>
+                        <td className="px-3 py-2 whitespace-nowrap text-right text-xs font-semibold text-blue-600">
+                          ₩{product.salePriceKrw.toLocaleString()}
+                        </td>
+                        <td className="px-3 py-2 whitespace-nowrap text-center">
+                          <span className={`px-2 py-1 text-[10px] font-semibold rounded-full ${stockStatus.color}`}>
+                            {stockStatus.text}
                           </span>
-                        </p>
-                      </div>
-
-                      {/* 가격 정보 */}
-                      <div className="grid grid-cols-2 gap-2 border-t border-gray-200 pt-3">
-                        <div>
-                          <p className="text-sm text-gray-500">{t.cost}</p>
-                          <p className="text-base font-semibold text-gray-900">¥{product.costCny}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-gray-500">{t.price}</p>
-                          <p className="text-base font-semibold text-blue-600">₩{product.salePriceKrw.toLocaleString()}</p>
-                        </div>
-                      </div>
-
-                      {/* 액션 버튼 */}
-                      <div className="pt-3">
-                        <button
-                          onClick={() => setSelectedProduct(product)}
-                          className="w-full px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md text-sm font-medium"
-                        >
-                          {t.viewDetails}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
 
             {/* 데스크탑 테이블 레이아웃 (큰 화면) */}
@@ -693,32 +734,63 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
         )}
       </div>
 
-      {/* 최근 재고 이동 내역 */}
-      <div className="px-4 sm:px-6 lg:px-8 pb-20">
+      {/* 최근 재고 이동 내역 - 테이블 형식 */}
+      <div className="px-3 sm:px-6 lg:px-8 pb-20">
         <h2 className="text-lg font-semibold text-gray-800 mb-4">{t.stockMovements}</h2>
-        <div className="space-y-3">
-          {movements.slice(0, 5).map((movement) => (
-            <div key={movement.id} className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
-              <div className="flex justify-between items-start mb-2">
-                <div>
-                  <p className="text-sm font-medium text-gray-900">{movement.productName}</p>
-                  <p className="text-xs text-gray-500">{movement.date} · {movement.createdBy}</p>
-                </div>
-                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getMovementTypeColor(movement.type)}`}>
-                  {movement.type === 'inbound' ? t.inboundType : movement.type === 'sale' ? t.saleType : t.adjustmentType}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <p className="text-xs text-gray-500">{movement.note || '-'}</p>
-                <div className="text-right">
-                  <p className={`text-base font-bold ${movement.quantity > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {movement.quantity > 0 ? '+' : ''}{movement.quantity}
-                  </p>
-                  <p className="text-xs text-gray-500">{t.balance}: {movement.balanceAfter}</p>
-                </div>
-              </div>
-            </div>
-          ))}
+        <div className="bg-white rounded-lg shadow" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <table style={{ minWidth: '700px', width: '100%' }} className="divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                  상품명
+                </th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                  구분
+                </th>
+                <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                  수량
+                </th>
+                <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                  잔량
+                </th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                  날짜
+                </th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                  비고
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {movements.slice(0, 10).map((movement) => (
+                <tr key={movement.id} className="hover:bg-gray-50">
+                  <td className="px-3 py-2 whitespace-nowrap">
+                    <div className="text-xs font-medium text-gray-900">{movement.productName}</div>
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap">
+                    <span className={`px-2 py-1 text-[10px] font-semibold rounded-full ${getMovementTypeColor(movement.type)}`}>
+                      {movement.type === 'inbound' ? t.inboundType : movement.type === 'sale' ? t.saleType : t.adjustmentType}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap text-center">
+                    <span className={`text-xs font-bold ${movement.quantity > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {movement.quantity > 0 ? '+' : ''}{movement.quantity}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap text-center text-xs text-gray-900">
+                    {movement.balanceAfter}
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap">
+                    <div className="text-xs text-gray-900">{movement.date}</div>
+                    <div className="text-[10px] text-gray-500">{movement.createdBy}</div>
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
+                    {movement.note || '-'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
 

@@ -17,6 +17,7 @@ import {
     Eye,
     MoreHorizontal
 } from 'lucide-react'
+import { BottomNavigation } from '@/components/layout/mobile-navigation'
 
 interface DashboardStats {
     todaySales: number
@@ -87,7 +88,8 @@ export function MobileDashboard() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gray-50 pb-16">
+
             {/* Mobile Header */}
             <div className="bg-white shadow-sm border-b px-4 py-3 sticky top-0 z-10">
                 <div className="flex items-center justify-between">
@@ -107,22 +109,22 @@ export function MobileDashboard() {
             </div>
 
             <div className="p-4 space-y-6">
-                {/* Quick Stats - Mobile Grid */}
-                <div className="grid grid-cols-2 gap-4">
+                {/* Quick Stats - Mobile Grid - 최적화된 글자 크기 */}
+                <div className="grid grid-cols-2 gap-3">
                     <Card className="border-0 shadow-sm">
-                        <CardContent className="p-4">
+                        <CardContent className="p-3">
                             <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-xs text-gray-500 mb-1">오늘 매출</p>
-                                    <p className="text-lg font-bold text-gray-900">
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-xs text-gray-500 mb-1 truncate">오늘 매출</p>
+                                    <p className="text-sm font-bold text-gray-900 truncate">
                                         {formatCurrency(stats.todaySales)}
                                     </p>
                                 </div>
-                                <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                                    <DollarSign className="h-5 w-5 text-green-600" />
+                                <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                    <DollarSign className="h-4 w-4 text-green-600" />
                                 </div>
                             </div>
-                            <div className="flex items-center mt-2">
+                            <div className="flex items-center mt-1">
                                 <TrendingUp className="h-3 w-3 text-green-500 mr-1" />
                                 <span className="text-xs text-green-600">+12.5%</span>
                             </div>
@@ -130,17 +132,17 @@ export function MobileDashboard() {
                     </Card>
 
                     <Card className="border-0 shadow-sm">
-                        <CardContent className="p-4">
+                        <CardContent className="p-3">
                             <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-xs text-gray-500 mb-1">오늘 주문</p>
-                                    <p className="text-lg font-bold text-gray-900">{stats.todayOrders}</p>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-xs text-gray-500 mb-1 truncate">오늘 주문</p>
+                                    <p className="text-sm font-bold text-gray-900">{stats.todayOrders}</p>
                                 </div>
-                                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                                    <ShoppingCart className="h-5 w-5 text-blue-600" />
+                                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                    <ShoppingCart className="h-4 w-4 text-blue-600" />
                                 </div>
                             </div>
-                            <div className="flex items-center mt-2">
+                            <div className="flex items-center mt-1">
                                 <TrendingUp className="h-3 w-3 text-green-500 mr-1" />
                                 <span className="text-xs text-green-600">+8.2%</span>
                             </div>
@@ -148,120 +150,120 @@ export function MobileDashboard() {
                     </Card>
 
                     <Card className="border-0 shadow-sm">
-                        <CardContent className="p-4">
+                        <CardContent className="p-3">
                             <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-xs text-gray-500 mb-1">총 상품</p>
-                                    <p className="text-lg font-bold text-gray-900">{stats.totalProducts}</p>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-xs text-gray-500 mb-1 truncate">총 상품</p>
+                                    <p className="text-sm font-bold text-gray-900">{stats.totalProducts}</p>
                                 </div>
-                                <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                                    <Package className="h-5 w-5 text-purple-600" />
+                                <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                    <Package className="h-4 w-4 text-purple-600" />
                                 </div>
                             </div>
                         </CardContent>
                     </Card>
 
                     <Card className="border-0 shadow-sm">
-                        <CardContent className="p-4">
+                        <CardContent className="p-3">
                             <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-xs text-gray-500 mb-1">재고 부족</p>
-                                    <p className="text-lg font-bold text-gray-900">{stats.lowStockCount}</p>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-xs text-gray-500 mb-1 truncate">재고 부족</p>
+                                    <p className="text-sm font-bold text-gray-900">{stats.lowStockCount}</p>
                                 </div>
-                                <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
-                                    <AlertTriangle className="h-5 w-5 text-orange-600" />
+                                <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                    <AlertTriangle className="h-4 w-4 text-orange-600" />
                                 </div>
                             </div>
                             {stats.lowStockCount > 0 && (
-                                <Badge variant="destructive" className="mt-2 text-xs">
-                                    주의 필요
+                                <Badge variant="destructive" className="mt-1 text-xs px-1 py-0">
+                                    주의
                                 </Badge>
                             )}
                         </CardContent>
                     </Card>
                 </div>
 
-                {/* Order Status Overview */}
+                {/* Order Status Overview - 모바일 최적화 */}
                 <Card className="border-0 shadow-sm">
-                    <CardHeader className="pb-3">
-                        <CardTitle className="text-lg">주문 현황</CardTitle>
-                        <CardDescription>실시간 주문 상태 분포</CardDescription>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-base">주문 현황</CardTitle>
+                        <CardDescription className="text-xs">실시간 주문 상태 분포</CardDescription>
                     </CardHeader>
-                    <CardContent className="p-4 pt-0">
-                        <div className="space-y-3">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center space-x-3">
-                                    <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                                    <span className="text-sm text-gray-600">결제완료</span>
+                    <CardContent className="p-3 pt-0">
+                        <div className="space-y-2">
+                            <div className="flex items-center justify-between py-1">
+                                <div className="flex items-center space-x-2">
+                                    <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                                    <span className="text-xs text-gray-600">결제완료</span>
                                 </div>
-                                <span className="text-sm font-medium">{stats.pendingOrders}</span>
+                                <span className="text-xs font-medium">{stats.pendingOrders}</span>
                             </div>
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center space-x-3">
-                                    <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                                    <span className="text-sm text-gray-600">배송중</span>
+                            <div className="flex items-center justify-between py-1">
+                                <div className="flex items-center space-x-2">
+                                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                    <span className="text-xs text-gray-600">배송중</span>
                                 </div>
-                                <span className="text-sm font-medium">{stats.shippedOrders}</span>
+                                <span className="text-xs font-medium">{stats.shippedOrders}</span>
                             </div>
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center space-x-3">
-                                    <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                                    <span className="text-sm text-gray-600">배송완료</span>
+                            <div className="flex items-center justify-between py-1">
+                                <div className="flex items-center space-x-2">
+                                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                    <span className="text-xs text-gray-600">배송완료</span>
                                 </div>
-                                <span className="text-sm font-medium">{stats.completedOrders}</span>
+                                <span className="text-xs font-medium">{stats.completedOrders}</span>
                             </div>
                         </div>
                     </CardContent>
                 </Card>
 
-                {/* Quick Actions */}
+                {/* Quick Actions - 모바일 최적화 */}
                 <Card className="border-0 shadow-sm">
-                    <CardHeader className="pb-3">
-                        <CardTitle className="text-lg">빠른 작업</CardTitle>
-                        <CardDescription>자주 사용하는 기능에 빠르게 접근</CardDescription>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-base">빠른 작업</CardTitle>
+                        <CardDescription className="text-xs">자주 사용하는 기능에 빠르게 접근</CardDescription>
                     </CardHeader>
-                    <CardContent className="p-4 pt-0">
-                        <div className="grid grid-cols-2 gap-3">
-                            <Button className="h-12 flex flex-col items-center justify-center space-y-1 bg-blue-600 hover:bg-blue-700">
-                                <Plus className="h-5 w-5" />
+                    <CardContent className="p-3 pt-0">
+                        <div className="grid grid-cols-2 gap-2">
+                            <Button className="h-10 flex flex-col items-center justify-center space-y-1 bg-blue-600 hover:bg-blue-700">
+                                <Plus className="h-4 w-4" />
                                 <span className="text-xs">새 주문</span>
                             </Button>
-                            <Button variant="outline" className="h-12 flex flex-col items-center justify-center space-y-1">
-                                <Package className="h-5 w-5" />
+                            <Button variant="outline" className="h-10 flex flex-col items-center justify-center space-y-1">
+                                <Package className="h-4 w-4" />
                                 <span className="text-xs">재고 관리</span>
                             </Button>
-                            <Button variant="outline" className="h-12 flex flex-col items-center justify-center space-y-1">
-                                <Truck className="h-5 w-5" />
+                            <Button variant="outline" className="h-10 flex flex-col items-center justify-center space-y-1">
+                                <Truck className="h-4 w-4" />
                                 <span className="text-xs">배송 관리</span>
                             </Button>
-                            <Button variant="outline" className="h-12 flex flex-col items-center justify-center space-y-1">
-                                <BarChart3 className="h-5 w-5" />
+                            <Button variant="outline" className="h-10 flex flex-col items-center justify-center space-y-1">
+                                <BarChart3 className="h-4 w-4" />
                                 <span className="text-xs">보고서</span>
                             </Button>
                         </div>
                     </CardContent>
                 </Card>
 
-                {/* Recent Activity */}
+                {/* Recent Activity - 모바일 최적화 */}
                 <Card className="border-0 shadow-sm">
-                    <CardHeader className="pb-3">
-                        <CardTitle className="text-lg">최근 활동</CardTitle>
-                        <CardDescription>최근 처리된 주문 및 업데이트</CardDescription>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-base">최근 활동</CardTitle>
+                        <CardDescription className="text-xs">최근 처리된 주문 및 업데이트</CardDescription>
                     </CardHeader>
-                    <CardContent className="p-4 pt-0">
-                        <div className="space-y-3">
+                    <CardContent className="p-3 pt-0">
+                        <div className="space-y-2">
                             {[
                                 { id: 1, order: 'ORD-241225-001', customer: '홍길동', status: '배송완료', time: '2분 전' },
                                 { id: 2, order: 'ORD-241225-002', customer: '김철수', status: '배송중', time: '15분 전' },
                                 { id: 3, order: 'ORD-241225-003', customer: '이영희', status: '결제완료', time: '1시간 전' },
                             ].map((activity) => (
                                 <div key={activity.id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0">
-                                    <div className="flex-1">
-                                        <p className="text-sm font-medium text-gray-900">{activity.order}</p>
-                                        <p className="text-xs text-gray-500">{activity.customer}</p>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-xs font-medium text-gray-900 truncate">{activity.order}</p>
+                                        <p className="text-xs text-gray-500 truncate">{activity.customer}</p>
                                     </div>
-                                    <div className="text-right">
-                                        <Badge variant={activity.status === '배송완료' ? 'default' : 'secondary'} className="text-xs">
+                                    <div className="text-right flex-shrink-0 ml-2">
+                                        <Badge variant={activity.status === '배송완료' ? 'default' : 'secondary'} className="text-xs px-1 py-0">
                                             {activity.status}
                                         </Badge>
                                         <p className="text-xs text-gray-400 mt-1">{activity.time}</p>
@@ -272,6 +274,9 @@ export function MobileDashboard() {
                     </CardContent>
                 </Card>
             </div>
+            
+            {/* Bottom Navigation */}
+            <BottomNavigation />
         </div>
     )
 }

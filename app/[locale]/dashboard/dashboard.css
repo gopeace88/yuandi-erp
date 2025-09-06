@@ -1,0 +1,61 @@
+/* Dashboard Responsive Styles */
+
+/* Mobile Stats Grid */
+@media (max-width: 640px) {
+  .stats-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.5rem !important;
+  }
+  
+  .stat-card {
+    padding: 0.625rem !important;
+  }
+  
+  .stat-label {
+    font-size: 0.625rem !important;
+    margin-bottom: 0.125rem !important;
+  }
+  
+  .stat-value {
+    font-size: 1rem !important;
+  }
+  
+  .stat-value-large {
+    font-size: 1.125rem !important;
+  }
+  
+  .revenue-value {
+    font-size: 0.875rem !important;
+  }
+}
+
+/* Desktop Stats Grid */
+@media (min-width: 641px) {
+  .stats-grid {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)) !important;
+    gap: 1.5rem !important;
+  }
+  
+  .stat-card {
+    padding: 1.5rem !important;
+  }
+  
+  .stat-label {
+    font-size: 0.875rem !important;
+    margin-bottom: 0.5rem !important;
+  }
+  
+  .stat-value {
+    font-size: 2rem !important;
+  }
+  
+  .stat-value-large {
+    font-size: 2rem !important;
+  }
+  
+  .revenue-value {
+    font-size: 1.5rem !important;
+  }
+}

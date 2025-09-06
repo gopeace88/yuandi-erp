@@ -393,7 +393,7 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
   };
 
   return (
-    <div style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto' }}>
+    <div style={{ padding: '2rem', paddingBottom: '5rem', maxWidth: '1400px', margin: '0 auto' }}>
       {/* 헤더 */}
       <div style={{ marginBottom: '2rem' }}>
         <h1 style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '1rem' }}>
@@ -1160,6 +1160,60 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
           </div>
         </div>
       )}
+
+      {/* Footer Navigation - 다른 페이지와 통일 */}
+      <div style={{
+        position: 'fixed',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        backgroundColor: 'white',
+        borderTop: '1px solid #e5e7eb',
+        padding: '1rem'
+      }}>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-around',
+          maxWidth: '600px',
+          margin: '0 auto'
+        }}>
+          <a href={`/${locale}`} style={{ 
+            textDecoration: 'none',
+            color: '#6b7280',
+            fontSize: '0.875rem'
+          }}>
+            {locale === 'ko' ? '홈' : locale === 'zh-CN' ? '首页' : 'Home'}
+          </a>
+          <a href={`/${locale}/orders`} style={{ 
+            textDecoration: 'none',
+            color: '#6b7280',
+            fontSize: '0.875rem'
+          }}>
+            {locale === 'ko' ? '주문' : locale === 'zh-CN' ? '订单' : 'Orders'}
+          </a>
+          <a href={`/${locale}/inventory`} style={{ 
+            textDecoration: 'none',
+            color: '#6b7280',
+            fontSize: '0.875rem'
+          }}>
+            {locale === 'ko' ? '재고' : locale === 'zh-CN' ? '库存' : 'Inventory'}
+          </a>
+          <a href={`/${locale}/shipments`} style={{ 
+            textDecoration: 'none',
+            color: '#3b82f6',
+            fontSize: '0.875rem'
+          }}>
+            {locale === 'ko' ? '배송' : locale === 'zh-CN' ? '配送' : 'Shipping'}
+          </a>
+          <a href={`/${locale}/track`} style={{ 
+            textDecoration: 'none',
+            color: '#6b7280',
+            fontSize: '0.875rem'
+          }}>
+            {locale === 'ko' ? '조회' : locale === 'zh-CN' ? '查询' : 'Track'}
+          </a>
+        </div>
+      </div>
     </div>
   );
 }

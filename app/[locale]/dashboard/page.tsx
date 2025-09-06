@@ -5,6 +5,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import './dashboard.css';
 
 interface DashboardPageProps {
   params: { locale: string };
@@ -90,69 +91,72 @@ export default function DashboardPage({ params: { locale } }: DashboardPageProps
         margin: '0 auto',
         padding: '2rem'
       }}>
-        {/* Stats Grid */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-          gap: '1.5rem',
-          marginBottom: '2rem'
-        }}>
+        {/* Stats Grid - 모바일 최적화 */}
+        <div className="stats-grid" style={{ marginBottom: '2rem' }}>
           {/* Today Orders */}
-          <div style={{
+          <div className="stat-card" style={{
             backgroundColor: 'white',
-            padding: '1.5rem',
             borderRadius: '0.5rem',
             boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
           }}>
-            <div style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
+            <div className="stat-label" style={{ color: '#6b7280' }}>
               {stats.todayOrders}
             </div>
-            <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#2563eb' }}>
+            <div className="stat-value-large" style={{ 
+              fontWeight: 'bold', 
+              color: '#2563eb' 
+            }}>
               {stats.todayOrdersCount}
             </div>
           </div>
 
           {/* Total Orders */}
-          <div style={{
+          <div className="stat-card" style={{
             backgroundColor: 'white',
-            padding: '1.5rem',
             borderRadius: '0.5rem',
             boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
           }}>
-            <div style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
+            <div className="stat-label" style={{ color: '#6b7280' }}>
               {stats.totalOrders}
             </div>
-            <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#10b981' }}>
+            <div className="stat-value-large" style={{ 
+              fontWeight: 'bold', 
+              color: '#10b981' 
+            }}>
               {stats.totalOrdersCount}
             </div>
           </div>
 
           {/* Inventory */}
-          <div style={{
+          <div className="stat-card" style={{
             backgroundColor: 'white',
-            padding: '1.5rem',
             borderRadius: '0.5rem',
             boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
           }}>
-            <div style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
+            <div className="stat-label" style={{ color: '#6b7280' }}>
               {stats.inventory}
             </div>
-            <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#f59e0b' }}>
+            <div className="stat-value-large" style={{ 
+              fontWeight: 'bold', 
+              color: '#f59e0b' 
+            }}>
               {stats.inventoryCount}
             </div>
           </div>
 
           {/* Revenue */}
-          <div style={{
+          <div className="stat-card" style={{
             backgroundColor: 'white',
-            padding: '1.5rem',
             borderRadius: '0.5rem',
             boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
           }}>
-            <div style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
+            <div className="stat-label" style={{ color: '#6b7280' }}>
               {stats.revenue}
             </div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#8b5cf6' }}>
+            <div className="revenue-value" style={{ 
+              fontWeight: 'bold', 
+              color: '#8b5cf6' 
+            }}>
               {stats.revenueAmount}
             </div>
           </div>
