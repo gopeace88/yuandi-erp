@@ -31,7 +31,7 @@ export default function Navigation({ locale }: NavigationProps) {
       inventory: '재고 관리',
       shipments: '배송 관리',
       cashbook: '출납장부',
-      users: '사용자 관리',
+      users: '설정',
       track: '주문 조회',
       // User menu
       profile: '프로필',
@@ -54,7 +54,7 @@ export default function Navigation({ locale }: NavigationProps) {
       inventory: '库存管理',
       shipments: '配送管理',
       cashbook: '现金日记账',
-      users: '用户管理',
+      users: '设置',
       track: '订单查询',
       // User menu
       profile: '个人资料',
