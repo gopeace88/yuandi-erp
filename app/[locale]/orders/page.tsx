@@ -55,6 +55,8 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
   
   // 새 주문 폼 상태
   const [newOrder, setNewOrder] = useState({
@@ -473,6 +475,12 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
     return matchesStatus && matchesSearch;
   });
 
+  // 테이블 행 클릭 핸들러
+  const handleOrderClick = (order: Order) => {
+    setSelectedOrder(order);
+    setShowDetailModal(true);
+  };
+
   // 모바일 화면일 경우 모바일 컴포넌트 렌더링
   if (isMobile) {
     return <OrdersPageMobile params={{ locale }} />;
@@ -551,12 +559,19 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
                   <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600' }}>{texts.customerPhone}</th>
                   <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600' }}>{texts.status}</th>
                   <th style={{ padding: '0.75rem', textAlign: 'right', fontSize: '0.875rem', fontWeight: '600' }}>{texts.totalAmount}</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'center', fontSize: '0.875rem', fontWeight: '600' }}>{texts.actions}</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredOrders.map((order) => (
-                  <tr key={order.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                {filteredOrders.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((order) => (
+                  <tr 
+                    key={order.id} 
+                    onClick={() => handleOrderClick(order)}
+                    style={{ 
+                      borderBottom: '1px solid #e5e7eb',
+                      cursor: 'pointer'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
                     <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>{order.orderNo}</td>
                     <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>{order.orderDate}</td>
                     <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>{order.customerName}</td>
@@ -576,24 +591,6 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
                     <td style={{ padding: '0.75rem', textAlign: 'right', fontSize: '0.875rem' }}>
                       ₩{order.totalAmount.toLocaleString()}
                     </td>
-                    <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                      <button
-                        onClick={() => {
-                          setSelectedOrder(order);
-                          setShowDetailModal(true);
-                        }}
-                        style={{
-                          padding: '0.25rem 0.5rem',
-                          backgroundColor: '#f3f4f6',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '0.25rem',
-                          cursor: 'pointer',
-                          fontSize: '0.75rem'
-                        }}
-                      >
-                        {texts.orderDetail}
-                      </button>
-                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -601,6 +598,41 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
             </div>
           )}
         </div>
+
+        {/* 페이지네이션 */}
+        {filteredOrders.length > itemsPerPage && (
+          <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'center', gap: '0.5rem' }}>
+            <button
+              onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+              disabled={currentPage === 1}
+              style={{
+                padding: '0.5rem 1rem',
+                border: '1px solid #d1d5db',
+                borderRadius: '0.375rem',
+                backgroundColor: currentPage === 1 ? '#f3f4f6' : 'white',
+                cursor: currentPage === 1 ? 'not-allowed' : 'pointer'
+              }}
+            >
+              {locale === 'ko' ? '이전' : '上一页'}
+            </button>
+            <span style={{ padding: '0.5rem 1rem', display: 'flex', alignItems: 'center' }}>
+              {currentPage} / {Math.ceil(filteredOrders.length / itemsPerPage)}
+            </span>
+            <button
+              onClick={() => setCurrentPage(Math.min(Math.ceil(filteredOrders.length / itemsPerPage), currentPage + 1))}
+              disabled={currentPage === Math.ceil(filteredOrders.length / itemsPerPage)}
+              style={{
+                padding: '0.5rem 1rem',
+                border: '1px solid #d1d5db',
+                borderRadius: '0.375rem',
+                backgroundColor: currentPage === Math.ceil(filteredOrders.length / itemsPerPage) ? '#f3f4f6' : 'white',
+                cursor: currentPage === Math.ceil(filteredOrders.length / itemsPerPage) ? 'not-allowed' : 'pointer'
+              }}
+            >
+              {locale === 'ko' ? '다음' : '下一页'}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* 주문 생성 모달 */}
@@ -1004,39 +1036,6 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
         </div>
       )}
 
-      {/* 하단 네비게이션 */}
-      <div style={{
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        backgroundColor: 'white',
-        borderTop: '1px solid #e5e7eb',
-        padding: '1rem'
-      }}>
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-around',
-          maxWidth: '600px',
-          margin: '0 auto'
-        }}>
-          <a href={`/${locale}/dashboard`} style={{ textDecoration: 'none', color: '#6b7280', fontSize: '0.875rem' }}>
-            {locale === 'ko' ? '대시보드' : '仪表板'}
-          </a>
-          <a href={`/${locale}/orders`} style={{ textDecoration: 'none', color: '#2563eb', fontSize: '0.875rem', fontWeight: '600' }}>
-            {locale === 'ko' ? '주문' : '订单'}
-          </a>
-          <a href={`/${locale}/inventory`} style={{ textDecoration: 'none', color: '#6b7280', fontSize: '0.875rem' }}>
-            {locale === 'ko' ? '재고' : '库存'}
-          </a>
-          <a href={`/${locale}/shipments`} style={{ textDecoration: 'none', color: '#6b7280', fontSize: '0.875rem' }}>
-            {locale === 'ko' ? '배송' : '配送'}
-          </a>
-          <a href={`/${locale}/cashbook`} style={{ textDecoration: 'none', color: '#6b7280', fontSize: '0.875rem' }}>
-            {locale === 'ko' ? '출납' : '账簿'}
-          </a>
-        </div>
-      </div>
     </div>
   );
 }

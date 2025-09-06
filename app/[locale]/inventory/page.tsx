@@ -57,6 +57,13 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
   const [filterCategory, setFilterCategory] = useState('all');
   const [showLowStock, setShowLowStock] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+
+  // 상품 상세 클릭 핸들러
+  const handleProductClick = (product: Product) => {
+    setSelectedProduct(product);
+    setShowDetailModal(true);
+  };
 
   // 모바일 감지
   useEffect(() => {
@@ -625,14 +632,21 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
                   <th style={{ padding: '0.75rem', textAlign: 'right', fontSize: '0.875rem', fontWeight: '600' }}>{texts.cost}</th>
                   <th style={{ padding: '0.75rem', textAlign: 'right', fontSize: '0.875rem', fontWeight: '600' }}>{texts.price}</th>
                   <th style={{ padding: '0.75rem', textAlign: 'center', fontSize: '0.875rem', fontWeight: '600' }}>{texts.status}</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'center', fontSize: '0.875rem', fontWeight: '600' }}>{texts.actions}</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredProducts.map((product) => {
                   const stockStatus = getStockStatus(product);
                   return (
-                    <tr key={product.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                    <tr 
+                      key={product.id} 
+                      onClick={() => handleProductClick(product)}
+                      style={{ 
+                        borderBottom: '1px solid #e5e7eb',
+                        cursor: 'pointer'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
                       <td style={{ padding: '0.75rem', fontSize: '0.75rem', fontFamily: 'monospace' }}>{product.sku}</td>
                       <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -680,21 +694,6 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
                         }}>
                           {product.active ? texts.active : texts.inactive}
                         </span>
-                      </td>
-                      <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                        <button
-                          onClick={() => setSelectedProduct(product)}
-                          style={{
-                            padding: '0.25rem 0.5rem',
-                            backgroundColor: '#f3f4f6',
-                            border: '1px solid #d1d5db',
-                            borderRadius: '0.25rem',
-                            cursor: 'pointer',
-                            fontSize: '0.75rem'
-                          }}
-                        >
-                          {texts.viewDetails}
-                        </button>
                       </td>
                     </tr>
                   );
@@ -1060,39 +1059,110 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
         </div>
       )}
 
-      {/* 하단 네비게이션 */}
-      <div style={{
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        backgroundColor: 'white',
-        borderTop: '1px solid #e5e7eb',
-        padding: '1rem'
-      }}>
+      {/* 상품 상세 모달 */}
+      {showDetailModal && selectedProduct && (
         <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)',
           display: 'flex',
-          justifyContent: 'space-around',
-          maxWidth: '600px',
-          margin: '0 auto'
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 50
         }}>
-          <a href={`/${locale}/dashboard`} style={{ textDecoration: 'none', color: '#6b7280', fontSize: '0.875rem' }}>
-            {locale === 'ko' ? '대시보드' : '仪表板'}
-          </a>
-          <a href={`/${locale}/orders`} style={{ textDecoration: 'none', color: '#6b7280', fontSize: '0.875rem' }}>
-            {locale === 'ko' ? '주문' : '订单'}
-          </a>
-          <a href={`/${locale}/inventory`} style={{ textDecoration: 'none', color: '#2563eb', fontSize: '0.875rem', fontWeight: '600' }}>
-            {locale === 'ko' ? '재고' : '库存'}
-          </a>
-          <a href={`/${locale}/shipments`} style={{ textDecoration: 'none', color: '#6b7280', fontSize: '0.875rem' }}>
-            {locale === 'ko' ? '배송' : '配送'}
-          </a>
-          <a href={`/${locale}/cashbook`} style={{ textDecoration: 'none', color: '#6b7280', fontSize: '0.875rem' }}>
-            {locale === 'ko' ? '출납' : '账簿'}
-          </a>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '0.5rem',
+            width: '90%',
+            maxWidth: '600px',
+            maxHeight: '90vh',
+            overflow: 'auto',
+            padding: '2rem'
+          }}>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1.5rem' }}>
+              {texts.viewDetails} - {selectedProduct.name}
+            </h2>
+
+            {/* 상품 이미지 */}
+            {selectedProduct.imageUrl && (
+              <div style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
+                <img
+                  src={selectedProduct.imageUrl}
+                  alt={selectedProduct.name}
+                  style={{ maxWidth: '200px', maxHeight: '200px', objectFit: 'cover', borderRadius: '0.5rem' }}
+                />
+              </div>
+            )}
+
+            {/* 상품 정보 */}
+            <div style={{ marginBottom: '1.5rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div>
+                  <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>SKU</p>
+                  <p style={{ fontWeight: '600', fontFamily: 'monospace', fontSize: '0.875rem' }}>{selectedProduct.sku}</p>
+                </div>
+                <div>
+                  <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>{texts.category}</p>
+                  <p style={{ fontWeight: '600' }}>{selectedProduct.category}</p>
+                </div>
+                <div>
+                  <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>{texts.model}</p>
+                  <p style={{ fontWeight: '600' }}>{selectedProduct.model}</p>
+                </div>
+                <div>
+                  <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>{texts.color}</p>
+                  <p style={{ fontWeight: '600' }}>{selectedProduct.color || '-'}</p>
+                </div>
+                <div>
+                  <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>{texts.brand}</p>
+                  <p style={{ fontWeight: '600' }}>{selectedProduct.brand}</p>
+                </div>
+                <div>
+                  <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>{texts.stock}</p>
+                  <p style={{ fontWeight: '600', fontSize: '1.25rem', color: getStockStatus(selectedProduct).color }}>
+                    {selectedProduct.onHand} ({getStockStatus(selectedProduct).text})
+                  </p>
+                </div>
+                <div>
+                  <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>{texts.cost}</p>
+                  <p style={{ fontWeight: '600' }}>¥{selectedProduct.costCny}</p>
+                </div>
+                <div>
+                  <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>{texts.price}</p>
+                  <p style={{ fontWeight: '600', fontSize: '1.25rem', color: '#2563eb' }}>
+                    ₩{selectedProduct.salePriceKrw.toLocaleString()}
+                  </p>
+                </div>
+              </div>
+              {selectedProduct.description && (
+                <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
+                  <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.5rem' }}>{texts.description}</p>
+                  <p style={{ fontSize: '0.875rem' }}>{selectedProduct.description}</p>
+                </div>
+              )}
+            </div>
+
+            {/* 닫기 버튼 */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setShowDetailModal(false)}
+                style={{
+                  padding: '0.5rem 1rem',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '0.375rem',
+                  backgroundColor: 'white',
+                  cursor: 'pointer'
+                }}
+              >
+                {texts.close}
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
