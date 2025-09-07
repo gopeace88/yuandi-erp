@@ -145,9 +145,6 @@ async function createProducts(categories, adminUser) {
     console.log(`✅ 상품 ${createdProducts.length}개 생성됨`);
     
     // 재고 생성 및 입고 처리 (비즈니스 플로우: 상품 등록 → 재고 입고 → 출납장부 지출)
-    const inventoryTransactions = [];
-    const cashbookTransactions = [];
-    const currentDate = new Date();
     
     for (const product of createdProducts) {
         // 초기 재고: 20-200개 사이 랜덤
@@ -156,17 +153,17 @@ async function createProducts(categories, adminUser) {
         inventories.push({
             product_id: product.id,
             on_hand: initialStock,
-            allocated: 0,
-            available: initialStock
+            allocated: 0
+            // available은 generated column이므로 제외
         });
         
         // 재고 입고 트랜잭션 생성
         inventoryTransactions.push({
             product_id: product.id,
-            type: 'inbound',
+            transaction_type: 'inbound',
             quantity: initialStock,
-            unit_cost: product.cost_cny,
-            total_cost: product.cost_cny * initialStock,
+            cost_per_unit_cny: product.cost_cny,
+            total_cost_cny: product.cost_cny * initialStock,
             reference_type: 'initial_stock',
             reference_id: null,
             notes: '초기 재고 입고',
@@ -178,11 +175,11 @@ async function createProducts(categories, adminUser) {
         const purchaseAmount = product.cost_cny * initialStock * 180; // CNY to KRW 환율 적용
         cashbookTransactions.push({
             transaction_date: new Date(currentDate.getTime() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            type: 'expense',
-            amount: -purchaseAmount,
-            currency: 'KRW',
-            fx_rate: 180,
+            type: 'inventory_purchase',
             amount_krw: -purchaseAmount,
+            amount_cny: -(product.cost_cny * initialStock),
+            exchange_rate: 180,
+            balance_krw: 0,
             description: `${product.name} 구매 (${initialStock}개)`,
             reference_type: 'product',
             reference_id: product.id,
