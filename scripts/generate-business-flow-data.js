@@ -180,10 +180,10 @@ async function createProducts(categories, adminUser) {
             amount_cny: -(product.cost_cny * initialStock),
             exchange_rate: 180,
             balance_krw: 0,
-            description: `${product.name} 구매 (${initialStock}개)`,
+            description: `${product.name} 구매 (${initialStock}개) - ${product.sku}`,
             reference_type: 'product',
             reference_id: product.id,
-            notes: `초기 재고 구매: ${product.sku}`,
+            category: '상품구매',
             created_by: adminId
         });
     }
