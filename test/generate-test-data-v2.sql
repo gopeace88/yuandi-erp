@@ -1,12 +1,104 @@
 -- YUANDI ERP 테스트 데이터 생성 스크립트 v2
 -- 실제 스키마에 맞춰 수정된 버전
 
--- 기존 데이터 삭제 (필요시)
--- TRUNCATE orders, order_items, products, product_categories, inventory, inventory_transactions CASCADE;
+-- ========================================
+-- 1단계: 기존 데이터 완전 삭제 (CASCADE)
+-- ========================================
+-- 주의: 이 스크립트는 모든 데이터를 삭제합니다!
+-- 운영 환경에서는 절대 실행하지 마세요!
 
--- 0. 테스트를 위한 사용자 처리
+-- 비즈니스 데이터 삭제
+TRUNCATE TABLE 
+    cashbook_transactions,
+    event_logs,
+    inventory,
+    inventory_transactions,
+    order_items,
+    orders,
+    product_categories,
+    products,
+    shipment_tracking_events,
+    shipments,
+    system_settings
+CASCADE;
+
+-- 사용자 관련 테이블 삭제 (user_profiles만, auth.users는 건드리지 않음)
+DELETE FROM user_profiles;
+
+-- ========================================
+-- 2단계: 기본 사용자 계정 생성
+-- ========================================
 -- 주의: 실제 운영에서는 Supabase Auth를 통해 사용자를 생성해야 합니다
--- 테스트 데이터에서는 기존 사용자를 사용하거나 NULL을 사용합니다
+-- 이 스크립트는 테스트 목적으로만 사용하세요
+
+-- 기본 관리자 계정 생성 (admin@yuandi.com)
+-- Supabase Auth에서 먼저 사용자를 생성한 후, 해당 User ID를 여기에 입력하세요
+DO $$
+DECLARE
+    admin_user_id UUID;
+BEGIN
+    -- Supabase Auth에서 생성된 admin@yuandi.com 사용자의 ID를 찾거나 임시 UUID 생성
+    -- 실제로는 Supabase Dashboard에서 사용자를 먼저 생성하고 ID를 확인해야 합니다
+    
+    -- 임시 UUID 생성 (테스트용)
+    admin_user_id := gen_random_uuid();
+    
+    -- user_profiles에 관리자 프로필 추가
+    INSERT INTO user_profiles (
+        id,
+        email,
+        name,
+        phone,
+        role,
+        created_at,
+        updated_at
+    ) VALUES (
+        admin_user_id,
+        'admin@yuandi.com',
+        'System Administrator',
+        '010-0000-0000',
+        'admin',
+        NOW(),
+        NOW()
+    ) ON CONFLICT (id) DO UPDATE SET
+        email = EXCLUDED.email,
+        name = EXCLUDED.name,
+        role = EXCLUDED.role;
+        
+    -- 추가 테스트 사용자 생성 (주문관리자)
+    INSERT INTO user_profiles (
+        id,
+        email,
+        name,
+        phone,
+        role
+    ) VALUES (
+        gen_random_uuid(),
+        'order@yuandi.com',
+        'Order Manager',
+        '010-1111-1111',
+        'order_manager'
+    );
+    
+    -- 추가 테스트 사용자 생성 (배송관리자)
+    INSERT INTO user_profiles (
+        id,
+        email,
+        name,
+        phone,
+        role
+    ) VALUES (
+        gen_random_uuid(),
+        'ship@yuandi.com',
+        'Shipping Manager',
+        '010-2222-2222',
+        'ship_manager'
+    );
+END $$;
+
+-- ========================================
+-- 3단계: 비즈니스 테스트 데이터 생성
+-- ========================================
 
 -- 1. 카테고리 데이터 (10개)
 INSERT INTO product_categories (name, description, is_active) VALUES
@@ -335,17 +427,28 @@ DECLARE
     order_count INTEGER;
     inv_count INTEGER;
     cash_count INTEGER;
+    user_count INTEGER;
 BEGIN
     SELECT COUNT(*) INTO cat_count FROM product_categories;
     SELECT COUNT(*) INTO prod_count FROM products;
     SELECT COUNT(*) INTO order_count FROM orders;
     SELECT COUNT(*) INTO inv_count FROM inventory WHERE on_hand > 0;
     SELECT COUNT(*) INTO cash_count FROM cashbook_transactions;
+    SELECT COUNT(*) INTO user_count FROM user_profiles;
     
+    RAISE NOTICE '========================================';
     RAISE NOTICE '테스트 데이터 생성 완료!';
+    RAISE NOTICE '========================================';
+    RAISE NOTICE '- 사용자: % 명', user_count;
     RAISE NOTICE '- 카테고리: % 개', cat_count;
     RAISE NOTICE '- 상품: % 개', prod_count;
     RAISE NOTICE '- 주문: % 개', order_count;
     RAISE NOTICE '- 재고 보유 상품: % 개', inv_count;
     RAISE NOTICE '- 출납장부: % 개', cash_count;
+    RAISE NOTICE '========================================';
+    RAISE NOTICE '기본 관리자 계정:';
+    RAISE NOTICE '이메일: admin@yuandi.com';
+    RAISE NOTICE '비밀번호: yuandi123!';
+    RAISE NOTICE '========================================';
+    RAISE NOTICE '주의: Supabase Auth에서 실제 사용자를 생성해야 합니다!';
 END $$;

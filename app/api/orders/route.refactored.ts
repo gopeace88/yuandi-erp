@@ -68,7 +68,7 @@ export const GET = createApiHandler(
     })
   },
   {
-    requiredRoles: ['Admin', 'OrderManager'],
+    requiredRoles: ['admin', 'order_manager'],
     cache: {
       maxAge: 60,
       staleWhileRevalidate: 300
@@ -134,7 +134,7 @@ export const POST = createApiHandler(
           subtotal,
           shipping_fee: shippingFee,
           total_amount: totalAmount,
-          status: 'PAID',
+          status: 'paid',
           payment_method: input.payment_method || 'BANK',
           notes: input.notes,
           created_by: session.user.id
@@ -244,7 +244,7 @@ export const POST = createApiHandler(
     }
   },
   {
-    requiredRoles: ['Admin', 'OrderManager']
+    requiredRoles: ['admin', 'order_manager']
   }
 )
 

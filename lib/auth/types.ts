@@ -1,4 +1,4 @@
-import type { Database } from '@/lib/supabase/database.types'
+import type { Database } from '@/types/supabase.types'
 
 export type User = Database['public']['Tables']['profiles']['Row']
 
@@ -19,8 +19,8 @@ export function hasRole(user: User, role: User['role'] | User['role'][]): boolea
 /**
  * Check if user is admin (client-safe utility)
  */
-export function isAdmin(user: User): boolean {
-  return user.role === 'Admin'
+export function isadmin(user: User): boolean {
+  return user.role === 'admin'
 }
 
 /**
@@ -28,13 +28,13 @@ export function isAdmin(user: User): boolean {
  */
 export function getRoleDisplayName(role: User['role']): string {
   switch (role) {
-    case 'Admin':
+    case 'admin':
       return '관리자'
-    case 'OrderManager':
+    case 'order_manager':
       return '주문관리자'
-    case 'ShipManager':
+    case 'ship_manager':
       return '배송관리자'
-    case 'Customer':
+    case 'customer':
       return '고객'
     default:
       return role

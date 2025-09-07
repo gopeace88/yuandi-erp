@@ -23,7 +23,7 @@ interface Order {
   customerName: string;
   customerPhone: string;
   shippingAddress: string;
-  status: 'PAID' | 'SHIPPED' | 'DONE' | 'CANCELLED' | 'REFUNDED';
+  status: 'paid' | 'shipped' | 'delivered' | 'cancelled' | 'refunded';
   totalAmount: number;
   items: Array<{
     productName: string;
@@ -304,7 +304,7 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
           customerName: order.customer_name,
           customerPhone: order.customer_phone,
           shippingAddress: `${order.shipping_address_line1} ${order.shipping_address_line2 || ''}`.trim(),
-          status: (order.status?.toUpperCase() || 'PAID') as 'PAID' | 'SHIPPED' | 'DONE' | 'CANCELLED' | 'REFUNDED',
+          status: (order.status?.toUpperCase() || 'paid') as 'paid' | 'shipped' | 'delivered' | 'cancelled' | 'refunded',
           totalAmount: order.total_krw,
           items: order.order_items.map((item: any) => ({
             productName: item.products?.name || '',
@@ -441,9 +441,9 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
     }
   }, [locale, router]);
 
-  // 배송 대기 주문 필터링 (PAID 상태인 주문만)
+  // 배송 대기 주문 필터링 (paid 상태인 주문만)
   const pendingOrders = orders.filter(order => {
-    const isPaid = order.status === 'PAID';
+    const isPaid = order.status === 'paid';
     const matchesSearch = searchTerm === '' || 
       order.orderNo.includes(searchTerm) ||
       order.customerName.includes(searchTerm) ||
@@ -452,9 +452,9 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
     return isPaid && matchesSearch;
   });
 
-  // 배송 중 주문 필터링 (SHIPPED 상태의 주문)
+  // 배송 중 주문 필터링 (shipped 상태의 주문)
   const shippingOrders = orders.filter(order => {
-    const isShipping = order.status === 'SHIPPED';
+    const isShipping = order.status === 'shipped';
     const matchesSearch = searchTerm === '' || 
       order.orderNo.includes(searchTerm) ||
       order.customerName.includes(searchTerm) ||
@@ -463,9 +463,9 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
     return isShipping && matchesSearch;
   });
 
-  // 배송 완료 주문 필터링 (DONE 상태의 주문)
+  // 배송 완료 주문 필터링 (delivered 상태의 주문)
   const deliveredOrders = orders.filter(order => {
-    const isDelivered = order.status === 'DONE';
+    const isDelivered = order.status === 'delivered';
     const matchesSearch = searchTerm === '' || 
       order.orderNo.includes(searchTerm) ||
       order.customerName.includes(searchTerm) ||
@@ -506,7 +506,7 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
         return;
       }
       
-      // 2. 주문 상태를 SHIPPED로 업데이트
+      // 2. 주문 상태를 shipped로 업데이트
       const { error: orderError } = await supabase
         .from('orders')
         .update({ status: 'shipped' })
@@ -540,7 +540,7 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
       
       // 주문 상태 업데이트
       setOrders(orders.map(o => 
-        o.id === selectedOrder.id ? { ...o, status: 'SHIPPED' } : o
+        o.id === selectedOrder.id ? { ...o, status: 'shipped' } : o
       ));
 
       // 모달 닫기 및 폼 초기화
@@ -636,7 +636,7 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
       const { createClient } = await import('@/lib/supabase/client');
       const supabase = createClient();
       
-      // 데이터베이스에서 주문 상태를 DONE으로 업데이트
+      // 데이터베이스에서 주문 상태를 delivered으로 업데이트
       const { error: orderError } = await supabase
         .from('orders')
         .update({ status: 'done' })
@@ -666,7 +666,7 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
       
       // UI 상태 업데이트
       setOrders(orders.map(o =>
-        o.id === orderId ? { ...o, status: 'DONE' } : o
+        o.id === orderId ? { ...o, status: 'delivered' } : o
       ));
       
       if (shipment) {
@@ -994,10 +994,10 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
                             borderRadius: '9999px',
                             fontSize: '0.75rem',
                             fontWeight: '500',
-                            backgroundColor: order.status === 'DONE' ? '#dcfce7' : '#fef3c7',
-                            color: order.status === 'DONE' ? '#166534' : '#92400e'
+                            backgroundColor: order.status === 'delivered' ? '#dcfce7' : '#fef3c7',
+                            color: order.status === 'delivered' ? '#166534' : '#92400e'
                           }}>
-                            {order.status === 'DONE' ? t.delivered : t.shipped}
+                            {order.status === 'delivered' ? t.delivered : t.shipped}
                           </span>
                         </td>
                         <td style={{ padding: '0.75rem', textAlign: 'center' }}>
@@ -1021,7 +1021,7 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
                                 {t.viewDetail}
                               </button>
                             )}
-                            {order.status === 'SHIPPED' && (
+                            {order.status === 'shipped' && (
                               <button
                                 onClick={() => handleMarkDelivered(order.id)}
                                 style={{

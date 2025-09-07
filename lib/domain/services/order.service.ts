@@ -40,11 +40,11 @@ export interface ShippingAddress {
 
 export enum OrderStatus {
   PENDING = 'PENDING',
-  PAID = 'PAID',
-  SHIPPED = 'SHIPPED',
-  DONE = 'DONE',
-  REFUNDED = 'REFUNDED',
-  CANCELLED = 'CANCELLED'
+  paid = 'paid',
+  shipped = 'shipped',
+  delivered = 'delivered',
+  refunded = 'refunded',
+  cancelled = 'cancelled'
 }
 
 export interface CreateOrderDto {
@@ -217,12 +217,12 @@ export class OrderService {
   async updateOrderStatus(orderId: string, status: OrderStatus, userId: string): Promise<Order> {
     // 상태 전이 유효성 검증
     const validTransitions: Record<OrderStatus, OrderStatus[]> = {
-      [OrderStatus.PENDING]: [OrderStatus.PAID, OrderStatus.CANCELLED],
-      [OrderStatus.PAID]: [OrderStatus.SHIPPED, OrderStatus.REFUNDED, OrderStatus.CANCELLED],
-      [OrderStatus.SHIPPED]: [OrderStatus.DONE, OrderStatus.REFUNDED],
-      [OrderStatus.DONE]: [OrderStatus.REFUNDED],
-      [OrderStatus.REFUNDED]: [],
-      [OrderStatus.CANCELLED]: []
+      [OrderStatus.PENDING]: [OrderStatus.paid, OrderStatus.cancelled],
+      [OrderStatus.paid]: [OrderStatus.shipped, OrderStatus.refunded, OrderStatus.cancelled],
+      [OrderStatus.shipped]: [OrderStatus.delivered, OrderStatus.refunded],
+      [OrderStatus.delivered]: [OrderStatus.refunded],
+      [OrderStatus.refunded]: [],
+      [OrderStatus.cancelled]: []
     }
 
     const { data: currentOrder, error: fetchError } = await this.supabase
@@ -272,7 +272,7 @@ export class OrderService {
     }
 
     // 취소 가능 상태 확인
-    if (![OrderStatus.PENDING, OrderStatus.PAID].includes(order.status)) {
+    if (![OrderStatus.PENDING, OrderStatus.paid].includes(order.status)) {
       throw new Error('취소할 수 없는 주문 상태입니다')
     }
 
@@ -285,7 +285,7 @@ export class OrderService {
     }
 
     // 주문 취소 처리
-    await this.updateOrderStatus(orderId, OrderStatus.CANCELLED, userId)
+    await this.updateOrderStatus(orderId, OrderStatus.cancelled, userId)
 
     // 취소 사유 기록
     if (reason) {
@@ -310,7 +310,7 @@ export class OrderService {
     }
 
     // 환불 가능 상태 확인
-    if (![OrderStatus.PAID, OrderStatus.SHIPPED, OrderStatus.DONE].includes(order.status)) {
+    if (![OrderStatus.paid, OrderStatus.shipped, OrderStatus.delivered].includes(order.status)) {
       throw new Error('환불할 수 없는 주문 상태입니다')
     }
 
@@ -336,10 +336,10 @@ export class OrderService {
     }
 
     // 주문 상태 변경
-    await this.updateOrderStatus(orderId, OrderStatus.REFUNDED, userId)
+    await this.updateOrderStatus(orderId, OrderStatus.refunded, userId)
 
     // 재고 복구 (필요시)
-    if (order.status === OrderStatus.PAID) {
+    if (order.status === OrderStatus.paid) {
       for (const item of order.items) {
         await this.supabase.rpc('restore_inventory', {
           p_product_id: item.productId,
@@ -431,22 +431,22 @@ export class OrderService {
    */
   private async handleStatusChange(orderId: string, status: OrderStatus, userId: string): Promise<void> {
     switch (status) {
-      case OrderStatus.PAID:
+      case OrderStatus.paid:
         // 결제 완료 처리
         await this.recordPayment(orderId)
         break
       
-      case OrderStatus.SHIPPED:
+      case OrderStatus.shipped:
         // 배송 시작 알림
         await this.notifyShipmentStart(orderId)
         break
       
-      case OrderStatus.DONE:
+      case OrderStatus.delivered:
         // 주문 완료 처리
         await this.completeOrder(orderId)
         break
       
-      case OrderStatus.REFUNDED:
+      case OrderStatus.refunded:
         // 환불 완료 처리
         await this.processRefund(orderId)
         break

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Bell, LogOut, Menu, Search } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import type { Profile } from '@/lib/supabase/database.types'
+import type { Profile } from '@/types/supabase.types'
 
 interface HeaderProps {
   user: Profile & { email: string }

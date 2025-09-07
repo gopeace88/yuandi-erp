@@ -34,16 +34,16 @@ export function OrderEditModal({ order, locale, onClose, onSuccess }: OrderEditM
   // 현재 상태에 따라 가능한 액션 결정
   const getAvailableActions = () => {
     switch (order.status) {
-      case 'PAID':
+      case 'paid':
         return [
           { value: 'ship', label: t('orders.actions.registerShipping'), icon: Truck },
           { value: 'cancel', label: t('orders.actions.cancelOrder'), icon: AlertCircle }
         ]
-      case 'SHIPPED':
+      case 'shipped':
         return [
           { value: 'complete', label: t('orders.actions.markComplete'), icon: Package }
         ]
-      case 'DONE':
+      case 'delivered':
         return [
           { value: 'refund', label: t('orders.actions.processRefund'), icon: AlertCircle }
         ]
@@ -189,9 +189,9 @@ export function OrderEditModal({ order, locale, onClose, onSuccess }: OrderEditM
               <div>
                 <span className="text-gray-500">{t('orders.currentStatus')}:</span>
                 <span className={`ml-2 px-2 py-1 text-xs rounded-full font-medium ${
-                  order.status === 'PAID' ? 'bg-blue-100 text-blue-800' :
-                  order.status === 'SHIPPED' ? 'bg-yellow-100 text-yellow-800' :
-                  order.status === 'DONE' ? 'bg-green-100 text-green-800' :
+                  order.status === 'paid' ? 'bg-blue-100 text-blue-800' :
+                  order.status === 'shipped' ? 'bg-yellow-100 text-yellow-800' :
+                  order.status === 'delivered' ? 'bg-green-100 text-green-800' :
                   'bg-gray-100 text-gray-800'
                 }`}>
                   {getStatusLabel(order.status)}

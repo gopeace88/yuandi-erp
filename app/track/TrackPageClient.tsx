@@ -10,7 +10,7 @@ import { LanguageSwitcher } from '@/components/ui/language-switcher'
 interface Order {
   id: string
   order_no: string
-  status: 'PAID' | 'SHIPPED' | 'DONE' | 'REFUNDED'
+  status: 'paid' | 'shipped' | 'delivered' | 'refunded'
   customer_name: string
   customer_phone: string
   customer_email?: string
@@ -55,13 +55,13 @@ function generateTrackingUrl(courier: string, trackingNo: string): string {
 // 상태별 색상 및 배경색
 function getStatusStyle(status: string) {
   switch (status) {
-    case 'PAID':
+    case 'paid':
       return 'bg-blue-100 text-blue-800 border-blue-200'
-    case 'SHIPPED':
+    case 'shipped':
       return 'bg-yellow-100 text-yellow-800 border-yellow-200'
-    case 'DONE':
+    case 'delivered':
       return 'bg-green-100 text-green-800 border-green-200'
-    case 'REFUNDED':
+    case 'refunded':
       return 'bg-red-100 text-red-800 border-red-200'
     default:
       return 'bg-gray-100 text-gray-800 border-gray-200'
@@ -139,13 +139,13 @@ export default function TrackPageClient() {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'PAID':
+      case 'paid':
         return <Clock className="w-5 h-5" />
-      case 'SHIPPED':
+      case 'shipped':
         return <Truck className="w-5 h-5" />
-      case 'DONE':
+      case 'delivered':
         return <CheckCircle className="w-5 h-5" />
-      case 'REFUNDED':
+      case 'refunded':
         return <RefreshCw className="w-5 h-5" />
       default:
         return <Package className="w-5 h-5" />
@@ -154,13 +154,13 @@ export default function TrackPageClient() {
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'PAID':
+      case 'paid':
         return t('orders.statusPaid')
-      case 'SHIPPED':
+      case 'shipped':
         return t('orders.statusShipped')
-      case 'DONE':
+      case 'delivered':
         return t('orders.statusDone')
-      case 'REFUNDED':
+      case 'refunded':
         return t('orders.statusRefunded')
       default:
         return status

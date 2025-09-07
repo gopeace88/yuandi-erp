@@ -140,12 +140,12 @@ export default function ShippingPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        shipment.orders?.status === 'DONE' ? 'bg-green-100 text-green-800' :
-                        shipment.orders?.status === 'SHIPPED' ? 'bg-blue-100 text-blue-800' :
+                        shipment.orders?.status === 'delivered' ? 'bg-green-100 text-green-800' :
+                        shipment.orders?.status === 'shipped' ? 'bg-blue-100 text-blue-800' :
                         'bg-yellow-100 text-yellow-800'
                       }`}>
-                        {shipment.orders?.status === 'DONE' ? '배송완료' :
-                         shipment.orders?.status === 'SHIPPED' ? '배송중' : '배송대기'}
+                        {shipment.orders?.status === 'delivered' ? '배송완료' :
+                         shipment.orders?.status === 'shipped' ? '배송중' : '배송대기'}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">

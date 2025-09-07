@@ -1,18 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from '@/lib/auth/session'
 
-export interface AdminAuthOptions {
-  allowedRoles?: Array<'Admin' | 'OrderManager' | 'ShipManager'>
-  requireAdmin?: boolean
+export interface adminAuthOptions {
+  allowedRoles?: Array<'admin' | 'order_manager' | 'ship_manager'>
+  requireadmin?: boolean
 }
 
 /**
  * 관리자 권한 체크 미들웨어
  * 엑셀 다운로드 등 민감한 작업에 대한 권한 검증
  */
-export async function requireAdminAuth(
+export async function requireadminAuth(
   request: NextRequest,
-  options: AdminAuthOptions = { requireAdmin: true }
+  options: adminAuthOptions = { requireadmin: true }
 ): Promise<{ authorized: boolean; session?: any; error?: string }> {
   try {
     // 세션 확인
@@ -33,11 +33,11 @@ export async function requireAdminAuth(
       }
     }
 
-    // Admin 전용 체크
-    if (options.requireAdmin && session.user.role !== 'Admin') {
+    // admin 전용 체크
+    if (options.requireadmin && session.user.role !== 'admin') {
       return {
         authorized: false,
-        error: 'Forbidden: Admin access required'
+        error: 'Forbidden: admin access required'
       }
     }
 
@@ -54,7 +54,7 @@ export async function requireAdminAuth(
       session
     }
   } catch (error) {
-    console.error('Admin auth check error:', error)
+    console.error('admin auth check error:', error)
     return {
       authorized: false,
       error: 'Internal server error during authentication'
@@ -64,13 +64,13 @@ export async function requireAdminAuth(
 
 /**
  * 엑셀 다운로드 권한 체크 래퍼
- * Admin만 엑셀 다운로드 가능
+ * admin만 엑셀 다운로드 가능
  */
 export async function withExcelExportAuth(
   handler: (request: NextRequest) => Promise<NextResponse>
 ) {
   return async (request: NextRequest): Promise<NextResponse> => {
-    const authResult = await requireAdminAuth(request, { requireAdmin: true })
+    const authResult = await requireadminAuth(request, { requireadmin: true })
     
     if (!authResult.authorized) {
       return NextResponse.json(
@@ -86,14 +86,14 @@ export async function withExcelExportAuth(
 
 /**
  * 데이터 접근 권한 체크
- * OrderManager, ShipManager도 조회는 가능하지만 다운로드는 불가
+ * order_manager, ship_manager도 조회는 가능하지만 다운로드는 불가
  */
 export async function withDataAccessAuth(
   handler: (request: NextRequest, session: any) => Promise<NextResponse>,
-  options: AdminAuthOptions = { allowedRoles: ['Admin', 'OrderManager', 'ShipManager'] }
+  options: adminAuthOptions = { allowedRoles: ['admin', 'order_manager', 'ship_manager'] }
 ) {
   return async (request: NextRequest): Promise<NextResponse> => {
-    const authResult = await requireAdminAuth(request, options)
+    const authResult = await requireadminAuth(request, options)
     
     if (!authResult.authorized) {
       return NextResponse.json(

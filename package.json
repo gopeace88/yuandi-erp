@@ -4,7 +4,7 @@
   "description": "YUANDI Collection 주문/재고/배송 관리 시스템",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 8081",
+    "dev": "next dev -H 0.0.0.0",
     "build": "next build",
     "build:optimize": "node scripts/optimize-build.js && next build",
     "install:ci": "npm install --legacy-peer-deps",

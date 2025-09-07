@@ -9,7 +9,7 @@ interface RecentOrder {
   customerName: string
   phoneNumber: string
   address: string
-  status: 'PAID' | 'SHIPPED' | 'DONE' | 'REFUNDED'
+  status: 'paid' | 'shipped' | 'delivered' | 'refunded'
   totalAmount: number
   productCount: number
   createdAt: string
@@ -18,25 +18,25 @@ interface RecentOrder {
 }
 
 const STATUS_CONFIG = {
-  PAID: {
-    label: '°DÌ',
+  paid: {
+    label: 'ï¿½Dï¿½',
     color: 'bg-blue-50 text-blue-600 border-blue-200',
-    icon: '=³'
+    icon: '=ï¿½'
   },
-  SHIPPED: {
-    label: '0¡',
+  shipped: {
+    label: '0ï¿½',
     color: 'bg-green-50 text-green-600 border-green-200',
-    icon: '=š'
+    icon: '=ï¿½'
   },
-  DONE: {
-    label: 'DÌ',
+  delivered: {
+    label: 'Dï¿½',
     color: 'bg-gray-50 text-gray-600 border-gray-200',
     icon: ''
   },
-  REFUNDED: {
-    label: 'Xˆ',
+  refunded: {
+    label: 'Xï¿½',
     color: 'bg-red-50 text-red-600 border-red-200',
-    icon: '©'
+    icon: 'ï¿½'
   }
 }
 
@@ -55,7 +55,7 @@ export function RecentOrders() {
       const data = await response.json()
       setOrders(data)
     } catch (error) {
-      console.error('\ü ü8 \Ü ä(:', error)
+      console.error('\ï¿½ ï¿½8 \ï¿½ ï¿½(:', error)
     } finally {
       setLoading(false)
     }
@@ -76,8 +76,8 @@ export function RecentOrders() {
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
     
     if (diffHours === 0) return ') '
-    if (diffHours < 24) return `${diffHours}Ü `
-    if (diffHours < 48) return '´'
+    if (diffHours < 24) return `${diffHours}ï¿½ `
+    if (diffHours < 48) return 'ï¿½'
     
     return date.toLocaleDateString('ko-KR', {
       month: 'short',
@@ -120,8 +120,8 @@ export function RecentOrders() {
     return (
       <div className="p-6 text-center text-gray-500">
         <Package className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-        <div className="text-sm">\ü ü8t ÆµÈä</div>
-        <div className="text-xs mt-1">È\´ ü8t Ý1t \Ü)Èä</div>
+        <div className="text-sm">\ï¿½ ï¿½8t Æµï¿½ï¿½</div>
+        <div className="text-xs mt-1">ï¿½\ï¿½ ï¿½8t ï¿½1t \ï¿½)ï¿½ï¿½</div>
       </div>
     )
   }
@@ -134,7 +134,7 @@ export function RecentOrders() {
           
           return (
             <div key={order.id} className="p-3 border rounded-lg hover:bg-gray-50 transition-colors">
-              {/* äT */}
+              {/* ï¿½T */}
               <div className="flex justify-between items-start mb-2">
                 <div className="flex items-center gap-2">
                   <div className="font-medium text-sm text-blue-600">
@@ -150,7 +150,7 @@ export function RecentOrders() {
                 </div>
               </div>
 
-              {/* à ô */}
+              {/* ï¿½ ï¿½ */}
               <div className="space-y-1 mb-2">
                 <div className="text-sm font-medium text-gray-900 flex items-center gap-1">
                   <span>{order.customerName}</span>
@@ -164,13 +164,13 @@ export function RecentOrders() {
                 </div>
               </div>
 
-              {/* ü8 ô */}
+              {/* ï¿½8 ï¿½ */}
               <div className="flex justify-between items-center pt-2 border-t border-gray-100">
                 <div className="text-xs text-gray-600">
-                  Áˆ {order.productCount}
+                  ï¿½ï¿½ {order.productCount}
                   {order.trackingNumber && (
                     <span className="ml-2 text-blue-600">
-                      ´¡¥: {order.trackingNumber}
+                      ï¿½ï¿½ï¿½: {order.trackingNumber}
                     </span>
                   )}
                 </div>
@@ -179,12 +179,12 @@ export function RecentOrders() {
                 </div>
               </div>
 
-              {/* 0¡ ô */}
-              {order.status === 'SHIPPED' && order.shippedAt && (
+              {/* 0ï¿½ ï¿½ */}
+              {order.status === 'shipped' && order.shippedAt && (
                 <div className="mt-2 pt-2 border-t border-gray-100">
                   <div className="text-xs text-green-600 flex items-center gap-1">
-                    <span>=š</span>
-                    <span>0¡ Ü‘: {formatDate(order.shippedAt)}</span>
+                    <span>=ï¿½</span>
+                    <span>0ï¿½ Ü‘: {formatDate(order.shippedAt)}</span>
                   </div>
                 </div>
               )}
@@ -193,16 +193,16 @@ export function RecentOrders() {
         })}
       </div>
 
-      {/* ”} */}
+      {/* ï¿½} */}
       {orders.length > 0 && (
         <div className="p-4 bg-gray-50 border-t">
           <div className="text-xs text-center text-gray-600">
             <div className="flex justify-between items-center">
               <span>
-                 ü8 : <span className="font-semibold">{orders.length}t</span>
+                 ï¿½8 : <span className="font-semibold">{orders.length}t</span>
               </span>
               <span>
-                 ü8a: <span className="font-semibold">
+                 ï¿½8a: <span className="font-semibold">
                   {formatCurrency(orders.reduce((sum, o) => sum + o.totalAmount, 0))}
                 </span>
               </span>

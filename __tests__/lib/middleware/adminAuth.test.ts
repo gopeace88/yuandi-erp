@@ -1,16 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
-  requireAdminAuth,
+  requireadminAuth,
   withExcelExportAuth,
   withDataAccessAuth,
-  AdminAuthOptions,
+  adminAuthOptions,
 } from '@/lib/middleware/adminAuth';
 import { getServerSession } from '@/lib/auth/session';
 
 // Mock getServerSession
 jest.mock('@/lib/auth/session');
 
-describe('Admin Authentication Middleware', () => {
+describe('admin Authentication Middleware', () => {
   let mockRequest: NextRequest;
 
   beforeEach(() => {
@@ -18,11 +18,11 @@ describe('Admin Authentication Middleware', () => {
     jest.clearAllMocks();
   });
 
-  describe('requireAdminAuth', () => {
+  describe('requireadminAuth', () => {
     it('should return unauthorized when no session exists', async () => {
       (getServerSession as jest.Mock).mockResolvedValue(null);
 
-      const result = await requireAdminAuth(mockRequest);
+      const result = await requireadminAuth(mockRequest);
 
       expect(result.authorized).toBe(false);
       expect(result.error).toBe('Unauthorized: No session found');
@@ -33,43 +33,43 @@ describe('Admin Authentication Middleware', () => {
       (getServerSession as jest.Mock).mockResolvedValue({
         user: {
           id: 'user-1',
-          role: 'Admin',
+          role: 'admin',
           is_active: false,
         },
       });
 
-      const result = await requireAdminAuth(mockRequest);
+      const result = await requireadminAuth(mockRequest);
 
       expect(result.authorized).toBe(false);
       expect(result.error).toBe('Forbidden: Account is inactive');
     });
 
-    it('should return forbidden when requireAdmin is true and user is not Admin', async () => {
+    it('should return forbidden when requireadmin is true and user is not admin', async () => {
       (getServerSession as jest.Mock).mockResolvedValue({
         user: {
           id: 'user-1',
-          role: 'OrderManager',
+          role: 'order_manager',
           is_active: true,
         },
       });
 
-      const result = await requireAdminAuth(mockRequest, { requireAdmin: true });
+      const result = await requireadminAuth(mockRequest, { requireadmin: true });
 
       expect(result.authorized).toBe(false);
-      expect(result.error).toBe('Forbidden: Admin access required');
+      expect(result.error).toBe('Forbidden: admin access required');
     });
 
-    it('should return authorized when user is Admin', async () => {
+    it('should return authorized when user is admin', async () => {
       const mockSession = {
         user: {
           id: 'admin-1',
-          role: 'Admin',
+          role: 'admin',
           is_active: true,
         },
       };
       (getServerSession as jest.Mock).mockResolvedValue(mockSession);
 
-      const result = await requireAdminAuth(mockRequest, { requireAdmin: true });
+      const result = await requireadminAuth(mockRequest, { requireadmin: true });
 
       expect(result.authorized).toBe(true);
       expect(result.session).toEqual(mockSession);
@@ -80,36 +80,36 @@ describe('Admin Authentication Middleware', () => {
       (getServerSession as jest.Mock).mockResolvedValue({
         user: {
           id: 'user-1',
-          role: 'ShipManager',
+          role: 'ship_manager',
           is_active: true,
         },
       });
 
-      const options: AdminAuthOptions = {
-        allowedRoles: ['Admin', 'OrderManager'],
+      const options: adminAuthOptions = {
+        allowedRoles: ['admin', 'order_manager'],
       };
 
-      const result = await requireAdminAuth(mockRequest, options);
+      const result = await requireadminAuth(mockRequest, options);
 
       expect(result.authorized).toBe(false);
-      expect(result.error).toBe('Forbidden: Required roles: Admin, OrderManager');
+      expect(result.error).toBe('Forbidden: Required roles: admin, order_manager');
     });
 
     it('should authorize when user role is in allowed roles', async () => {
       const mockSession = {
         user: {
           id: 'user-1',
-          role: 'OrderManager',
+          role: 'order_manager',
           is_active: true,
         },
       };
       (getServerSession as jest.Mock).mockResolvedValue(mockSession);
 
-      const options: AdminAuthOptions = {
-        allowedRoles: ['Admin', 'OrderManager', 'ShipManager'],
+      const options: adminAuthOptions = {
+        allowedRoles: ['admin', 'order_manager', 'ship_manager'],
       };
 
-      const result = await requireAdminAuth(mockRequest, options);
+      const result = await requireadminAuth(mockRequest, options);
 
       expect(result.authorized).toBe(true);
       expect(result.session).toEqual(mockSession);
@@ -118,7 +118,7 @@ describe('Admin Authentication Middleware', () => {
     it('should handle authentication errors gracefully', async () => {
       (getServerSession as jest.Mock).mockRejectedValue(new Error('Database error'));
 
-      const result = await requireAdminAuth(mockRequest);
+      const result = await requireadminAuth(mockRequest);
 
       expect(result.authorized).toBe(false);
       expect(result.error).toBe('Internal server error during authentication');
@@ -139,11 +139,11 @@ describe('Admin Authentication Middleware', () => {
       expect(handler).not.toHaveBeenCalled();
     });
 
-    it('should return 403 when user is not Admin', async () => {
+    it('should return 403 when user is not admin', async () => {
       (getServerSession as jest.Mock).mockResolvedValue({
         user: {
           id: 'user-1',
-          role: 'OrderManager',
+          role: 'order_manager',
           is_active: true,
         },
       });
@@ -154,15 +154,15 @@ describe('Admin Authentication Middleware', () => {
       const data = await response.json();
 
       expect(response.status).toBe(403);
-      expect(data.error).toBe('Forbidden: Admin access required');
+      expect(data.error).toBe('Forbidden: admin access required');
       expect(handler).not.toHaveBeenCalled();
     });
 
-    it('should call handler when user is Admin', async () => {
+    it('should call handler when user is admin', async () => {
       (getServerSession as jest.Mock).mockResolvedValue({
         user: {
           id: 'admin-1',
-          role: 'Admin',
+          role: 'admin',
           is_active: true,
         },
       });
@@ -191,11 +191,11 @@ describe('Admin Authentication Middleware', () => {
       expect(handler).not.toHaveBeenCalled();
     });
 
-    it('should allow Admin access by default', async () => {
+    it('should allow admin access by default', async () => {
       const mockSession = {
         user: {
           id: 'admin-1',
-          role: 'Admin',
+          role: 'admin',
           is_active: true,
         },
       };
@@ -210,11 +210,11 @@ describe('Admin Authentication Middleware', () => {
       expect(response).toBe(mockResponse);
     });
 
-    it('should allow OrderManager access by default', async () => {
+    it('should allow order_manager access by default', async () => {
       const mockSession = {
         user: {
           id: 'user-1',
-          role: 'OrderManager',
+          role: 'order_manager',
           is_active: true,
         },
       };
@@ -229,11 +229,11 @@ describe('Admin Authentication Middleware', () => {
       expect(response).toBe(mockResponse);
     });
 
-    it('should allow ShipManager access by default', async () => {
+    it('should allow ship_manager access by default', async () => {
       const mockSession = {
         user: {
           id: 'user-1',
-          role: 'ShipManager',
+          role: 'ship_manager',
           is_active: true,
         },
       };
@@ -252,21 +252,21 @@ describe('Admin Authentication Middleware', () => {
       (getServerSession as jest.Mock).mockResolvedValue({
         user: {
           id: 'user-1',
-          role: 'ShipManager',
+          role: 'ship_manager',
           is_active: true,
         },
       });
 
       const handler = jest.fn();
-      const options: AdminAuthOptions = {
-        allowedRoles: ['Admin'],
+      const options: adminAuthOptions = {
+        allowedRoles: ['admin'],
       };
       const wrappedHandler = await withDataAccessAuth(handler, options);
       const response = await wrappedHandler(mockRequest);
       const data = await response.json();
 
       expect(response.status).toBe(403);
-      expect(data.error).toBe('Forbidden: Required roles: Admin');
+      expect(data.error).toBe('Forbidden: Required roles: admin');
       expect(handler).not.toHaveBeenCalled();
     });
 
@@ -274,7 +274,7 @@ describe('Admin Authentication Middleware', () => {
       const mockSession = {
         user: {
           id: 'user-1',
-          role: 'OrderManager',
+          role: 'order_manager',
           is_active: true,
           email: 'test@example.com',
         },
@@ -292,7 +292,7 @@ describe('Admin Authentication Middleware', () => {
       (getServerSession as jest.Mock).mockResolvedValue({
         user: {
           id: 'user-1',
-          role: 'Admin',
+          role: 'admin',
           is_active: false,
         },
       });
@@ -309,11 +309,11 @@ describe('Admin Authentication Middleware', () => {
   });
 
   describe('Role-based access scenarios', () => {
-    it('should enforce Admin-only access for sensitive operations', async () => {
+    it('should enforce admin-only access for sensitive operations', async () => {
       const scenarios = [
-        { role: 'Admin', shouldAllow: true },
-        { role: 'OrderManager', shouldAllow: false },
-        { role: 'ShipManager', shouldAllow: false },
+        { role: 'admin', shouldAllow: true },
+        { role: 'order_manager', shouldAllow: false },
+        { role: 'ship_manager', shouldAllow: false },
       ];
 
       for (const scenario of scenarios) {
@@ -325,7 +325,7 @@ describe('Admin Authentication Middleware', () => {
           },
         });
 
-        const result = await requireAdminAuth(mockRequest, { requireAdmin: true });
+        const result = await requireadminAuth(mockRequest, { requireadmin: true });
         
         expect(result.authorized).toBe(scenario.shouldAllow);
         if (!scenario.shouldAllow) {
@@ -336,13 +336,13 @@ describe('Admin Authentication Middleware', () => {
 
     it('should allow multiple roles for data access', async () => {
       const scenarios = [
-        { role: 'Admin', shouldAllow: true },
-        { role: 'OrderManager', shouldAllow: true },
-        { role: 'ShipManager', shouldAllow: false },
+        { role: 'admin', shouldAllow: true },
+        { role: 'order_manager', shouldAllow: true },
+        { role: 'ship_manager', shouldAllow: false },
       ];
 
-      const options: AdminAuthOptions = {
-        allowedRoles: ['Admin', 'OrderManager'],
+      const options: adminAuthOptions = {
+        allowedRoles: ['admin', 'order_manager'],
       };
 
       for (const scenario of scenarios) {
@@ -354,7 +354,7 @@ describe('Admin Authentication Middleware', () => {
           },
         });
 
-        const result = await requireAdminAuth(mockRequest, options);
+        const result = await requireadminAuth(mockRequest, options);
         
         expect(result.authorized).toBe(scenario.shouldAllow);
       }

@@ -105,7 +105,7 @@ INSERT INTO orders (
     3000,
     0,
     1453000,
-    'PAID',
+    'paid',
     NOW() - INTERVAL '2 days'
   ),
   (
@@ -122,7 +122,7 @@ INSERT INTO orders (
     3000,
     5000,
     252000,
-    'SHIPPED',
+    'shipped',
     NOW() - INTERVAL '1 day'
   )
 ON CONFLICT (id) DO NOTHING;

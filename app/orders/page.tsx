@@ -22,7 +22,7 @@ interface Order {
   shipping_address: string
   zip_code: string
   pccc_code: string
-  status: 'PAID' | 'SHIPPED' | 'DONE' | 'REFUNDED'
+  status: 'paid' | 'shipped' | 'delivered' | 'refunded'
   total_amount: number
   currency: string
   customer_memo?: string
@@ -34,17 +34,17 @@ interface Order {
 }
 
 const statusColors = {
-  PAID: 'bg-blue-100 text-blue-800',
-  SHIPPED: 'bg-yellow-100 text-yellow-800',
-  DONE: 'bg-green-100 text-green-800',
-  REFUNDED: 'bg-red-100 text-red-800',
+  paid: 'bg-blue-100 text-blue-800',
+  shipped: 'bg-yellow-100 text-yellow-800',
+  delivered: 'bg-green-100 text-green-800',
+  refunded: 'bg-red-100 text-red-800',
 }
 
 const statusLabels = {
-  PAID: '결제완료',
-  SHIPPED: '배송중',
-  DONE: '배송완료',
-  REFUNDED: '환불',
+  paid: '결제완료',
+  shipped: '배송중',
+  delivered: '배송완료',
+  refunded: '환불',
 }
 
 export default function OrdersPage() {
@@ -180,10 +180,10 @@ export default function OrdersPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">전체</SelectItem>
-              <SelectItem value="PAID">결제완료</SelectItem>
-              <SelectItem value="SHIPPED">배송중</SelectItem>
-              <SelectItem value="DONE">배송완료</SelectItem>
-              <SelectItem value="REFUNDED">환불</SelectItem>
+              <SelectItem value="paid">결제완료</SelectItem>
+              <SelectItem value="shipped">배송중</SelectItem>
+              <SelectItem value="delivered">배송완료</SelectItem>
+              <SelectItem value="refunded">환불</SelectItem>
             </SelectContent>
           </Select>
           <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -266,21 +266,21 @@ export default function OrdersPage() {
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
-                    {order.status === 'PAID' && (
+                    {order.status === 'paid' && (
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => handleUpdateStatus(order.id, 'SHIPPED')}
+                        onClick={() => handleUpdateStatus(order.id, 'shipped')}
                         title="배송 시작"
                       >
                         <Truck className="h-4 w-4" />
                       </Button>
                     )}
-                    {order.status === 'SHIPPED' && (
+                    {order.status === 'shipped' && (
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => handleUpdateStatus(order.id, 'DONE')}
+                        onClick={() => handleUpdateStatus(order.id, 'delivered')}
                         title="배송 완료"
                       >
                         <DollarSign className="h-4 w-4" />

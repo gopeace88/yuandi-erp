@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSupabaseClient, getSupabaseAdmin } from '@/lib/supabase/api'
+import { getSupabaseClient, getSupabaseadmin } from '@/lib/supabase/api'
 
 export async function POST(request: NextRequest) {
   console.log('POST /api/users - Start')
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     // Step 2: Check admin role
     console.log('Step 2: Checking admin role')
     const { data: profile, error: profileError } = await supabase
-      .from('profiles')
+      .from('user_profiles')
       .select('role')
       .eq('id', session.user.id)
       .single()
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Profile error: ' + profileError.message }, { status: 403 })
     }
     
-    if (profile?.role !== 'Admin') {
+    if (profile?.role !== 'admin') {
       console.log('User is not admin:', profile?.role)
       return NextResponse.json({ error: 'Forbidden - Not admin' }, { status: 403 })
     }
@@ -55,18 +55,18 @@ export async function POST(request: NextRequest) {
     
     // Step 4: Create auth user
     console.log('Step 4: Creating auth user')
-    let supabaseAdmin
+    let supabaseadmin
     try {
-      supabaseAdmin = getSupabaseAdmin()
+      supabaseadmin = getSupabaseadmin()
     } catch (error) {
       console.error('Failed to create admin client:', error)
       return NextResponse.json({ 
-        error: 'Admin client error', 
+        error: 'admin client error', 
         details: error instanceof Error ? error.message : 'Unknown error'
       }, { status: 500 })
     }
     
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+    const { data: authData, error: authError } = await supabaseadmin.auth.admin.createUser({
       email,
       password,
       email_confirm: true
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
     // Step 5: Create profile
     console.log('Step 5: Creating profile')
     const { data: newProfile, error: profileCreateError } = await supabase
-      .from('profiles')
+      .from('user_profiles')
       .insert({
         id: authData.user.id,
         email,
@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
       console.error('Profile creation error:', profileCreateError)
       // Clean up auth user if profile creation fails
       console.log('Cleaning up auth user due to profile error')
-      await supabaseAdmin.auth.admin.deleteUser(authData.user.id)
+      await supabaseadmin.auth.admin.deleteUser(authData.user.id)
       return NextResponse.json({ 
         error: 'Profile creation failed', 
         details: profileCreateError.message 
@@ -133,12 +133,12 @@ export async function PATCH(request: NextRequest) {
     
     // Get user role from profiles
     const { data: profile } = await supabase
-      .from('profiles')
+      .from('user_profiles')
       .select('role')
       .eq('id', session.user.id)
       .single()
     
-    if (profile?.role !== 'Admin') {
+    if (profile?.role !== 'admin') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
     
@@ -147,7 +147,7 @@ export async function PATCH(request: NextRequest) {
     
     // Update profile
     const { data: updatedProfile, error } = await supabase
-      .from('profiles')
+      .from('user_profiles')
       .update({
         name,
         role,
@@ -180,12 +180,12 @@ export async function DELETE(request: NextRequest) {
     
     // Get user role from profiles
     const { data: profile } = await supabase
-      .from('profiles')
+      .from('user_profiles')
       .select('role')
       .eq('id', session.user.id)
       .single()
     
-    if (profile?.role !== 'Admin') {
+    if (profile?.role !== 'admin') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
     
@@ -198,7 +198,7 @@ export async function DELETE(request: NextRequest) {
     
     // Delete from profiles first
     const { error: profileDeleteError } = await supabase
-      .from('profiles')
+      .from('user_profiles')
       .delete()
       .eq('id', userId)
     
@@ -208,8 +208,8 @@ export async function DELETE(request: NextRequest) {
     }
     
     // Delete auth user using admin client
-    const supabaseAdmin = getSupabaseAdmin()
-    const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userId)
+    const supabaseadmin = getSupabaseadmin()
+    const { error: authError } = await supabaseadmin.auth.admin.deleteUser(userId)
     
     if (authError) {
       console.error('Auth deletion error:', authError)

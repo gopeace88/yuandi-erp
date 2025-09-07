@@ -40,7 +40,7 @@ interface Order {
   shippingAddress: string;
   shippingAddressDetail?: string;
   zipCode: string;
-  status: 'PAID' | 'SHIPPED' | 'DONE' | 'CANCELLED' | 'REFUNDED';
+  status: 'paid' | 'shipped' | 'delivered' | 'cancelled' | 'refunded';
   totalAmount: number;
   productName: string;
   productSku: string;
@@ -196,7 +196,7 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
       router.push(`/${locale}`);
       return;
     }
-    if (userRole === 'ShipManager') {
+    if (userRole === 'ship_manager') {
       router.push(`/${locale}/shipments`);
       return;
     }
@@ -259,7 +259,7 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
         shippingAddress: order.shipping_address_line1,
         shippingAddressDetail: order.shipping_address_line2,
         zipCode: order.shipping_postal_code,
-        status: order.status?.toUpperCase() || 'PAID',
+        status: order.status?.toUpperCase() || 'paid',
         totalAmount: order.total_krw,
         productName: order.order_items?.[0]?.products?.name || '',
         productSku: order.order_items?.[0]?.products?.sku || '',
@@ -381,7 +381,7 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
       
       let orderNumber;
       if (lastOrder) {
-        const lastNum = parseInt(lastOrder.order_number.split('-')[2]);
+        const lastNum = parseInt((lastOrder as any).order_number.split('-')[2]);
         orderNumber = `ORD-${dateStr}-${String(lastNum + 1).padStart(3, '0')}`;
       } else {
         orderNumber = `ORD-${dateStr}-001`;
@@ -409,7 +409,7 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
           payment_method: 'card',
           paid_at: new Date().toISOString(),
           notes: newOrder.customerMemo || null
-        })
+        } as any)
         .select()
         .single();
       
@@ -497,7 +497,7 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
   const handleStatusChange = async (orderId: string, newStatus: Order['status']) => {
     try {
       // 배송등록 처리 - 배송관리 페이지로 이동
-      if (newStatus === 'SHIPPED') {
+      if (newStatus === 'shipped') {
         // selectedOrder를 sessionStorage에 저장
         if (selectedOrder) {
           sessionStorage.setItem('pendingShipment', JSON.stringify(selectedOrder));
@@ -515,7 +515,7 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
       const dbStatus = newStatus.toLowerCase();
       
       // 주문취소 처리
-      if (newStatus === 'CANCELLED' && selectedOrder) {
+      if (newStatus === 'cancelled' && selectedOrder) {
         // 주문 상태 변경
         const { error: statusError } = await supabase
           .from('orders')
@@ -571,9 +571,9 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
         // 기타 상태 변경
         let updateData: any = { status: dbStatus };
         
-        if (newStatus === 'DONE') {
+        if (newStatus === 'delivered') {
           updateData.delivered_at = new Date().toISOString();
-        } else if (newStatus === 'REFUNDED') {
+        } else if (newStatus === 'refunded') {
           updateData.cancelled_at = new Date().toISOString();
         }
         
@@ -602,22 +602,22 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
 
   const getStatusColor = (status: Order['status']) => {
     const colors = {
-      PAID: '#3b82f6',
-      SHIPPED: '#f59e0b',
-      DONE: '#10b981',
-      CANCELLED: '#6b7280',
-      REFUNDED: '#ef4444',
+      paid: '#3b82f6',
+      shipped: '#f59e0b',
+      delivered: '#10b981',
+      cancelled: '#6b7280',
+      refunded: '#ef4444',
     };
     return colors[status];
   };
 
   const getStatusText = (status: Order['status']) => {
     const statusTexts = {
-      PAID: texts.paid,
-      SHIPPED: texts.shipped,
-      DONE: texts.done,
-      CANCELLED: texts.cancelled,
-      REFUNDED: texts.refunded,
+      paid: texts.paid,
+      shipped: texts.shipped,
+      delivered: texts.done,
+      cancelled: texts.cancelled,
+      refunded: texts.refunded,
     };
     return statusTexts[status];
   };
@@ -701,11 +701,11 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
             }}
           >
             <option value="all">{texts.all}</option>
-            <option value="PAID">{texts.paid}</option>
-            <option value="SHIPPED">{texts.shipped}</option>
-            <option value="DONE">{texts.done}</option>
-            <option value="CANCELLED">{texts.cancelled}</option>
-            <option value="REFUNDED">{texts.refunded}</option>
+            <option value="paid">{texts.paid}</option>
+            <option value="shipped">{texts.shipped}</option>
+            <option value="delivered">{texts.done}</option>
+            <option value="cancelled">{texts.cancelled}</option>
+            <option value="refunded">{texts.refunded}</option>
           </select>
           </div>
           <button
@@ -1113,10 +1113,10 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
             <div style={{ marginBottom: '1.5rem', borderTop: '1px solid #e5e7eb', paddingTop: '1.5rem' }}>
               <h3 style={{ fontWeight: '600', marginBottom: '1rem' }}>{texts.changeStatus}</h3>
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                {selectedOrder.status === 'PAID' && (
+                {selectedOrder.status === 'paid' && (
                   <>
                     <button
-                      onClick={() => handleStatusChange(selectedOrder.id, 'SHIPPED')}
+                      onClick={() => handleStatusChange(selectedOrder.id, 'shipped')}
                       style={{
                         padding: '0.5rem 1rem',
                         backgroundColor: '#f59e0b',
@@ -1132,7 +1132,7 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
                     <button
                       onClick={() => {
                         if (confirm(locale === 'ko' ? '정말 주문을 취소하시겠습니까?\n취소 시 출납장부에 환불 기록이 추가됩니다.' : '确定要取消订单吗？\n取消后将在现金日记账中添加退款记录。')) {
-                          handleStatusChange(selectedOrder.id, 'CANCELLED');
+                          handleStatusChange(selectedOrder.id, 'cancelled');
                         }
                       }}
                       style={{
@@ -1149,10 +1149,10 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
                     </button>
                   </>
                 )}
-                {selectedOrder.status === 'SHIPPED' && (
+                {selectedOrder.status === 'shipped' && (
                   <>
                     <button
-                      onClick={() => handleStatusChange(selectedOrder.id, 'DONE')}
+                      onClick={() => handleStatusChange(selectedOrder.id, 'delivered')}
                       style={{
                         padding: '0.5rem 1rem',
                         backgroundColor: '#10b981',
@@ -1166,7 +1166,7 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
                       {texts.completeOrder}
                     </button>
                     <button
-                      onClick={() => handleStatusChange(selectedOrder.id, 'REFUNDED')}
+                      onClick={() => handleStatusChange(selectedOrder.id, 'refunded')}
                       style={{
                         padding: '0.5rem 1rem',
                         backgroundColor: '#ef4444',
@@ -1181,9 +1181,9 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
                     </button>
                   </>
                 )}
-                {selectedOrder.status === 'DONE' && (
+                {selectedOrder.status === 'delivered' && (
                   <button
-                    onClick={() => handleStatusChange(selectedOrder.id, 'REFUNDED')}
+                    onClick={() => handleStatusChange(selectedOrder.id, 'refunded')}
                     style={{
                       padding: '0.5rem 1rem',
                       backgroundColor: '#ef4444',

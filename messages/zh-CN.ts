@@ -57,9 +57,9 @@ export const zhCNMessages = {
     "loginError": "登录失败"
   },
   "roles": {
-    "Admin": "管理员",
-    "OrderManager": "订单管理员",
-    "ShipManager": "配送管理员"
+    "admin": "管理员", 
+    "order_manager": "订单管理员",
+    "ship_manager": "配送管理员"
   },
   "dashboard": {
     "title": "仪表板",
@@ -95,7 +95,7 @@ export const zhCNMessages = {
     "shippingAddressDetail": "详细地址",
     "zipCode": "邮编",
     "totalAmount": "总金额",
-    "status": "状态",
+    "statusLabel": "状态", 
     "orderDate": "订单日期",
     "customerMemo": "客户备注",
     "internalMemo": "内部备注",
@@ -308,10 +308,10 @@ export const zhCNMessages = {
     "amount": "金额",
     "orderDate": "订单日期"
   },
-  "status": {
+  "orderStatus": {
     "PAID": "已付款",
     "SHIPPED": "配送中",
-    "DONE": "已完成",
+    "DONE": "已完成", 
     "REFUNDED": "已退款"
   },
   "users": {

@@ -10,7 +10,7 @@ import { getServerSession } from '@/lib/auth/session'
 import { getEventLogger } from '@/lib/middleware/event-logger'
 import { z } from 'zod'
 
-export type UserRole = 'Admin' | 'OrderManager' | 'ShipManager' | 'Customer'
+export type UserRole = 'admin' | 'order_manager' | 'ship_manager' | 'customer'
 
 export interface ApiContext {
   request: NextRequest

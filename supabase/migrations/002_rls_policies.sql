@@ -22,7 +22,7 @@ CREATE OR REPLACE FUNCTION auth.is_admin()
 RETURNS BOOLEAN AS $$
 BEGIN
     RETURN (
-        SELECT role = 'Admin'
+        SELECT role = 'admin'
         FROM public.profiles 
         WHERE id = auth.uid()
     );
@@ -34,7 +34,7 @@ CREATE OR REPLACE FUNCTION auth.can_manage_orders()
 RETURNS BOOLEAN AS $$
 BEGIN
     RETURN (
-        SELECT role IN ('Admin', 'OrderManager')
+        SELECT role IN ('admin', 'order_manager')
         FROM public.profiles 
         WHERE id = auth.uid()
     );
@@ -46,7 +46,7 @@ CREATE OR REPLACE FUNCTION auth.can_manage_shipping()
 RETURNS BOOLEAN AS $$
 BEGIN
     RETURN (
-        SELECT role IN ('Admin', 'ShipManager')
+        SELECT role IN ('admin', 'ship_manager')
         FROM public.profiles 
         WHERE id = auth.uid()
     );
@@ -57,21 +57,21 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- ADDITIONAL RLS POLICIES
 -- =============================================
 
--- Products: Delete policy (Admin only)
+-- Products: Delete policy (admin only)
 CREATE POLICY products_delete ON products
     FOR DELETE USING (auth.is_admin());
 
--- Orders: Delete policy (Admin only, and only PAID status)
+-- Orders: Delete policy (admin only, and only paid status)
 CREATE POLICY orders_delete ON orders
     FOR DELETE USING (
-        auth.is_admin() AND status = 'PAID'
+        auth.is_admin() AND status = 'paid'
     );
 
--- Cashbook: Update policy (Admin only)
+-- Cashbook: Update policy (admin only)
 CREATE POLICY cashbook_update ON cashbook
     FOR UPDATE USING (auth.is_admin());
 
--- Cashbook: Delete policy (Admin only)
+-- Cashbook: Delete policy (admin only)
 CREATE POLICY cashbook_delete ON cashbook
     FOR DELETE USING (auth.is_admin());
 
@@ -123,7 +123,7 @@ GRANT EXECUTE ON FUNCTION public.lookup_customer_orders(VARCHAR, VARCHAR) TO ano
 -- PERFORMANCE OPTIMIZATION POLICIES
 -- =============================================
 
--- Create policy for bulk operations (Admin only)
+-- Create policy for bulk operations (admin only)
 CREATE POLICY bulk_operations_admin ON products
     FOR ALL USING (auth.is_admin());
 
@@ -186,7 +186,7 @@ CREATE OR REPLACE VIEW pending_shipments AS
 SELECT o.*, s.tracking_no, s.courier
 FROM orders o
 LEFT JOIN shipments s ON o.id = s.order_id
-WHERE o.status = 'PAID';
+WHERE o.status = 'paid';
 
 CREATE OR REPLACE VIEW low_stock_products AS
 SELECT *
@@ -230,7 +230,7 @@ CREATE TRIGGER validate_order_items_trigger
 BEFORE INSERT OR UPDATE ON order_items
 FOR EACH ROW EXECUTE FUNCTION validate_order_items();
 
--- Ensure shipment is created only for PAID orders
+-- Ensure shipment is created only for paid orders
 CREATE OR REPLACE FUNCTION validate_shipment()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -241,14 +241,14 @@ BEGIN
     FROM orders
     WHERE id = NEW.order_id;
     
-    -- Ensure order is in PAID status
-    IF v_order_status != 'PAID' THEN
-        RAISE EXCEPTION 'Can only create shipment for PAID orders';
+    -- Ensure order is in paid status
+    IF v_order_status != 'paid' THEN
+        RAISE EXCEPTION 'Can only create shipment for paid orders';
     END IF;
     
-    -- Auto-update order status to SHIPPED
+    -- Auto-update order status to shipped
     UPDATE orders
-    SET status = 'SHIPPED',
+    SET status = 'shipped',
         updated_at = NOW()
     WHERE id = NEW.order_id;
     
@@ -295,10 +295,10 @@ SELECT
     SUM(total_amount) as total_sales,
     COUNT(DISTINCT customer_phone) as unique_customers,
     status,
-    COUNT(*) FILTER (WHERE status = 'PAID') as pending_orders,
-    COUNT(*) FILTER (WHERE status = 'SHIPPED') as shipping_orders,
-    COUNT(*) FILTER (WHERE status = 'DONE') as completed_orders,
-    COUNT(*) FILTER (WHERE status = 'REFUNDED') as refunded_orders
+    COUNT(*) FILTER (WHERE status = 'paid') as pending_orders,
+    COUNT(*) FILTER (WHERE status = 'shipped') as shipping_orders,
+    COUNT(*) FILTER (WHERE status = 'delivered') as completed_orders,
+    COUNT(*) FILTER (WHERE status = 'refunded') as refunded_orders
 FROM orders
 WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
 GROUP BY DATE(created_at), status;

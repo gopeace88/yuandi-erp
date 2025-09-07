@@ -323,7 +323,7 @@ export async function sendOrderNotification(
 }
 
 // 시스템 알림 (관리자용, SMS 제거)
-export async function sendAdminAlert(
+export async function sendadminAlert(
   alertData: {
     type: string;
     message: string;

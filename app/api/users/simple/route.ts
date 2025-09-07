@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     
     // 모든 사용자 조회
     const { data: users, error } = await supabase
-      .from('profiles')
+      .from('user_profiles')
       .select('*')
       .order('created_at', { ascending: false })
     
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     console.log('Request body:', JSON.stringify(body))
     
-    const { name, email, password, role = 'Admin', active = true } = body
+    const { name, email, password, role = 'admin', active = true } = body
     
     console.log('Creating simple user:', { email, name, role, active, hasPassword: !!password, passwordLength: password?.length })
     
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
     
     // Create profile record only (no auth)
     const { data: newProfile, error: profileError } = await supabase
-      .from('profiles')
+      .from('user_profiles')
       .insert({
         id: userId,
         email,
@@ -116,7 +116,7 @@ export async function PATCH(request: NextRequest) {
     
     // Update profile
     const { data: updatedProfile, error } = await supabase
-      .from('profiles')
+      .from('user_profiles')
       .update(updateData)
       .eq('id', id)
       .select()
@@ -150,7 +150,7 @@ export async function DELETE(request: NextRequest) {
     
     // Delete from profiles only
     const { error: profileError } = await supabase
-      .from('profiles')
+      .from('user_profiles')
       .delete()
       .eq('id', userId)
     

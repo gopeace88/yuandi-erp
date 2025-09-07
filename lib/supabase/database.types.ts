@@ -18,7 +18,7 @@ export interface Database {
           name: string
           email: string
           phone: string | null
-          role: 'Admin' | 'OrderManager' | 'ShipManager'
+          role: 'admin' | 'order_manager' | 'ship_manager'
           locale: 'ko' | 'zh-CN'
           active: boolean
           last_login_at: string | null
@@ -30,7 +30,7 @@ export interface Database {
           name: string
           email: string
           phone?: string | null
-          role?: 'Admin' | 'OrderManager' | 'ShipManager'
+          role?: 'admin' | 'order_manager' | 'ship_manager'
           locale?: 'ko' | 'zh-CN'
           active?: boolean
           last_login_at?: string | null
@@ -42,7 +42,7 @@ export interface Database {
           name?: string
           email?: string
           phone?: string | null
-          role?: 'Admin' | 'OrderManager' | 'ShipManager'
+          role?: 'admin' | 'order_manager' | 'ship_manager'
           locale?: 'ko' | 'zh-CN'
           active?: boolean
           last_login_at?: string | null
@@ -124,7 +124,7 @@ export interface Database {
           shipping_address: string
           shipping_address_detail: string | null
           zip_code: string
-          status: 'PAID' | 'SHIPPED' | 'DONE' | 'REFUNDED'
+          status: 'paid' | 'shipped' | 'delivered' | 'refunded'
           total_amount: number
           currency: 'CNY' | 'KRW'
           customer_memo: string | null
@@ -145,7 +145,7 @@ export interface Database {
           shipping_address: string
           shipping_address_detail?: string | null
           zip_code: string
-          status?: 'PAID' | 'SHIPPED' | 'DONE' | 'REFUNDED'
+          status?: 'paid' | 'shipped' | 'delivered' | 'refunded'
           total_amount: number
           currency?: 'CNY' | 'KRW'
           customer_memo?: string | null
@@ -166,7 +166,7 @@ export interface Database {
           shipping_address?: string
           shipping_address_detail?: string | null
           zip_code?: string
-          status?: 'PAID' | 'SHIPPED' | 'DONE' | 'REFUNDED'
+          status?: 'paid' | 'shipped' | 'delivered' | 'refunded'
           total_amount?: number
           currency?: 'CNY' | 'KRW'
           customer_memo?: string | null
@@ -391,7 +391,7 @@ export interface Database {
           id: string
           actor_id: string | null
           actor_name: string | null
-          actor_role: 'Admin' | 'OrderManager' | 'ShipManager' | null
+          actor_role: 'admin' | 'order_manager' | 'ship_manager' | null
           event_type: string
           event_category: string | null
           event_severity: string
@@ -411,7 +411,7 @@ export interface Database {
           id?: string
           actor_id?: string | null
           actor_name?: string | null
-          actor_role?: 'Admin' | 'OrderManager' | 'ShipManager' | null
+          actor_role?: 'admin' | 'order_manager' | 'ship_manager' | null
           event_type: string
           event_category?: string | null
           event_severity?: string
@@ -431,7 +431,7 @@ export interface Database {
           id?: string
           actor_id?: string | null
           actor_name?: string | null
-          actor_role?: 'Admin' | 'OrderManager' | 'ShipManager' | null
+          actor_role?: 'admin' | 'order_manager' | 'ship_manager' | null
           event_type?: string
           event_category?: string | null
           event_severity?: string
@@ -551,9 +551,9 @@ export interface Database {
       }
     }
     Enums: {
-      user_role: 'Admin' | 'OrderManager' | 'ShipManager'
+      user_role: 'admin' | 'order_manager' | 'ship_manager'
       locale_type: 'ko' | 'zh-CN'
-      order_status: 'PAID' | 'SHIPPED' | 'DONE' | 'REFUNDED'
+      order_status: 'paid' | 'shipped' | 'delivered' | 'refunded'
       cashbook_type: 'sale' | 'inbound' | 'shipping' | 'adjustment' | 'refund'
       currency_type: 'CNY' | 'KRW'
       movement_type: 'inbound' | 'sale' | 'adjustment' | 'disposal'

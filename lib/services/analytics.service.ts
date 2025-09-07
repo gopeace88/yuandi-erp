@@ -9,7 +9,7 @@ export interface SalesAnalytics {
   averageOrderValue: number
   growthRate: number
   topProducts: ProductAnalytics[]
-  topCustomers: CustomerAnalytics[]
+  topcustomers: customerAnalytics[]
   salesByCategory: CategorySales[]
   salesTrend: TrendData[]
 }
@@ -25,7 +25,7 @@ export interface ProductAnalytics {
   turnoverRate: number
 }
 
-export interface CustomerAnalytics {
+export interface customerAnalytics {
   customerId: string
   customerName: string
   totalOrders: number
@@ -120,7 +120,7 @@ export class AnalyticsService {
     const topProducts = await this.getTopProducts(startDate, endDate, 10)
     
     // 고객별 분석
-    const topCustomers = await this.getTopCustomers(startDate, endDate, 10)
+    const topcustomers = await this.getTopcustomers(startDate, endDate, 10)
     
     // 카테고리별 분석
     const salesByCategory = await this.getSalesByCategory(startDate, endDate)
@@ -141,7 +141,7 @@ export class AnalyticsService {
       averageOrderValue: salesData.average_order_value,
       growthRate,
       topProducts,
-      topCustomers,
+      topcustomers,
       salesByCategory,
       salesTrend
     }
@@ -215,11 +215,11 @@ export class AnalyticsService {
   /**
    * 고객 세분화 분석
    */
-  async getCustomerSegmentation(): Promise<{
-    vip: CustomerAnalytics[]
-    regular: CustomerAnalytics[]
-    new: CustomerAnalytics[]
-    churned: CustomerAnalytics[]
+  async getcustomerSegmentation(): Promise<{
+    vip: customerAnalytics[]
+    regular: customerAnalytics[]
+    new: customerAnalytics[]
+    churned: customerAnalytics[]
   }> {
     const { data, error } = await this.supabase
       .rpc('get_customer_segmentation')
@@ -299,13 +299,13 @@ export class AnalyticsService {
 
     // 병렬로 데이터 조회
     const [currentSales, previousSales, currentOrders, previousOrders, 
-           currentCustomers, previousCustomers, inventoryStats, alerts] = await Promise.all([
+           currentcustomers, previouscustomers, inventoryStats, alerts] = await Promise.all([
       this.getTotalRevenue(dates.start, dates.end),
       this.getTotalRevenue(previousDates.start, previousDates.end),
       this.getTotalOrders(dates.start, dates.end),
       this.getTotalOrders(previousDates.start, previousDates.end),
-      this.getNewCustomers(dates.start, dates.end),
-      this.getNewCustomers(previousDates.start, previousDates.end),
+      this.getNewcustomers(dates.start, dates.end),
+      this.getNewcustomers(previousDates.start, previousDates.end),
       this.getInventoryStats(),
       this.getSystemAlerts()
     ])
@@ -322,9 +322,9 @@ export class AnalyticsService {
         growth: this.calculateGrowthRate(currentOrders, previousOrders)
       },
       customers: {
-        current: currentCustomers,
-        previous: previousCustomers,
-        growth: this.calculateGrowthRate(currentCustomers, previousCustomers)
+        current: currentcustomers,
+        previous: previouscustomers,
+        growth: this.calculateGrowthRate(currentcustomers, previouscustomers)
       },
       inventory: {
         totalValue: inventoryStats.total_value,
@@ -397,7 +397,7 @@ export class AnalyticsService {
     return data || []
   }
 
-  private async getTopCustomers(startDate: Date, endDate: Date, limit: number): Promise<CustomerAnalytics[]> {
+  private async getTopcustomers(startDate: Date, endDate: Date, limit: number): Promise<customerAnalytics[]> {
     const { data, error } = await this.supabase
       .rpc('get_top_customers', {
         p_start_date: startDate.toISOString(),
@@ -506,7 +506,7 @@ export class AnalyticsService {
     return data || 0
   }
 
-  private async getNewCustomers(startDate: Date, endDate: Date): Promise<number> {
+  private async getNewcustomers(startDate: Date, endDate: Date): Promise<number> {
     const { data, error } = await this.supabase
       .rpc('get_new_customers', {
         p_start_date: startDate.toISOString(),

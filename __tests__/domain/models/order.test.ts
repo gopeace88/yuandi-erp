@@ -43,7 +43,7 @@ describe('Order Domain Model', () => {
       const result = validateOrder(order);
       
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain('Customer name is required');
+      expect(result.errors).toContain('customer name is required');
     });
 
     it('should validate phone number format', () => {
@@ -105,7 +105,7 @@ describe('Order Domain Model', () => {
       const order = new Order(orderInput);
       
       expect(order.orderNumber).toMatch(/^ORD-\d{6}-\d{3}$/);
-      expect(order.status).toBe(OrderStatus.PAID);
+      expect(order.status).toBe(OrderStatus.paid);
       expect(order.customerName).toBe('홍길동');
     });
 
@@ -124,24 +124,24 @@ describe('Order Domain Model', () => {
     it('should transition status correctly', () => {
       const order = new Order(orderInput);
       
-      expect(order.status).toBe(OrderStatus.PAID);
+      expect(order.status).toBe(OrderStatus.paid);
       
       order.ship('CJ대한통운', 'TRK123456789');
-      expect(order.status).toBe(OrderStatus.SHIPPED);
+      expect(order.status).toBe(OrderStatus.shipped);
       expect(order.trackingNumber).toBe('TRK123456789');
       expect(order.courierCompany).toBe('CJ대한통운');
       
       order.complete();
-      expect(order.status).toBe(OrderStatus.DONE);
+      expect(order.status).toBe(OrderStatus.delivered);
     });
 
     it('should handle refund correctly', () => {
       const order = new Order(orderInput);
       order.ship('CJ대한통운', 'TRK123456789');
       
-      order.refund('Customer request');
-      expect(order.status).toBe(OrderStatus.REFUNDED);
-      expect(order.refundReason).toBe('Customer request');
+      order.refund('customer request');
+      expect(order.status).toBe(OrderStatus.refunded);
+      expect(order.refundReason).toBe('customer request');
       expect(order.refundedAt).toBeDefined();
     });
 
@@ -149,7 +149,7 @@ describe('Order Domain Model', () => {
       const order = new Order(orderInput);
       order.complete();
       
-      expect(() => order.ship('CJ대한통운', 'TRK123456789')).toThrow('Cannot ship order in DONE status');
+      expect(() => order.ship('CJ대한통운', 'TRK123456789')).toThrow('Cannot ship order in delivered status');
     });
 
     it('should generate tracking URL correctly', () => {

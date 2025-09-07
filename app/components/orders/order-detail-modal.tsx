@@ -56,10 +56,10 @@ export function OrderDetailModal({ order, isOpen, onClose }: OrderDetailModalPro
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      PAID: { label: '결제완료', className: 'bg-blue-100 text-blue-800' },
-      SHIPPED: { label: '배송중', className: 'bg-green-100 text-green-800' },
-      DONE: { label: '완료', className: 'bg-gray-100 text-gray-800' },
-      REFUNDED: { label: '환불', className: 'bg-red-100 text-red-800' },
+      paid: { label: '결제완료', className: 'bg-blue-100 text-blue-800' },
+      shipped: { label: '배송중', className: 'bg-green-100 text-green-800' },
+      delivered: { label: '완료', className: 'bg-gray-100 text-gray-800' },
+      refunded: { label: '환불', className: 'bg-red-100 text-red-800' },
     }
     
     const config = statusConfig[status as keyof typeof statusConfig]

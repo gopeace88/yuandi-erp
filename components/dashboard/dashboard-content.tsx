@@ -85,10 +85,10 @@ export function DashboardContent() {
         <div className="chart bg-white rounded-lg shadow p-3 sm:p-4">
           <h2 className="text-base sm:text-lg font-semibold mb-2">{t('dashboard.orderStatus')}</h2>
           <OrderStatusChartWrapper data={[
-            { status: 'PAID', label: t('orders.status.paid'), count: 15 },
-            { status: 'SHIPPED', label: t('orders.status.shipped'), count: 8 },
-            { status: 'DONE', label: t('orders.status.done'), count: 25 },
-            { status: 'REFUNDED', label: t('orders.status.refunded'), count: 2 },
+            { status: 'paid', label: t('orders.status.paid'), count: 15 },
+            { status: 'shipped', label: t('orders.status.shipped'), count: 8 },
+            { status: 'delivered', label: t('orders.status.done'), count: 25 },
+            { status: 'refunded', label: t('orders.status.refunded'), count: 2 },
           ]} />
         </div>
       </div>

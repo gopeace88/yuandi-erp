@@ -65,7 +65,7 @@ INSERT INTO products (
 
 SELECT '상품 생성 완료: ' || COUNT(*) || '개' as status FROM products;
 
--- 3.3 주문 데이터 생성 (PAID 상태)
+-- 3.3 주문 데이터 생성 (paid 상태)
 -- 주문 1: 정상 주문
 INSERT INTO orders (
     order_date, customer_name, customer_phone, customer_email,
@@ -74,7 +74,7 @@ INSERT INTO orders (
 ) VALUES (
     CURRENT_DATE, '김철수', '01012345678', 'kim@example.com',
     'P123456789012', '서울시 강남구 테헤란로 123', '101동 202호', '06234',
-    'PAID', 1250000, '빠른 배송 부탁드립니다', '우수 고객'
+    'paid', 1250000, '빠른 배송 부탁드립니다', '우수 고객'
 );
 
 -- 주문 아이템 추가
@@ -134,7 +134,7 @@ INSERT INTO orders (
 ) VALUES (
     CURRENT_DATE - INTERVAL '1 day', '이영희', '01098765432', 'lee@example.com',
     'P987654321098', '부산시 해운대구 마린시티 456', '48120',
-    'SHIPPED', 1150000
+    'shipped', 1150000
 );
 
 -- 배송 정보 추가
@@ -156,7 +156,7 @@ INSERT INTO orders (
 ) VALUES (
     CURRENT_DATE - INTERVAL '5 days', '박민수', '01055556666',
     'P111222333444', '대전시 유성구 대학로 789', '34111',
-    'DONE', 320000
+    'delivered', 320000
 );
 
 -- 주문 4: 환불 상태
@@ -167,7 +167,7 @@ INSERT INTO orders (
 ) VALUES (
     CURRENT_DATE - INTERVAL '7 days', '최지우', '01077778888',
     'P555666777888', '인천시 연수구 송도대로 321', '21984',
-    'REFUNDED', 180000, '제품 불량으로 환불 처리'
+    'refunded', 180000, '제품 불량으로 환불 처리'
 );
 
 -- 환불 출납장부 기록
@@ -247,7 +247,7 @@ SELECT o.order_no, o.customer_name, o.status,
        s.courier, s.tracking_no, s.shipped_at
 FROM orders o
 LEFT JOIN shipments s ON s.order_id = o.id
-WHERE o.status IN ('SHIPPED', 'DONE');
+WHERE o.status IN ('shipped', 'delivered');
 
 -- =============================================
 -- STEP 5: 데이터 무결성 검증

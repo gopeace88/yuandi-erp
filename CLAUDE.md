@@ -1,248 +1,189 @@
-# CLAUDE.md
+# CLAUDE.md - YUANDI ERP Development Navigator
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+> **Purpose**: Context-efficient development guide for Claude Code
+> **Project**: YUANDI Collection Management System
+> **Status**: Active Development with Iterative Refinement
+> **Database**: Supabase MCP Server Connected - Always verify schema before SQL
 
-## 📌 IMPORTANT: Development Guidelines
+## 🎯 Quick Navigation
 
-### Reference Documents (MUST READ)
-1. **[PRD_v2.md](./docs/PRD_v2.md)** - Latest Product Requirements (v2.0)
-2. **[DATABASE_ERD.md](./docs/DATABASE_ERD.md)** - Current Database Schema
-3. **[ITERATIVE_DEVELOPMENT.md](./docs/ITERATIVE_DEVELOPMENT.md)** - Development Process
+| Document | Purpose | Priority |
+|----------|---------|----------|
+| 📘 **[PRD.md](./docs/(250907-v2.0)PRD.md)** | Product Requirements (중심 문서) | ⭐⭐⭐ |
+| 🗄️ **[DATABASE_ERD.md](./docs/(250907-v1.1)DATABASE_ERD.md)** | Database Schema | ⭐⭐⭐ |
+| 🔄 **[ITERATIVE_DEVELOPMENT.md](./docs/(250907-v1.0)ITERATIVE_DEVELOPMENT.md)** | Development Process | ⭐⭐ |
+| 🚀 **[DEPLOYMENT_GUIDE.md](./docs/(250907-v1.0)DEPLOYMENT_GUIDE.md)** | Deployment Steps | ⭐ |
+| 🛠️ **[SETUP_GUIDE.md](./docs/(250907-v1.0)SETUP_GUIDE.md)** | Local Setup | ⭐ |
 
-### Development Process
-Follow the **Iterative Development Process**:
-1. **Always check PRD_v2.md** for latest requirements before implementing
-2. **Update documentation first** when discovering new requirements
-3. **Use shipments table** for all shipping information (NOT orders table)
-4. **Test thoroughly** before marking tasks complete
-5. **Document all changes** in appropriate files
+## ⚠️ Critical Rules (MUST FOLLOW)
 
-## Project Overview
-YUANDI Collection Management System - an Order/Inventory/Shipping management system for a single-person overseas purchasing agent business. **Currently in active development with iterative refinement approach**.
-
-## Business Context
-- **Business Type**: Single-person overseas purchasing agent service
-- **Core Functions**: Order management, dual shipping system (Korea+China), inventory with images, cashbook monitoring, customer order lookup
-- **Design Principle**: Simple WMS/accounting excluded, single inventory quantity (onHand), intuitive PC/mobile UI, iterative improvement
-
-## Tech Stack (Planned)
-- **Frontend**: Next.js 14 (App Router), TypeScript, Tailwind CSS
-- **Backend**: Supabase (PostgreSQL, Auth, Realtime, Storage)
-- **Deployment**: Vercel (Edge Functions, Cron Jobs)
-- **Architecture**: Serverless with Supabase + Vercel
-
-## Git Commit Guidelines
-
-### Important: Commit Approval Process
-- **ALWAYS** get confirmation from the user BEFORE committing changes
-- **Batch multiple features** into a single commit for efficiency
-- **Avoid excessive commits** for single feature modifications
-- **Wait for user approval** with a summary of changes before executing git commit
-
-Example workflow:
-1. Implement multiple related features
-2. Present summary of all changes to user
-3. Wait for user confirmation
-4. Only then execute git commit with comprehensive message
-
-## Development Setup
-
-### Environment Variables
+### 🔐 Database Schema Verification
+**IMPORTANT**: Supabase MCP Server is connected. ALWAYS verify actual schema before writing SQL:
 ```bash
-# Required in .env.local
-NEXT_PUBLIC_SUPABASE_URL=<your-supabase-url>
-NEXT_PUBLIC_SUPABASE_API_KEY=<public-api-key>  # For client-side
-SUPABASE_API_KEY=<private-api-key>             # For server-side only
+# Use Supabase MCP to check schema
+mcp__yuandi-supabase__list_tables       # List all tables
+mcp__yuandi-supabase__execute_sql       # Test SQL queries
+mcp__yuandi-supabase__apply_migration   # Apply DDL changes
 ```
 
-### Commands (when implemented)
+### 🔴 Common Mistakes to Avoid
+```typescript
+// ❌ WRONG - Inconsistent naming
+from('profiles')           // Some code still uses this
+from('cashbook')           // Mixed with cashbook_transactions
+role: 'Admin'              // Some code uses capitalized
+
+// ✅ CORRECT - Database schema standard
+from('user_profiles')      // Correct table name
+from('cashbook_transactions')  // Correct table name  
+role: 'admin'              // Database uses: admin, order_manager, ship_manager
+```
+
+### 📌 Development Process
+1. **Check PRD.md first** → Requirements source of truth
+2. **Use shipments table** → NOT orders table shipping fields
+3. **Test before complete** → Run pnpm test, pnpm typecheck
+4. **Get user approval** → BEFORE git commit
+5. **Batch commits** → Multiple features in one commit
+
+## 🏗️ Tech Stack & Commands
+
 ```bash
-# Install dependencies
-npm install
-
-# Run development server
-npm run dev
-
-# Build for production
-npm run build
-
-# Run tests
-npm test
-
-# Type checking
-npm run typecheck
-
-# Linting
-npm run lint
+# Stack: Next.js 14 + TypeScript + Supabase + Vercel
+pnpm install    # Install dependencies
+pnpm dev        # Development server (default port 3000)
+PORT=8081 pnpm dev  # WSL 환경에서 포트 8081로 실행
+pnpm build      # Production build
+pnpm test       # Run tests
+pnpm typecheck  # Type checking
+pnpm lint       # Linting
 ```
 
-## System Architecture
+### WSL + Windows 개발 환경 설정
+```bash
+# WSL에서 서버 실행 시 Windows 브라우저로 접속하려면:
+# 1. 포트를 8081로 실행 (3000은 다른 앱이 사용 중)
+PORT=8081 pnpm dev
 
-### User Roles & Permissions
-- **Admin**: Full access to all features, user management, Excel exports
-- **OrderManager**: Order and inventory management, cashbook view
-- **ShipManager**: Shipping management only, cashbook view
-- **Customer**: Order lookup only (name + phone number authentication)
-
-### Business Process Flow
+# 2. Windows 브라우저에서 접속:
+# http://172.25.186.113:8081 (WSL IP 주소는 변경될 수 있음)
+# 
+# 3. .env.local 설정 확인:
+# NEXT_PUBLIC_APP_URL=http://172.25.186.113:8081
 ```
-Payment Confirmed → Order Entry (PAID) → Logistics Pickup (SHIPPED) → Complete (DONE) or Refund (REFUNDED)
+
+### Latest Migration
+```sql
+# Migration 007: Fix foreign key CASCADE constraints
+# Run this in Supabase dashboard if user deletion fails
+# Path: /supabase/migrations/007_fix_foreign_key_cascade.sql
 ```
 
-### Core Data Models
-- **Product**: SKU auto-generation pattern: `[Category]-[Model]-[Color]-[Brand]-[HASH5]`
-- **Order**: Order number pattern: `ORD-YYMMDD-###` (e.g., `ORD-240823-001`)
-- **Inventory**: Single quantity field (onHand), real-time stock validation
-- **Cashbook**: Automatic transaction recording for all financial events
+### Environment Setup
+```bash
+# .env.local (Required)
+NEXT_PUBLIC_SUPABASE_URL=xxx
+NEXT_PUBLIC_SUPABASE_API_KEY=xxx  # Client-side
+SUPABASE_API_KEY=xxx              # Server-side only
+```
 
-## Key Implementation Requirements
+## 📊 Database Quick Reference
 
-### Product & Inventory Management
-- Required fields: category, name, model, color, manufacturer/brand, cost(CNY)
-- Real-time stock display when creating orders
-- Stock validation prevents over-ordering
-- Low stock threshold alerts (default: 5 units)
+### 🔍 Real-time Schema Verification
+```sql
+-- ALWAYS verify actual table structure before SQL operations
+-- Use Supabase MCP to get current schema:
+-- 1. mcp__yuandi-supabase__list_tables - Get all tables with columns
+-- 2. Check foreign keys, constraints, and data types
+-- 3. Verify enum values for user_role, order_status, etc.
+```
 
-### Order Processing
-- Automatic PAID status on creation
-- Real-time inventory deduction
-- Daum Postcode API integration for addresses
-- Overseas customs clearance code (PCCC) required
+### Table Names (Use These)
+| Table | Purpose | Status |
+|-------|---------|--------|
+| `user_profiles` | User management | ✅ Primary |
+| `products` | Product catalog | ✅ Active |
+| `orders` | Order management | ✅ Active |
+| `order_items` | Order line items | ✅ Active |
+| `shipments` | Shipping info | ✅ Use this |
+| `inventory_movements` | Stock tracking | ✅ Active |
+| `cashbook_transactions` | Financial records | ⚠️ Mixed usage |
+| `event_logs` | Audit trail | ✅ Active |
 
-### Shipping Management
-- Tracking number registration
-- Optional shipment photo upload
-- Automatic tracking URL generation by courier
+### User Roles (Database Schema)
+```typescript
+type UserRole = 'admin' | 'order_manager' | 'ship_manager'
+// Database standard: lowercase with underscore
+```
 
-### Customer Portal (/track)
-- Public access with name + full phone number
-- Display last 5 orders in card format
-- Auto-detect browser language (ko/zh-CN/en)
+## 🚦 Business Flow
 
-### Dashboard Components
-- Sales metrics (today/week/month with YoY comparison)
-- Order status distribution
-- Low stock alerts (Admin/OrderManager only)
-- Popular products TOP 5
-- Recent orders
+```mermaid
+graph LR
+    A[Order(PAID)] --> B[Ship(SHIPPED)] --> C[Complete(DONE)]
+    B --> D[Refund(REFUNDED)]
+```
 
-### Internationalization
-- Support for Korean (ko) and Chinese (zh-CN)
-- User-specific default language saved
-- Date/currency format localization
+### Key Patterns
+- **Order Number**: `ORD-YYMMDD-###` (Daily reset, Asia/Seoul)
+- **SKU Pattern**: `[Category]-[Model]-[Color]-[Brand]-[HASH5]`
+- **Stock**: Single `onHand` field, real-time validation
+- **Dual Shipping**: Korea + China tracking in shipments table
 
-## API Endpoints Structure
+## 🔗 API Structure Map
 
-### Dashboard
-- `GET /api/dashboard/summary` - Sales/order/inventory summary
-- `GET /api/dashboard/sales-trend` - 7-day sales trend
-- `GET /api/dashboard/order-status` - Order status distribution
-- `GET /api/dashboard/low-stock` - Low stock products
-- `GET /api/dashboard/popular-products` - Top 5 products
+| Category | Endpoints | Auth |
+|----------|-----------|------|
+| **Dashboard** | `/api/dashboard/*` | Role-based |
+| **Orders** | `/api/orders/*` | admin, order_manager |
+| **Products** | `/api/products/*` | admin, order_manager |
+| **Shipping** | `/api/shipments/*` | admin, ship_manager |
+| **Customer** | `/api/track` | Public (name+phone) |
+| **Export** | `/api/export/*.xlsx` | admin only |
 
-### Orders
-- `POST /api/orders` - Create order
-- `GET /api/orders` - List orders
-- `PATCH /api/orders/:id` - Update order
-- `PATCH /api/orders/:id/ship` - Register tracking
-- `PATCH /api/orders/:id/complete` - Mark as done
-- `PATCH /api/orders/:id/refund` - Process refund
+## 🎌 Internationalization
+- **Languages**: Korean (ko), Chinese (zh-CN)
+- **Default**: User preference saved in profile
+- **Customer Portal**: Auto-detect browser language
 
-### Inventory
-- `GET /api/products` - List products
-- `POST /api/products` - Add product
-- `POST /api/inventory/inbound` - Register stock arrival
-- `PATCH /api/inventory/adjust` - Adjust stock
+## 🔒 Security Checklist
+- ✅ Never expose `SUPABASE_API_KEY` to client
+- ✅ Use `NEXT_PUBLIC_*` for client-side vars
+- ✅ RLS enabled on all tables
+- ✅ PCCC validation for customs
+- ✅ Input sanitization
 
-### Customer Portal
-- `GET /api/track` - Query orders (name + phone params)
+## 📈 Performance Targets
+- Response: < 3 seconds
+- Users: 5-10 concurrent
+- Database: 10K orders, 1K products
+- Design: Mobile-first responsive
 
-### Export (Admin only)
-- `GET /api/export/orders.xlsx` - Export orders
-- `GET /api/export/inventory.xlsx` - Export inventory
-- `GET /api/export/cashbook.xlsx` - Export cashbook
+## 🚨 Current Issues
 
-## Database Schema Highlights
+### Known Inconsistencies
+| Issue | Current State | Target State |
+|-------|--------------|--------------|
+| Table naming | Mixed `profiles`/`user_profiles` | → `user_profiles` |
+| Cashbook table | Mixed `cashbook`/`cashbook_transactions` | → `cashbook_transactions` |
+| User roles in docs | Says lowercase | → Use capitalized (as in code) |
 
-### Sequential Numbering
-- Order numbers: `ORD-YYMMDD-###`
-- Daily reset counter
-- Timezone: Asia/Seoul (UTC+9)
+### Recently Fixed
+- **Foreign Key Constraints**: Added CASCADE DELETE to all user_profiles references (Migration 007)
 
-### Row Level Security (RLS)
-- All tables have RLS enabled
-- User role-based access control
-- Customer portal uses separate authentication
+## 📝 Quick Tasks
 
-### Audit Trail
-- EventLog table tracks all changes
-- Actor, timestamp, before/after states
-- IP address and user agent recording
+### Add New Feature?
+→ Check **[PRD.md](./docs/(250907-v2.0)PRD.md)** Section 4-9
 
-## Testing Strategy
+### Database Schema?
+→ Check **[DATABASE_ERD.md](./docs/(250907-v1.1)DATABASE_ERD.md)**
 
-### E2E Test Scenarios (Playwright)
-- Customer order lookup flow
-- Admin order creation with inventory validation
-- Shipping workflow (tracking registration)
-- Cashbook transaction recording
-- Multi-language switching
+### Deploy to Production?
+→ Follow **[DEPLOYMENT_GUIDE.md](./docs/(250907-v1.0)DEPLOYMENT_GUIDE.md)**
 
-### Test Data
-- Use `.env.test` for test database
-- Seed data for all user roles
-- Mock Daum Postcode API responses
+### Local Setup Issues?
+→ See **[SETUP_GUIDE.md](./docs/(250907-v1.0)SETUP_GUIDE.md)**
 
-## Security Considerations
-
-- Never expose `SUPABASE_API_KEY` (private key) to client
-- Use `NEXT_PUBLIC_SUPABASE_API_KEY` for client-side
-- Implement rate limiting on public endpoints
-- Validate PCCC format for customs
-- Sanitize all user inputs
-
-## Performance Targets
-
-- Response time: < 3 seconds
-- Concurrent users: 5-10 (small business scale)
-- Database capacity: 10,000 orders, 1,000 products
-- Mobile-first responsive design
-
-## Common Development Tasks
-
-### Adding New API Route
-1. Create route handler in `app/api/[resource]/route.ts`
-2. Implement RLS policies in Supabase
-3. Add types to shared types file
-4. Update OpenAPI documentation
-
-### Implementing Realtime Features
-1. Enable Supabase Realtime for table
-2. Create subscription hook
-3. Handle connection lifecycle
-4. Implement optimistic updates
-
-### Adding New Language
-1. Create message file in `/messages/[locale]/`
-2. Update i18n configuration
-3. Add locale switcher UI
-4. Test number/date formatting
-
-## Deployment Checklist
-
-- [ ] Set all environment variables in Vercel
-- [ ] Configure Supabase RLS policies
-- [ ] Enable Supabase Realtime
-- [ ] Set up CRON_SECRET for scheduled jobs
-- [ ] Configure custom domain
-- [ ] Enable Vercel Analytics
-- [ ] Set up error tracking (Sentry)
-
-## Phase 2 Considerations (Future)
-
-- SMS/Email notifications
-- Customer tier discounts
-- PWA mobile app
-- Supplier management
-- Multi-warehouse support
-- External API integrations (tracking, exchange rates)
+---
+**Remember**: PRD.md is the central document. This file is just a navigator.

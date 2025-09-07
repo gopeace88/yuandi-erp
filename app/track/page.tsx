@@ -66,7 +66,7 @@ export default function TrackPage() {
         {
           id: '1',
           order_number: 'ORD-240101-001',
-          status: 'SHIPPED',
+          status: 'shipped',
           total_amount: 100000,
           created_at: '2024-01-01T00:00:00Z',
         }
@@ -135,7 +135,7 @@ export default function TrackPage() {
                 {orders.map((order) => (
                   <div key={order.id} className="border-b pb-4 mb-4">
                     <p className="font-medium">{t('track.orderNumber')}: {order.order_number}</p>
-                    <p>{t('track.status')}: {order.status === 'SHIPPED' ? t('status.SHIPPED') : order.status}</p>
+                    <p>{t('track.status')}: {order.status === 'shipped' ? t('status.shipped') : order.status}</p>
                     <p>{t('track.amount')}: {locale === 'ko' ? '₩' : '¥'}{order.total_amount.toLocaleString()}</p>
                     <p className="text-sm text-gray-500">
                       {t('track.orderDate')}: {new Date(order.created_at).toLocaleDateString(locale === 'ko' ? 'ko-KR' : 'zh-CN')}

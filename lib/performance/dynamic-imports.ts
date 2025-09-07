@@ -114,11 +114,11 @@ export const routeComponents = {
  */
 export function loadComponentByRole(role: string) {
   switch (role) {
-    case 'Admin':
+    case 'admin':
       return import('@/components/features/admin-panel')
-    case 'OrderManager':
+    case 'order_manager':
       return import('@/components/features/order-manager-panel')
-    case 'ShipManager':
+    case 'ship_manager':
       return import('@/components/features/ship-manager-panel')
     default:
       return import('@/components/features/guest-panel')

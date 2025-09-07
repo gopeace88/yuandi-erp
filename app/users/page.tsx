@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, Search, Edit, Trash2, UserCheck, UserX, Shield, Package, Truck } from 'lucide-react'
+import { Plus, Search, Edit, Trash2, UserCheck, UserX, Shield, Package, Truck, Key } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -16,7 +16,7 @@ interface User {
   email: string
   name: string
   phone?: string
-  role: 'Admin' | 'OrderManager' | 'ShipManager'
+  role: 'admin' | 'order_manager' | 'ship_manager'
   active: boolean
   locale: 'ko' | 'zh-CN'
   created_at: string
@@ -25,21 +25,21 @@ interface User {
 }
 
 const roleColors = {
-  Admin: 'bg-purple-100 text-purple-800',
-  OrderManager: 'bg-blue-100 text-blue-800',
-  ShipManager: 'bg-green-100 text-green-800',
+  admin: 'bg-purple-100 text-purple-800',
+  order_manager: 'bg-blue-100 text-blue-800',
+  ship_manager: 'bg-green-100 text-green-800',
 }
 
 const roleLabels = {
-  Admin: '관리자',
-  OrderManager: '주문관리자',
-  ShipManager: '배송관리자',
+  admin: '관리자',
+  order_manager: '주문관리자',
+  ship_manager: '배송관리자',
 }
 
 const roleIcons = {
-  Admin: Shield,
-  OrderManager: Package,
-  ShipManager: Truck,
+  admin: Shield,
+  order_manager: Package,
+  ship_manager: Truck,
 }
 
 export default function UsersPage() {
@@ -50,15 +50,24 @@ export default function UsersPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false)
+  const [passwordUserId, setPasswordUserId] = useState<string | null>(null)
   
   // Form states
   const [formData, setFormData] = useState({
     email: '',
     name: '',
     phone: '',
-    role: 'OrderManager' as User['role'],
+    role: 'order_manager' as User['role'],
     password: '',
     locale: 'ko' as User['locale'],
+  })
+  
+  // Password change form states
+  const [passwordFormData, setPasswordFormData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
   })
 
   useEffect(() => {
@@ -84,7 +93,7 @@ export default function UsersPage() {
       email: '',
       name: '',
       phone: '',
-      role: 'OrderManager',
+      role: 'order_manager',
       password: '',
       locale: 'ko',
     })
@@ -165,6 +174,57 @@ export default function UsersPage() {
       alert('사용자 삭제에 실패했습니다.')
     }
   }
+  
+  const handleOpenPasswordModal = (userId: string) => {
+    setPasswordUserId(userId)
+    setPasswordFormData({
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: '',
+    })
+    setIsPasswordModalOpen(true)
+  }
+  
+  const handleChangePassword = async () => {
+    if (!passwordUserId) return
+    
+    // Validate passwords
+    if (passwordFormData.newPassword !== passwordFormData.confirmPassword) {
+      alert('새 비밀번호가 일치하지 않습니다.')
+      return
+    }
+    
+    if (passwordFormData.newPassword.length < 6) {
+      alert('비밀번호는 최소 6자 이상이어야 합니다.')
+      return
+    }
+    
+    try {
+      const response = await fetch(`/api/users/${passwordUserId}/password`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          currentPassword: passwordFormData.currentPassword,
+          newPassword: passwordFormData.newPassword,
+        }),
+      })
+      
+      const data = await response.json()
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to change password')
+      }
+      
+      alert('비밀번호가 성공적으로 변경되었습니다.')
+      setIsPasswordModalOpen(false)
+      setPasswordUserId(null)
+    } catch (error) {
+      console.error('Error changing password:', error)
+      alert(error instanceof Error ? error.message : '비밀번호 변경에 실패했습니다.')
+    }
+  }
 
   const filteredUsers = users.filter(user => {
     const matchesSearch = 
@@ -241,7 +301,7 @@ export default function UsersPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-purple-600">
-              {users.filter(u => u.role === 'Admin').length}
+              {users.filter(u => u.role === 'admin').length}
             </div>
           </CardContent>
         </Card>
@@ -266,9 +326,9 @@ export default function UsersPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">전체</SelectItem>
-              <SelectItem value="Admin">관리자</SelectItem>
-              <SelectItem value="OrderManager">주문관리자</SelectItem>
-              <SelectItem value="ShipManager">배송관리자</SelectItem>
+              <SelectItem value="admin">관리자</SelectItem>
+              <SelectItem value="order_manager">주문관리자</SelectItem>
+              <SelectItem value="ship_manager">배송관리자</SelectItem>
             </SelectContent>
           </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -357,14 +417,24 @@ export default function UsersPage() {
                         variant="ghost"
                         size="icon"
                         onClick={() => handleEditUser(user)}
+                        title="사용자 정보 수정"
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="ghost"
                         size="icon"
+                        onClick={() => handleOpenPasswordModal(user.id)}
+                        title="비밀번호 변경"
+                      >
+                        <Key className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         onClick={() => handleDeleteUser(user.id)}
-                        disabled={user.role === 'Admin' && users.filter(u => u.role === 'Admin').length === 1}
+                        disabled={user.role === 'admin' && users.filter(u => u.role === 'admin').length === 1}
+                        title="사용자 삭제"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -380,6 +450,81 @@ export default function UsersPage() {
       {filteredUsers.length === 0 && (
         <div className="text-center py-12">
           <p className="text-gray-500">검색 결과가 없습니다.</p>
+        </div>
+      )}
+
+      {/* Password Change Modal */}
+      {isPasswordModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <Card className="w-full max-w-md p-6">
+            <h2 className="text-lg font-semibold mb-4">비밀번호 변경</h2>
+            
+            <div className="space-y-4">
+              {/* Show current password field only for the current user */}
+              {passwordUserId === users.find(u => u.email === sessionStorage.getItem('userEmail'))?.id && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    현재 비밀번호
+                  </label>
+                  <Input
+                    type="password"
+                    value={passwordFormData.currentPassword}
+                    onChange={(e) => setPasswordFormData({ ...passwordFormData, currentPassword: e.target.value })}
+                    placeholder="현재 비밀번호를 입력하세요"
+                  />
+                </div>
+              )}
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  새 비밀번호 *
+                </label>
+                <Input
+                  type="password"
+                  value={passwordFormData.newPassword}
+                  onChange={(e) => setPasswordFormData({ ...passwordFormData, newPassword: e.target.value })}
+                  placeholder="최소 6자 이상"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  새 비밀번호 확인 *
+                </label>
+                <Input
+                  type="password"
+                  value={passwordFormData.confirmPassword}
+                  onChange={(e) => setPasswordFormData({ ...passwordFormData, confirmPassword: e.target.value })}
+                  placeholder="새 비밀번호를 다시 입력하세요"
+                />
+              </div>
+              
+              <div className="text-sm text-gray-500">
+                <p>• 비밀번호는 최소 6자 이상이어야 합니다.</p>
+                <p>• 안전을 위해 영문, 숫자, 특수문자를 포함하여 설정하세요.</p>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsPasswordModalOpen(false)
+                  setPasswordUserId(null)
+                }}
+                className="flex-1"
+              >
+                취소
+              </Button>
+              <Button
+                onClick={handleChangePassword}
+                disabled={!passwordFormData.newPassword || !passwordFormData.confirmPassword}
+                className="flex-1"
+              >
+                변경
+              </Button>
+            </div>
+          </Card>
         </div>
       )}
 
@@ -439,9 +584,9 @@ export default function UsersPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Admin">관리자</SelectItem>
-                    <SelectItem value="OrderManager">주문관리자</SelectItem>
-                    <SelectItem value="ShipManager">배송관리자</SelectItem>
+                    <SelectItem value="admin">관리자</SelectItem>
+                    <SelectItem value="order_manager">주문관리자</SelectItem>
+                    <SelectItem value="ship_manager">배송관리자</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

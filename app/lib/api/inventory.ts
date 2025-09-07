@@ -7,8 +7,8 @@ export async function getInventory() {
     throw new Error('Unauthorized')
   }
 
-  // Admin과 OrderManager만 접근 가능
-  if (session.user.role !== 'Admin' && session.user.role !== 'OrderManager') {
+  // admin과 order_manager만 접근 가능
+  if (session.user.role !== 'admin' && session.user.role !== 'order_manager') {
     throw new Error('Forbidden')
   }
 

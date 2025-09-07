@@ -796,7 +796,7 @@ BEGIN
   -- 주문 상태가 변경되었을 때만 처리
   IF TG_OP = 'UPDATE' AND OLD.status != NEW.status THEN
     
-    -- PAID -> SHIPPED: 재고 실제 차감
+    -- paid -> shipped: 재고 실제 차감
     IF OLD.status = 'paid' AND NEW.status = 'shipped' THEN
       FOR order_item IN
         SELECT product_id, quantity
@@ -806,7 +806,7 @@ BEGIN
         PERFORM consume_stock(order_item.product_id, order_item.quantity);
       END LOOP;
       
-    -- SHIPPED -> CANCELLED/REFUNDED: 할당 해제
+    -- shipped -> cancelled/refunded: 할당 해제
     ELSIF OLD.status = 'shipped' AND NEW.status IN ('cancelled', 'refunded') THEN
       FOR order_item IN
         SELECT product_id, quantity
@@ -816,7 +816,7 @@ BEGIN
         PERFORM deallocate_stock(order_item.product_id, order_item.quantity);
       END LOOP;
       
-    -- PAID -> CANCELLED/REFUNDED: 할당 해제
+    -- paid -> cancelled/refunded: 할당 해제
     ELSIF OLD.status = 'paid' AND NEW.status IN ('cancelled', 'refunded') THEN
       FOR order_item IN
         SELECT product_id, quantity
@@ -923,7 +923,7 @@ ALTER TABLE event_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE system_health_logs ENABLE ROW LEVEL SECURITY;
 
 -- 관리자 전체 접근 정책
-CREATE POLICY "Admin full access" ON user_profiles
+CREATE POLICY "admin full access" ON user_profiles
   FOR ALL USING (
     EXISTS (
       SELECT 1 FROM user_profiles up 
@@ -931,7 +931,7 @@ CREATE POLICY "Admin full access" ON user_profiles
     )
   );
 
-CREATE POLICY "Admin full access" ON products
+CREATE POLICY "admin full access" ON products
   FOR ALL USING (
     EXISTS (
       SELECT 1 FROM user_profiles up 
@@ -939,7 +939,7 @@ CREATE POLICY "Admin full access" ON products
     )
   );
 
-CREATE POLICY "Admin full access" ON orders
+CREATE POLICY "admin full access" ON orders
   FOR ALL USING (
     EXISTS (
       SELECT 1 FROM user_profiles up 
@@ -948,7 +948,7 @@ CREATE POLICY "Admin full access" ON orders
   );
 
 -- 고객 주문 조회 정책 (고객 포털용)
-CREATE POLICY "Customer order access" ON orders
+CREATE POLICY "customer order access" ON orders
   FOR SELECT USING (
     -- 인증된 사용자의 경우
     (auth.uid() IS NOT NULL AND EXISTS (

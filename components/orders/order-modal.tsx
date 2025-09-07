@@ -24,7 +24,7 @@ export function OrderModal({ isOpen, onClose, onSubmit, order, mode = 'create' }
     shippingAddress: '',
     items: [],
     totalAmount: 0,
-    status: 'PAID',
+    status: 'paid',
     notes: '',
     ...order,
   });
@@ -113,10 +113,10 @@ export function OrderModal({ isOpen, onClose, onSubmit, order, mode = 'create' }
               onChange={(e) => handleChange('status', e.target.value)}
               disabled={isViewMode || mode === 'create'}
             >
-              <option value="PAID">결제완료</option>
-              <option value="SHIPPED">배송중</option>
-              <option value="DONE">완료</option>
-              <option value="REFUNDED">환불</option>
+              <option value="paid">결제완료</option>
+              <option value="shipped">배송중</option>
+              <option value="delivered">완료</option>
+              <option value="refunded">환불</option>
             </Select>
           </div>
 

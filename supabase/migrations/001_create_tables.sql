@@ -2,7 +2,7 @@
 CREATE TYPE user_role AS ENUM ('admin', 'order_manager', 'ship_manager', 'customer');
 
 -- 주문 상태 enum
-CREATE TYPE order_status AS ENUM ('PAID', 'SHIPPED', 'DONE', 'REFUNDED');
+CREATE TYPE order_status AS ENUM ('paid', 'shipped', 'delivered', 'refunded');
 
 -- 상품 카테고리 enum
 CREATE TYPE product_category AS ENUM (
@@ -69,7 +69,7 @@ CREATE TABLE orders (
   discount_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
   final_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
   
-  status order_status NOT NULL DEFAULT 'PAID',
+  status order_status NOT NULL DEFAULT 'paid',
   
   -- 배송 관련
   tracking_number TEXT,

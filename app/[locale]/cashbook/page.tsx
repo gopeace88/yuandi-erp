@@ -241,7 +241,7 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
       console.log('💳 Supabase 클라이언트 생성 완료');
       
       const { data: transactions, error } = await supabase
-        .from('cashbook_transactions')
+        .from('cashbook')
         .select('*')
         .order('transaction_date', { ascending: false });
       
@@ -259,20 +259,20 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
       
       if (transactions) {
         // 데이터 형식 변환 - 실제 스키마에 맞게 매핑
-        const formattedTransactions: Transaction[] = transactions.map(t => ({
+        const formattedTransactions: Transaction[] = transactions.map((t: any) => ({
           id: t.id,
           transactionDate: t.transaction_date,
           type: t.type,
-          amount: t.amount_krw, // amount_krw 컬럼 사용
-          currency: t.amount_cny && t.amount_cny > 0 ? 'CNY' : 'KRW', // CNY 금액이 있으면 CNY, 없으면 KRW
-          fxRate: t.exchange_rate || 1, // exchange_rate 컬럼 사용
-          amountKrw: t.amount_krw,
-          refType: t.reference_type || '', // reference_type 컬럼 사용
-          refNo: t.reference_id || '', // reference_id 컬럼 사용
+          amount: t.amount || 0,
+          currency: t.currency || 'KRW',
+          fxRate: t.fx_rate || 1,
+          amountKrw: t.amount_krw || 0,
+          refType: t.ref_type || '',
+          refNo: t.ref_no || '',
           description: t.description || '',
-          note: t.tags || '', // tags를 메모로 사용 (실제 note 컬럼 없음)
-          bankName: '', // 실제 스키마에 없는 컬럼 - 빈 문자열
-          accountNo: '', // 실제 스키마에 없는 컬럼 - 빈 문자열
+          note: t.note || '',
+          bankName: t.bank_name || '',
+          accountNo: t.account_no || '',
           createdAt: t.created_at,
           createdBy: t.created_by || 'Unknown'
         }));
@@ -409,10 +409,10 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
           fx_rate: fxRate,
           amount_krw: finalAmountKrw,
           description: addForm.description,
-          notes: addForm.note || null,
+          note: addForm.note || null,
           bank_name: addForm.bankName || null,
           account_no: addForm.accountNo || null
-        })
+        } as any)
         .select()
         .single();
 
@@ -423,24 +423,27 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
       }
 
       // UI 업데이트
-      const newTransaction: Transaction = {
-        id: data.id,
-        transactionDate: data.transaction_date,
-        type: data.type,
-        amount: data.amount,
-        currency: data.currency,
-        fxRate: data.fx_rate,
-        amountKrw: data.amount_krw,
-        description: data.description,
-        note: data.notes,
-        bankName: data.bank_name,
-        accountNo: data.account_no,
-        createdAt: data.created_at,
-        createdBy: localStorage.getItem('userName') || 'Unknown'
-      };
+      if (data) {
+        const dataTyped = data as any;
+        const newTransaction: Transaction = {
+          id: dataTyped.id,
+          transactionDate: dataTyped.transaction_date,
+          type: dataTyped.type,
+          amount: dataTyped.amount,
+          currency: dataTyped.currency,
+          fxRate: dataTyped.fx_rate,
+          amountKrw: dataTyped.amount_krw,
+          description: dataTyped.description,
+          note: dataTyped.note,
+          bankName: dataTyped.bank_name,
+          accountNo: dataTyped.account_no,
+          createdAt: dataTyped.created_at,
+          createdBy: localStorage.getItem('userName') || 'Unknown'
+        };
 
-      setTransactions([...transactions, newTransaction]);
-      setShowAddModal(false);
+        setTransactions([...transactions, newTransaction]);
+        setShowAddModal(false);
+      }
       
       // 폼 초기화
       setAddForm({
@@ -539,8 +542,8 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
             }}
           />
 
-          {/* 거래 추가 버튼 (Admin/OrderManager만) */}
-          {(userRole === 'Admin' || userRole === 'OrderManager') && (
+          {/* 거래 추가 버튼 (admin/order_manager만) */}
+          {(userRole === 'admin' || userRole === 'order_manager') && (
             <button
               onClick={() => setShowAddModal(true)}
               style={{

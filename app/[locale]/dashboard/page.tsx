@@ -91,7 +91,7 @@ export default function DashboardPage({ params: { locale } }: DashboardPageProps
         .map((order: any) => ({
           date: order.created_at.split('T')[0],
           name: order.customer_name,
-          status: order.status?.toUpperCase() || 'PAID',
+          status: order.status?.toUpperCase() || 'paid',
           amount: locale === 'ko' 
             ? `₩${(order.total_krw || 0).toLocaleString()}` 
             : `¥${Math.floor((order.total_krw || 0) / 180).toLocaleString()}`
@@ -319,12 +319,12 @@ export default function DashboardPage({ params: { locale } }: DashboardPageProps
             <button
               onClick={() => {
                 const orders = recentOrders.length > 0 ? recentOrders : [
-                  { date: new Date().toISOString().split('T')[0], name: locale === 'ko' ? '데이터 없음' : '无数据', status: 'PAID', amount: '₩0' }
+                  { date: new Date().toISOString().split('T')[0], name: locale === 'ko' ? '데이터 없음' : '无数据', status: 'paid', amount: '₩0' }
                 ];
                 
                 const columns = [
                   { header: locale === 'ko' ? '날짜' : locale === 'zh-CN' ? '日期' : 'Date', key: 'date', width: 15 },
-                  { header: locale === 'ko' ? '고객명' : locale === 'zh-CN' ? '客户' : 'Customer', key: 'name', width: 20 },
+                  { header: locale === 'ko' ? '고객명' : locale === 'zh-CN' ? '客户' : 'customer', key: 'name', width: 20 },
                   { header: locale === 'ko' ? '상태' : locale === 'zh-CN' ? '状态' : 'Status', key: 'status', width: 15 },
                   { header: locale === 'ko' ? '금액' : locale === 'zh-CN' ? '金额' : 'Amount', key: 'amount', width: 20 }
                 ];
@@ -360,7 +360,7 @@ export default function DashboardPage({ params: { locale } }: DashboardPageProps
                     {locale === 'ko' ? '날짜' : locale === 'zh-CN' ? '日期' : 'Date'}
                   </th>
                   <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#374151' }}>
-                    {locale === 'ko' ? '고객명' : locale === 'zh-CN' ? '客户' : 'Customer'}
+                    {locale === 'ko' ? '고객명' : locale === 'zh-CN' ? '客户' : 'customer'}
                   </th>
                   <th style={{ padding: '0.75rem', textAlign: 'center', fontSize: '0.875rem', fontWeight: '600', color: '#374151' }}>
                     {locale === 'ko' ? '상태' : locale === 'zh-CN' ? '状态' : 'Status'}
@@ -374,10 +374,10 @@ export default function DashboardPage({ params: { locale } }: DashboardPageProps
                 {/* 최근 주문 표시 */}
                 {recentOrders.map((order, index) => {
                   const statusColors = {
-                    'PAID': { bg: '#dbeafe', color: '#1e40af', text: locale === 'ko' ? '결제완료' : locale === 'zh-CN' ? '已付款' : 'Paid' },
-                    'SHIPPED': { bg: '#fef3c7', color: '#92400e', text: locale === 'ko' ? '배송중' : locale === 'zh-CN' ? '配送中' : 'Shipping' },
-                    'DONE': { bg: '#d1fae5', color: '#065f46', text: locale === 'ko' ? '완료' : locale === 'zh-CN' ? '完成' : 'Completed' },
-                    'REFUNDED': { bg: '#fee2e2', color: '#991b1b', text: locale === 'ko' ? '환불' : locale === 'zh-CN' ? '已退款' : 'Refunded' }
+                    'paid': { bg: '#dbeafe', color: '#1e40af', text: locale === 'ko' ? '결제완료' : locale === 'zh-CN' ? '已付款' : 'Paid' },
+                    'shipped': { bg: '#fef3c7', color: '#92400e', text: locale === 'ko' ? '배송중' : locale === 'zh-CN' ? '配送中' : 'Shipping' },
+                    'delivered': { bg: '#d1fae5', color: '#065f46', text: locale === 'ko' ? '완료' : locale === 'zh-CN' ? '完成' : 'Completed' },
+                    'refunded': { bg: '#fee2e2', color: '#991b1b', text: locale === 'ko' ? '환불' : locale === 'zh-CN' ? '已退款' : 'Refunded' }
                   };
                   
                   const status = statusColors[order.status as keyof typeof statusColors];
@@ -387,15 +387,15 @@ export default function DashboardPage({ params: { locale } }: DashboardPageProps
                       key={index} 
                       style={{ 
                         borderBottom: '1px solid #e5e7eb',
-                        cursor: order.status === 'PAID' ? 'pointer' : 'default'
+                        cursor: order.status === 'paid' ? 'pointer' : 'default'
                       }}
                       onClick={() => {
-                        if (order.status === 'PAID') {
+                        if (order.status === 'paid') {
                           router.push(`/${locale}/shipments`);
                         }
                       }}
                       onMouseEnter={(e) => {
-                        if (order.status === 'PAID') {
+                        if (order.status === 'paid') {
                           e.currentTarget.style.backgroundColor = '#f9fafb';
                         }
                       }}

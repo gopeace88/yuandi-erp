@@ -14,10 +14,10 @@ export interface OrderStatusChartProps {
 
 export function OrderStatusChart({ data }: OrderStatusChartProps) {
   const COLORS = {
-    PAID: '#3b82f6',      // 파랑 - 결제완료
-    SHIPPED: '#10b981',   // 초록 - 배송중
-    DONE: '#6b7280',      // 회색 - 완료
-    REFUNDED: '#ef4444'   // 빨강 - 환불
+    paid: '#3b82f6',      // 파랑 - 결제완료
+    shipped: '#10b981',   // 초록 - 배송중
+    delivered: '#6b7280',      // 회색 - 완료
+    refunded: '#ef4444'   // 빨강 - 환불
   }
 
   const customTooltip = ({ active, payload }: any) => {

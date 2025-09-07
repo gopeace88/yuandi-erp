@@ -57,9 +57,9 @@ export const koMessages = {
     "loginError": "로그인에 실패했습니다"
   },
   "roles": {
-    "Admin": "관리자",
-    "OrderManager": "주문관리자",
-    "ShipManager": "배송관리자"
+    "admin": "관리자",
+    "order_manager": "주문관리자",
+    "ship_manager": "배송관리자"
   },
   "dashboard": {
     "title": "대시보드",
@@ -96,7 +96,7 @@ export const koMessages = {
     "shippingAddressDetail": "상세주소",
     "zipCode": "우편번호",
     "totalAmount": "총 금액",
-    "status": "상태",
+    "statusLabel": "상태",
     "orderDate": "주문일",
     "customerMemo": "고객 메모",
     "internalMemo": "내부 메모",
@@ -315,9 +315,9 @@ export const koMessages = {
     "amount": "금액",
     "orderDate": "주문일"
   },
-  "status": {
+  "orderStatus": {
     "PAID": "결제완료",
-    "SHIPPED": "배송중",
+    "SHIPPED": "배송중", 
     "DONE": "완료",
     "REFUNDED": "환불"
   },

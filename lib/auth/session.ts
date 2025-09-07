@@ -1,43 +1,45 @@
 import { createServerSupabase } from '@/lib/supabase/server'
-import { Database } from '@/lib/supabase/database.types'
+import { Database } from '@/types/supabase.types'
 import { cookies } from 'next/headers'
 import type { User, Session } from './types'
 
 /**
  * Server-side session management for YUANDI
- * Development version using cookie-based session check
+ * Uses Supabase Auth for session management
  */
 export async function getServerSession(): Promise<Session | null> {
   try {
-    const cookieStore = cookies()
-    const sessionCookie = cookieStore.get('session')
-    const userCookie = cookieStore.get('user')
+    const supabase = await createServerSupabase()
+    const { data: { user }, error } = await supabase.auth.getUser()
     
-    if (!sessionCookie || !userCookie) {
+    if (error || !user) {
       return null
     }
     
-    try {
-      const sessionData = JSON.parse(Buffer.from(sessionCookie.value, 'base64').toString('utf8'))
-      const userData = JSON.parse(Buffer.from(userCookie.value, 'base64').toString('utf8'))
-      
-      // Check if session is not expired
-      const sessionExpires = new Date(sessionData.expires)
-      const now = new Date()
-      
-      if (sessionExpires > now) {
-        return {
-          user: userData,
-          token: sessionData.token,
-          expires: sessionData.expires
-        }
-      }
-    } catch (parseError) {
-      console.error('Session parse error:', parseError)
+    // Get user profile from database
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single()
+    
+    if (!profile) {
       return null
     }
     
-    return null
+    return {
+      user: {
+        id: user.id,
+        email: user.email || '',
+        name: profile.name || '',
+        role: profile.role || 'user',
+        language: profile.language || 'ko',
+        timezone: profile.timezone || 'Asia/Seoul',
+        active: profile.is_active || false
+      },
+      token: '', // Token is managed by Supabase internally
+      expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days
+    }
     
   } catch (error) {
     console.error('Session error:', error)

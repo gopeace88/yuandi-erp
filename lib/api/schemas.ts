@@ -93,11 +93,11 @@ export const productSearchSchema = z.object({
 
 export const orderStatusSchema = z.enum([
   'PENDING',
-  'PAID',
-  'SHIPPED',
-  'DONE',
-  'CANCELLED',
-  'REFUNDED'
+  'paid',
+  'shipped',
+  'delivered',
+  'cancelled',
+  'refunded'
 ])
 
 export const shippingAddressSchema = z.object({
@@ -223,7 +223,7 @@ export const inventoryMovementSearchSchema = z.object({
   .merge(paginationSchema)
 
 // ============================================================================
-// Customer Portal Schemas
+// customer Portal Schemas
 // ============================================================================
 
 export const trackOrderSchema = z.object({
@@ -236,10 +236,10 @@ export const trackOrderSchema = z.object({
 // ============================================================================
 
 export const userRoleSchema = z.enum([
-  'Admin',
-  'OrderManager',
-  'ShipManager',
-  'Customer'
+  'admin',
+  'order_manager',
+  'ship_manager',
+  'customer'
 ])
 
 export const createUserSchema = z.object({

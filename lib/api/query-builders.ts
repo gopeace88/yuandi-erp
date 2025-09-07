@@ -274,7 +274,7 @@ export class AnalyticsQueryBuilder {
     let query = this.supabase
       .from('orders')
       .select('total_amount, created_at', { count: 'exact' })
-      .eq('status', 'DONE')
+      .eq('status', 'delivered')
       .gte('created_at', startDate)
 
     if (endDate) {

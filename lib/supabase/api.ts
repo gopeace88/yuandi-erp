@@ -65,17 +65,17 @@ export async function getSupabaseClient() {
 }
 
 /**
- * Get Supabase Admin client for user management
+ * Get Supabase admin client for user management
  * Uses service role key for admin operations
  */
-export function getSupabaseAdmin() {
+export function getSupabaseadmin() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseServiceKey = 
     process.env.SUPABASE_SERVICE_ROLE_KEY || 
     process.env.SUPABASE_API_KEY ||
     process.env.SUPABASE_SECRET_KEY
 
-  console.log('Admin client config:', {
+  console.log('admin client config:', {
     hasUrl: !!supabaseUrl,
     hasServiceKey: !!supabaseServiceKey,
     keyLength: supabaseServiceKey?.length
@@ -83,7 +83,7 @@ export function getSupabaseAdmin() {
 
   if (!supabaseUrl || !supabaseServiceKey) {
     throw new Error(
-      `Missing Supabase Admin configuration. ` +
+      `Missing Supabase admin configuration. ` +
       `URL: ${!!supabaseUrl}, ` +
       `ServiceKey: ${!!supabaseServiceKey}`
     )

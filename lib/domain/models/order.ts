@@ -1,8 +1,8 @@
 export enum OrderStatus {
-  PAID = 'PAID',
-  SHIPPED = 'SHIPPED',
-  DONE = 'DONE',
-  REFUNDED = 'REFUNDED',
+  paid = 'paid',
+  shipped = 'shipped',
+  delivered = 'delivered',
+  refunded = 'refunded',
 }
 
 export interface OrderItem {
@@ -52,11 +52,11 @@ export function validateOrder(order: Partial<OrderInput>): ValidationResult {
   const errors: string[] = [];
   
   if (!order.customerName || order.customerName.trim() === '') {
-    errors.push('Customer name is required');
+    errors.push('customer name is required');
   }
   
   if (!order.customerPhone || order.customerPhone.trim() === '') {
-    errors.push('Customer phone is required');
+    errors.push('customer phone is required');
   } else if (!isValidPhoneNumber(order.customerPhone)) {
     errors.push('Invalid phone number format');
   }
@@ -137,7 +137,7 @@ export class Order {
     this.pccc = input.pccc;
     this.shippingAddress = input.shippingAddress;
     this.items = input.items;
-    this.status = OrderStatus.PAID;
+    this.status = OrderStatus.paid;
     this.createdAt = new Date();
     this.updatedAt = new Date();
     
@@ -163,42 +163,42 @@ export class Order {
   }
   
   ship(courierCompany: string, trackingNumber: string, trackingPhotoUrl?: string): void {
-    if (this.status !== OrderStatus.PAID) {
+    if (this.status !== OrderStatus.paid) {
       throw new Error(`Cannot ship order in ${this.status} status`);
     }
     
     this.courierCompany = courierCompany;
     this.trackingNumber = trackingNumber;
     this.trackingPhotoUrl = trackingPhotoUrl;
-    this.status = OrderStatus.SHIPPED;
+    this.status = OrderStatus.shipped;
     this.shippedAt = new Date();
     this.updatedAt = new Date();
   }
   
   complete(): void {
-    if (this.status === OrderStatus.DONE) {
+    if (this.status === OrderStatus.delivered) {
       return; // Already completed
     }
     
-    if (this.status !== OrderStatus.PAID && this.status !== OrderStatus.SHIPPED) {
+    if (this.status !== OrderStatus.paid && this.status !== OrderStatus.shipped) {
       throw new Error(`Cannot complete order in ${this.status} status`);
     }
     
-    this.status = OrderStatus.DONE;
+    this.status = OrderStatus.delivered;
     this.completedAt = new Date();
     this.updatedAt = new Date();
   }
   
   refund(reason: string): void {
-    if (this.status === OrderStatus.REFUNDED) {
+    if (this.status === OrderStatus.refunded) {
       return; // Already refunded
     }
     
-    if (this.status === OrderStatus.DONE) {
+    if (this.status === OrderStatus.delivered) {
       throw new Error('Cannot refund completed order');
     }
     
-    this.status = OrderStatus.REFUNDED;
+    this.status = OrderStatus.refunded;
     this.refundReason = reason;
     this.refundedAt = new Date();
     this.updatedAt = new Date();
@@ -218,7 +218,7 @@ export class Order {
   }
   
   canEdit(): boolean {
-    return this.status === OrderStatus.PAID;
+    return this.status === OrderStatus.paid;
   }
   
   toJSON() {

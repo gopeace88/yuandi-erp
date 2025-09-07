@@ -23,7 +23,7 @@ interface Shipment {
   shipped_at?: string
   delivered_at?: string
   photo_url?: string
-  status: 'PENDING' | 'SHIPPED' | 'DELIVERED'
+  status: 'PENDING' | 'shipped' | 'delivered'
   created_at: string
   updated_at?: string
 }
@@ -52,14 +52,14 @@ const trackingUrls: { [key: string]: string } = {
 
 const statusColors = {
   PENDING: 'bg-gray-100 text-gray-800',
-  SHIPPED: 'bg-blue-100 text-blue-800',
-  DELIVERED: 'bg-green-100 text-green-800',
+  shipped: 'bg-blue-100 text-blue-800',
+  delivered: 'bg-green-100 text-green-800',
 }
 
 const statusLabels = {
   PENDING: '대기중',
-  SHIPPED: '배송중',
-  DELIVERED: '배송완료',
+  shipped: '배송중',
+  delivered: '배송완료',
 }
 
 export default function ShipmentsPage() {
@@ -108,7 +108,7 @@ export default function ShipmentsPage() {
         body: JSON.stringify({
           tracking_no: trackingNo,
           courier: selectedCourier,
-          status: 'SHIPPED',
+          status: 'shipped',
         }),
       })
 
@@ -130,7 +130,7 @@ export default function ShipmentsPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          status: 'DELIVERED',
+          status: 'delivered',
           delivered_at: new Date().toISOString(),
         }),
       })
@@ -195,8 +195,8 @@ export default function ShipmentsPage() {
             <SelectContent>
               <SelectItem value="all">전체</SelectItem>
               <SelectItem value="PENDING">대기중</SelectItem>
-              <SelectItem value="SHIPPED">배송중</SelectItem>
-              <SelectItem value="DELIVERED">배송완료</SelectItem>
+              <SelectItem value="shipped">배송중</SelectItem>
+              <SelectItem value="delivered">배송완료</SelectItem>
             </SelectContent>
           </Select>
           <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -254,7 +254,7 @@ export default function ShipmentsPage() {
                 </Button>
               )}
               
-              {shipment.status === 'SHIPPED' && (
+              {shipment.status === 'shipped' && (
                 <>
                   <Button
                     size="sm"
@@ -277,7 +277,7 @@ export default function ShipmentsPage() {
                 </>
               )}
               
-              {shipment.status === 'DELIVERED' && (
+              {shipment.status === 'delivered' && (
                 <div className="text-xs text-gray-500 flex-1 text-center">
                   {shipment.delivered_at && 
                     format(new Date(shipment.delivered_at), 'MM/dd HH:mm', { locale: ko })

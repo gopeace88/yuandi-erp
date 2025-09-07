@@ -106,7 +106,7 @@ describe('EventLogger', () => {
         action_description: 'Deleted product',
         metadata: {
           reason: 'Out of stock',
-          deleted_by: 'Admin',
+          deleted_by: 'admin',
         },
       };
 

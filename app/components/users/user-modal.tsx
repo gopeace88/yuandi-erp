@@ -18,7 +18,7 @@ export function UserModal({ locale, mode, user, onClose, onSuccess }: UserModalP
     name: user?.name || '',
     email: user?.email || '',
     password: '',
-    role: 'Admin', // 관리자로 통일
+    role: 'admin', // 관리자로 통일
     active: user?.active !== undefined ? user.active : true
   })
 
@@ -140,7 +140,7 @@ export function UserModal({ locale, mode, user, onClose, onSuccess }: UserModalP
             </div>
 
             {/* 역할 - 관리자로 통일 */}
-            <input type="hidden" value="Admin" />
+            <input type="hidden" value="admin" />
 
             {/* 상태 */}
             <div className="flex items-center">

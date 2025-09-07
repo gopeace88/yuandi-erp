@@ -1,6 +1,6 @@
 /**
  * 설정 페이지
- * PRD v2.0 요구사항: Admin 전용 설정 관리 (사용자, 출납유형 등)
+ * PRD v2.0 요구사항: admin 전용 설정 관리 (사용자, 출납유형 등)
  */
 
 'use client';
@@ -19,7 +19,7 @@ interface User {
   name: string;
   email: string;
   phone: string;
-  role: 'Admin' | 'OrderManager' | 'ShipManager';
+  role: 'admin' | 'order_manager' | 'ship_manager';
   locale: 'ko' | 'zh-CN';
   active: boolean;
   lastLoginAt?: string;
@@ -47,7 +47,7 @@ export default function UsersPage({ params: { locale } }: UsersPageProps) {
     name: '',
     email: '',
     phone: '',
-    role: 'OrderManager' as 'Admin' | 'OrderManager' | 'ShipManager',
+    role: 'order_manager' as 'admin' | 'order_manager' | 'ship_manager',
     locale: 'ko' as 'ko' | 'zh-CN',
     password: '',
     confirmPassword: ''
@@ -89,9 +89,9 @@ export default function UsersPage({ params: { locale } }: UsersPageProps) {
       action: '작업',
       // Roles
       all: '전체',
-      Admin: '관리자',
-      OrderManager: '주문 관리자',
-      ShipManager: '배송 관리자',
+      admin: '관리자',
+      order_manager: '주문 관리자',
+      ship_manager: '배송 관리자',
       // Status
       active: '활성',
       inactive: '비활성',
@@ -153,9 +153,9 @@ export default function UsersPage({ params: { locale } }: UsersPageProps) {
       action: '操作',
       // Roles
       all: '全部',
-      Admin: '管理员',
-      OrderManager: '订单经理',
-      ShipManager: '配送经理',
+      admin: '管理员',
+      order_manager: '订单经理',
+      ship_manager: '配送经理',
       // Status
       active: '活动',
       inactive: '停用',
@@ -225,7 +225,7 @@ export default function UsersPage({ params: { locale } }: UsersPageProps) {
           name: user.name || user.email.split('@')[0],
           email: user.email,
           phone: user.phone || '',
-          role: user.role as 'Admin' | 'OrderManager' | 'ShipManager',
+          role: user.role as 'admin' | 'order_manager' | 'ship_manager',
           locale: user.locale as 'ko' | 'zh-CN',
           active: user.active ?? true,
           lastLoginAt: user.last_login_at,
@@ -242,7 +242,7 @@ export default function UsersPage({ params: { locale } }: UsersPageProps) {
 
   useEffect(() => {
     const role = localStorage.getItem('userRole');
-    if (!role || role !== 'Admin') {
+    if (!role || role !== 'admin') {
       router.push(`/${locale}/dashboard`);
       return;
     }
@@ -307,9 +307,9 @@ export default function UsersPage({ params: { locale } }: UsersPageProps) {
   // 역할별 색상
   const getRoleColor = (role: string) => {
     switch (role) {
-      case 'Admin': return { bg: '#fee2e2', text: '#dc2626' };
-      case 'OrderManager': return { bg: '#dbeafe', text: '#1e40af' };
-      case 'ShipManager': return { bg: '#dcfce7', text: '#166534' };
+      case 'admin': return { bg: '#fee2e2', text: '#dc2626' };
+      case 'order_manager': return { bg: '#dbeafe', text: '#1e40af' };
+      case 'ship_manager': return { bg: '#dcfce7', text: '#166534' };
       default: return { bg: '#f3f4f6', text: '#374151' };
     }
   };
@@ -558,7 +558,7 @@ export default function UsersPage({ params: { locale } }: UsersPageProps) {
       name: '',
       email: '',
       phone: '',
-      role: 'OrderManager',
+      role: 'order_manager',
       locale: 'ko',
       password: '',
       confirmPassword: ''
@@ -723,9 +723,9 @@ export default function UsersPage({ params: { locale } }: UsersPageProps) {
               }}
             >
               <option value="all">{t.all}</option>
-              <option value="Admin">{t.Admin}</option>
-              <option value="OrderManager">{t.OrderManager}</option>
-              <option value="ShipManager">{t.ShipManager}</option>
+              <option value="admin">{t.admin}</option>
+              <option value="order_manager">{t.order_manager}</option>
+              <option value="ship_manager">{t.ship_manager}</option>
             </select>
           </div>
 
@@ -952,7 +952,7 @@ export default function UsersPage({ params: { locale } }: UsersPageProps) {
                         >
                           {user.active ? t.deactivate : t.activate}
                         </button>
-                        {user.role !== 'Admin' && (
+                        {user.role !== 'admin' && (
                           <button
                             onClick={() => handleDeleteUser(user.id)}
                             style={{
@@ -1170,7 +1170,7 @@ export default function UsersPage({ params: { locale } }: UsersPageProps) {
                 </label>
                 <select
                   value={userForm.role}
-                  onChange={(e) => setUserForm({ ...userForm, role: e.target.value as 'Admin' | 'OrderManager' | 'ShipManager' })}
+                  onChange={(e) => setUserForm({ ...userForm, role: e.target.value as 'admin' | 'order_manager' | 'ship_manager' })}
                   style={{
                     width: '100%',
                     padding: '0.5rem',
@@ -1179,9 +1179,9 @@ export default function UsersPage({ params: { locale } }: UsersPageProps) {
                     fontSize: '0.875rem'
                   }}
                 >
-                  <option value="Admin">{t.Admin}</option>
-                  <option value="OrderManager">{t.OrderManager}</option>
-                  <option value="ShipManager">{t.ShipManager}</option>
+                  <option value="admin">{t.admin}</option>
+                  <option value="order_manager">{t.order_manager}</option>
+                  <option value="ship_manager">{t.ship_manager}</option>
                 </select>
               </div>
 
@@ -1373,7 +1373,7 @@ export default function UsersPage({ params: { locale } }: UsersPageProps) {
                 </label>
                 <select
                   value={userForm.role}
-                  onChange={(e) => setUserForm({ ...userForm, role: e.target.value as 'Admin' | 'OrderManager' | 'ShipManager' })}
+                  onChange={(e) => setUserForm({ ...userForm, role: e.target.value as 'admin' | 'order_manager' | 'ship_manager' })}
                   style={{
                     width: '100%',
                     padding: '0.5rem',
@@ -1382,9 +1382,9 @@ export default function UsersPage({ params: { locale } }: UsersPageProps) {
                     fontSize: '0.875rem'
                   }}
                 >
-                  <option value="Admin">{t.Admin}</option>
-                  <option value="OrderManager">{t.OrderManager}</option>
-                  <option value="ShipManager">{t.ShipManager}</option>
+                  <option value="admin">{t.admin}</option>
+                  <option value="order_manager">{t.order_manager}</option>
+                  <option value="ship_manager">{t.ship_manager}</option>
                 </select>
               </div>
 

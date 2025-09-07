@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
       })
     }
     
-    const { data: insertedCustomers, error: customerError } = await supabase
+    const { data: insertedcustomers, error: customerError } = await supabase
       .from('customers')
       .insert(customers)
       .select()
@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
     const couriers = ['CJ대한통운', '한진택배', '롯데택배', '우체국택배', '로젠택배']
     
     for (let i = 1; i <= 120; i++) {
-      const customer = randomElement(insertedCustomers)
+      const customer = randomElement(insertedcustomers)
       const orderDate = randomDate(new Date(2024, 0, 1), new Date())
       const status = randomElement(statuses)
       const itemCount = randomNumber(1, 5)

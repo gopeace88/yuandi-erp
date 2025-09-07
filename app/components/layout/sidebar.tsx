@@ -31,49 +31,49 @@ const NAV_ITEMS: NavItem[] = [
     href: '/dashboard',
     label: '대시보드',
     icon: LayoutDashboard,
-    roles: ['Admin', 'OrderManager', 'ShipManager']
+    roles: ['admin', 'order_manager', 'ship_manager']
   },
   {
     href: '/orders',
     label: '주문 관리',
     icon: ShoppingCart,
-    roles: ['Admin', 'OrderManager']
+    roles: ['admin', 'order_manager']
   },
   {
     href: '/inventory',
     label: '재고 관리',
     icon: Package,
-    roles: ['Admin', 'OrderManager']
+    roles: ['admin', 'order_manager']
   },
   {
     href: '/shipping',
     label: '배송 관리',
     icon: Truck,
-    roles: ['Admin', 'ShipManager']
+    roles: ['admin', 'ship_manager']
   },
   {
     href: '/customers',
     label: '고객 관리',
     icon: Users,
-    roles: ['Admin', 'OrderManager']
+    roles: ['admin', 'order_manager']
   },
   {
     href: '/reports',
     label: '리포트',
     icon: FileText,
-    roles: ['Admin']
+    roles: ['admin']
   },
   {
     href: '/logs',
     label: '작업 로그',
     icon: Activity,
-    roles: ['Admin']
+    roles: ['admin']
   },
   {
     href: '/settings',
     label: '설정',
     icon: Settings,
-    roles: ['Admin']
+    roles: ['admin']
   }
 ]
 
@@ -83,7 +83,7 @@ interface SidebarProps {
   userEmail?: string
 }
 
-export function Sidebar({ userRole = 'Admin', userName = 'Admin User', userEmail = 'admin@example.com' }: SidebarProps) {
+export function Sidebar({ userRole = 'admin', userName = 'admin User', userEmail = 'admin@example.com' }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [isMobileOpen, setIsMobileOpen] = useState(false)
   const pathname = usePathname()

@@ -27,9 +27,9 @@ DROP TYPE IF EXISTS event_type CASCADE;
 DROP TYPE IF EXISTS language_code CASCADE;
 
 -- PRD v2.0 기준 새로운 타입 정의
-CREATE TYPE user_role AS ENUM ('Admin', 'OrderManager', 'ShipManager');
+CREATE TYPE user_role AS ENUM ('admin', 'order_manager', 'ship_manager');
 CREATE TYPE locale_type AS ENUM ('ko', 'zh-CN');
-CREATE TYPE order_status AS ENUM ('PAID', 'SHIPPED', 'DONE', 'CANCELLED', 'REFUNDED');
+CREATE TYPE order_status AS ENUM ('paid', 'shipped', 'delivered', 'cancelled', 'refunded');
 CREATE TYPE movement_type AS ENUM ('inbound', 'sale', 'adjustment', 'disposal');
 CREATE TYPE cashbook_type AS ENUM ('sale', 'inbound', 'shipping', 'adjustment', 'refund');
 CREATE TYPE currency_type AS ENUM ('CNY', 'KRW');
@@ -40,7 +40,7 @@ CREATE TABLE profiles (
     name VARCHAR(100) NOT NULL,
     email VARCHAR(255) NOT NULL UNIQUE,
     phone VARCHAR(20),
-    role user_role DEFAULT 'OrderManager',
+    role user_role DEFAULT 'order_manager',
     locale locale_type DEFAULT 'ko',
     active BOOLEAN DEFAULT true,
     last_login_at TIMESTAMPTZ,
@@ -74,17 +74,17 @@ CREATE TABLE products (
 -- 3. orders table (주문)
 CREATE TABLE orders (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    order_no VARCHAR(20) UNIQUE NOT NULL,
+    order_number VARCHAR(20) UNIQUE NOT NULL,
     order_date DATE NOT NULL DEFAULT CURRENT_DATE,
     customer_name VARCHAR(100) NOT NULL,
     customer_phone VARCHAR(20) NOT NULL,
     customer_email VARCHAR(255),
-    pccc_code VARCHAR(20) NOT NULL,
-    shipping_address TEXT NOT NULL,
-    shipping_address_detail TEXT,
-    zip_code VARCHAR(10) NOT NULL,
-    status order_status DEFAULT 'PAID',
-    total_amount DECIMAL(12,2) NOT NULL,
+    pccc VARCHAR(20) NOT NULL,
+    shipping_address_line1 TEXT NOT NULL,
+    shipping_address_line2 TEXT,
+    shipping_postal_code VARCHAR(10) NOT NULL,
+    status order_status DEFAULT 'paid',
+    total_krw DECIMAL(12,2) NOT NULL,
     currency currency_type DEFAULT 'KRW',
     customer_memo TEXT,
     internal_memo TEXT,
@@ -246,11 +246,11 @@ ALTER TABLE event_logs ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can view their own profile" ON profiles
     FOR SELECT USING (auth.uid() = id);
 
-CREATE POLICY "Admin can view all profiles" ON profiles
+CREATE POLICY "admin can view all profiles" ON profiles
     FOR SELECT USING (
         EXISTS (
             SELECT 1 FROM profiles
-            WHERE id = auth.uid() AND role = 'Admin'
+            WHERE id = auth.uid() AND role = 'admin'
         )
     );
 
@@ -258,19 +258,19 @@ CREATE POLICY "Admin can view all profiles" ON profiles
 CREATE POLICY "All authenticated users can view products" ON products
     FOR SELECT USING (auth.uid() IS NOT NULL);
 
-CREATE POLICY "Admin and OrderManager can insert products" ON products
+CREATE POLICY "admin and order_manager can insert products" ON products
     FOR INSERT WITH CHECK (
         EXISTS (
             SELECT 1 FROM profiles
-            WHERE id = auth.uid() AND role IN ('Admin', 'OrderManager')
+            WHERE id = auth.uid() AND role IN ('admin', 'order_manager')
         )
     );
 
-CREATE POLICY "Admin and OrderManager can update products" ON products
+CREATE POLICY "admin and order_manager can update products" ON products
     FOR UPDATE USING (
         EXISTS (
             SELECT 1 FROM profiles
-            WHERE id = auth.uid() AND role IN ('Admin', 'OrderManager')
+            WHERE id = auth.uid() AND role IN ('admin', 'order_manager')
         )
     );
 
@@ -278,11 +278,11 @@ CREATE POLICY "Admin and OrderManager can update products" ON products
 CREATE POLICY "All authenticated users can view orders" ON orders
     FOR SELECT USING (auth.uid() IS NOT NULL);
 
-CREATE POLICY "Admin and OrderManager can insert orders" ON orders
+CREATE POLICY "admin and order_manager can insert orders" ON orders
     FOR INSERT WITH CHECK (
         EXISTS (
             SELECT 1 FROM profiles
-            WHERE id = auth.uid() AND role IN ('Admin', 'OrderManager')
+            WHERE id = auth.uid() AND role IN ('admin', 'order_manager')
         )
     );
 

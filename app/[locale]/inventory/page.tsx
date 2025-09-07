@@ -233,7 +233,7 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
       router.push(`/${locale}`);
       return;
     }
-    if (userRole === 'ShipManager') {
+    if (userRole === 'ship_manager') {
       router.push(`/${locale}/shipments`);
       return;
     }
@@ -400,7 +400,7 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
         unitCost: 450,
         note: locale === 'ko' ? '정기 입고' : '定期入库',
         date: '2024-01-04',
-        createdBy: 'Admin',
+        createdBy: 'admin',
       },
       {
         id: '2',
@@ -423,7 +423,7 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
         balanceAfter: 3,
         note: locale === 'ko' ? '불량품 폐기' : '不良品处理',
         date: '2024-01-05',
-        createdBy: 'Admin',
+        createdBy: 'admin',
       },
     ];
     setMovements(mockMovements);
@@ -501,7 +501,7 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
         .update({ 
           on_hand: newQuantity,
           updated_at: new Date().toISOString()
-        })
+        } as any)
         .eq('product_id', productId);
 
       if (inventoryError) {
@@ -521,7 +521,7 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
           balance_after: newQuantity,
           notes: reason,
           created_by: localStorage.getItem('userName') || 'User'
-        });
+        } as any);
 
       if (movementError) {
         console.error('재고 이동 내역 기록 실패:', movementError);

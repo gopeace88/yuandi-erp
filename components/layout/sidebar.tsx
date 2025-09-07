@@ -104,13 +104,13 @@ export function Sidebar({ user }: SidebarProps) {
       name: t('nav.orders'), 
       href: '/dashboard/orders', 
       icon: OrdersIcon,
-      roles: ['Admin', 'OrderManager']
+      roles: ['admin', 'order_manager']
     },
     { 
       name: t('nav.inventory'), 
       href: '/dashboard/inventory', 
       icon: InventoryIcon,
-      roles: ['Admin', 'OrderManager']
+      roles: ['admin', 'order_manager']
     },
     { 
       name: t('nav.cashbook'), 
@@ -121,13 +121,13 @@ export function Sidebar({ user }: SidebarProps) {
       name: t('nav.users'), 
       href: '/dashboard/users', 
       icon: UsersIcon,
-      roles: ['Admin']
+      roles: ['admin']
     },
     { 
       name: t('nav.settings'), 
       href: '/dashboard/settings', 
       icon: SettingsIcon,
-      roles: ['Admin']
+      roles: ['admin']
     },
   ]
 
@@ -217,9 +217,9 @@ export function Sidebar({ user }: SidebarProps) {
                 {user.name}
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                {user.role === 'Admin' ? '관리자' : 
-                 user.role === 'OrderManager' ? '주문관리자' : 
-                 user.role === 'ShipManager' ? '배송관리자' : user.role}
+                {user.role === 'admin' ? '관리자' : 
+                 user.role === 'order_manager' ? '주문관리자' : 
+                 user.role === 'ship_manager' ? '배송관리자' : user.role}
               </p>
             </div>
           </div>

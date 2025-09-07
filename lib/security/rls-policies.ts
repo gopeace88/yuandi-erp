@@ -60,7 +60,7 @@ export const RLS_POLICIES = {
       condition: `
         (auth.jwt() ->> 'role' = 'admin') OR
         (auth.jwt() ->> 'role' = 'order_manager') OR
-        (auth.jwt() ->> 'role' = 'ship_manager' AND status IN ('PAID', 'SHIPPED'))
+        (auth.jwt() ->> 'role' = 'ship_manager' AND status IN ('paid', 'shipped'))
       `,
     },
     delete: {
@@ -547,12 +547,12 @@ export class RLSTester {
       details: any
     }> = []
 
-    // Test 1: Admin can access everything
+    // Test 1: admin can access everything
     const adminTest = await this.testWithRole('admin', async () => {
       return this.supabase.from('orders').select('*')
     })
     results.push({
-      test: 'Admin can access orders',
+      test: 'admin can access orders',
       passed: adminTest.success,
       details: adminTest,
     })
@@ -567,12 +567,12 @@ export class RLSTester {
       details: shipManagerDeleteTest,
     })
 
-    // Test 3: Customer cannot access admin tables
+    // Test 3: customer cannot access admin tables
     const customerAccessTest = await this.testWithRole('customer', async () => {
       return this.supabase.from('event_logs').select('*')
     })
     results.push({
-      test: 'Customer cannot access event logs',
+      test: 'customer cannot access event logs',
       passed: !customerAccessTest.success,
       details: customerAccessTest,
     })

@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
         {
           id: '1',
           order_no: 'ORD-240101-001',
-          status: 'SHIPPED',
+          status: 'shipped',
           customer_name: '홍길동',
           customer_phone: '010-****-5678',
           total_amount: 100000,

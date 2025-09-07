@@ -22,7 +22,7 @@ interface Order {
   pcccCode: string;
   shippingAddress: string;
   zipCode: string;
-  status: 'PAID' | 'SHIPPED' | 'DONE' | 'REFUNDED';
+  status: 'paid' | 'shipped' | 'delivered' | 'refunded';
   totalAmount: number;
   productName: string;
   productSku: string;
@@ -41,7 +41,7 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
   const itemsPerPage = 20;
 
   // 다국어 텍스트
-  const t = {
+  const tMessages = {
     ko: {
       title: '주문 관리',
       search: '주문 검색...',
@@ -61,10 +61,10 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
       complete: '완료',
       refund: '환불',
       noOrders: '주문이 없습니다',
-      PAID: '결제완료',
-      SHIPPED: '배송중',
-      DONE: '완료',
-      REFUNDED: '환불',
+      paid: '결제완료',
+      shipped: '배송중',
+      delivered: '완료',
+      refunded: '환불',
     },
     'zh-CN': {
       title: '订单管理',
@@ -85,12 +85,13 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
       complete: '完成',
       refund: '退款',
       noOrders: '没有订单',
-      PAID: '已付款',
-      SHIPPED: '配送中',
-      DONE: '完成',
-      REFUNDED: '已退款',
+      paid: '已付款',
+      shipped: '配送中',
+      delivered: '完成',
+      refunded: '已退款',
     }
-  }[locale] || t.ko;
+  };
+  const t = tMessages[locale as keyof typeof tMessages] || tMessages.ko;
 
   useEffect(() => {
     loadOrders();
@@ -162,23 +163,23 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
 
   const getStatusColor = (status: string) => {
     switch(status) {
-      case 'PAID': return 'bg-blue-100 text-blue-800';
-      case 'SHIPPED': return 'bg-yellow-100 text-yellow-800';
-      case 'DONE': return 'bg-green-100 text-green-800';
-      case 'REFUNDED': return 'bg-red-100 text-red-800';
+      case 'paid': return 'bg-blue-100 text-blue-800';
+      case 'shipped': return 'bg-yellow-100 text-yellow-800';
+      case 'delivered': return 'bg-green-100 text-green-800';
+      case 'refunded': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
 
   const getActionButton = (order: Order) => {
     switch(order.status) {
-      case 'PAID':
+      case 'paid':
         return (
           <button className="w-full px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium">
             {t.ship}
           </button>
         );
-      case 'SHIPPED':
+      case 'shipped':
         return (
           <button className="w-full px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md text-sm font-medium">
             {t.complete}
@@ -222,10 +223,10 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
             className="px-4 py-2 border border-gray-300 rounded-md text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="all">{t.all}</option>
-            <option value="PAID">{t.PAID}</option>
-            <option value="SHIPPED">{t.SHIPPED}</option>
-            <option value="DONE">{t.DONE}</option>
-            <option value="REFUNDED">{t.REFUNDED}</option>
+            <option value="paid">{t.paid}</option>
+            <option value="shipped">{t.shipped}</option>
+            <option value="delivered">{t.delivered}</option>
+            <option value="refunded">{t.refunded}</option>
           </select>
         </div>
       </div>
@@ -391,7 +392,7 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <button className="text-blue-600 hover:text-blue-900 text-sm font-medium">
-                          {order.status === 'PAID' ? t.ship : order.status === 'SHIPPED' ? t.complete : '상세'}
+                          {order.status === 'paid' ? t.ship : order.status === 'shipped' ? t.complete : '상세'}
                         </button>
                       </td>
                     </tr>
@@ -457,7 +458,7 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
               </div>
               
               <div className="mt-6 flex flex-col gap-2">
-                {selectedOrder.status === 'PAID' && (
+                {selectedOrder.status === 'paid' && (
                   <>
                     <button
                       onClick={() => {

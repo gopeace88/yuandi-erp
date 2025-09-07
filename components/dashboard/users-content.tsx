@@ -93,9 +93,9 @@ export function UsersContent({ stats, users }: UsersContentProps) {
 
   const getRoleDisplay = (role: string) => {
     const roleMap = {
-      'Admin': { label: t('roles.Admin'), color: 'bg-purple-100 text-purple-800' },
-      'OrderManager': { label: t('roles.OrderManager'), color: 'bg-blue-100 text-blue-800' },
-      'ShipManager': { label: t('roles.ShipManager'), color: 'bg-orange-100 text-orange-800' }
+      'admin': { label: t('roles.admin'), color: 'bg-purple-100 text-purple-800' },
+      'order_manager': { label: t('roles.order_manager'), color: 'bg-blue-100 text-blue-800' },
+      'ship_manager': { label: t('roles.ship_manager'), color: 'bg-orange-100 text-orange-800' }
     }
     return roleMap[role as keyof typeof roleMap] || { label: role, color: 'bg-gray-100 text-gray-800' }
   }

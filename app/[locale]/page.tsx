@@ -67,23 +67,23 @@ export default function HomePage({ params: { locale } }: HomePageProps) {
     
     // 테스트 계정으로 로그인 (개발 모드)
     if (email === 'admin@yuandi.com' && password === 'admin123') {
-      console.log('Admin login successful');
-      localStorage.setItem('userRole', 'Admin');
-      localStorage.setItem('userName', 'Admin User');
+      console.log('admin login successful');
+      localStorage.setItem('userRole', 'admin');
+      localStorage.setItem('userName', 'admin User');
       setIsLoading(false);
       // window.location.href 사용으로 변경
       window.location.href = `/${locale}/dashboard`;
       return;
     } else if (email === 'order@yuandi.com' && password === 'order123') {
-      console.log('OrderManager login successful');
-      localStorage.setItem('userRole', 'OrderManager');
+      console.log('order_manager login successful');
+      localStorage.setItem('userRole', 'order_manager');
       localStorage.setItem('userName', 'Order Manager');
       setIsLoading(false);
       window.location.href = `/${locale}/dashboard`;
       return;
     } else if (email === 'ship@yuandi.com' && password === 'ship123') {
-      console.log('ShipManager login successful');
-      localStorage.setItem('userRole', 'ShipManager');
+      console.log('ship_manager login successful');
+      localStorage.setItem('userRole', 'ship_manager');
       localStorage.setItem('userName', 'Ship Manager');
       setIsLoading(false);
       window.location.href = `/${locale}/dashboard`;

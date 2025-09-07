@@ -179,7 +179,7 @@ BEGIN
   -- 주문 상태 업데이트
   UPDATE orders
   SET 
-    status = 'REFUNDED',
+    status = 'refunded',
     refund_reason = p_refund_reason,
     refund_note = p_refund_note,
     refund_amount = refund_amt,

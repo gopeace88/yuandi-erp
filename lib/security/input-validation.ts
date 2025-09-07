@@ -171,7 +171,7 @@ export const CommonValidators = {
     .positive('Invalid ID'),
 
   // Status enums
-  orderStatus: z.enum(['PAID', 'SHIPPED', 'DONE', 'REFUNDED']),
+  orderStatus: z.enum(['paid', 'shipped', 'delivered', 'refunded']),
 
   userRole: z.enum(['admin', 'order_manager', 'ship_manager', 'customer']),
 }

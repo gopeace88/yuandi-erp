@@ -1,5 +1,5 @@
-export type UserRole = 'Admin' | 'OrderManager' | 'ShipManager'
-export type OrderStatus = 'PAID' | 'SHIPPED' | 'DONE' | 'REFUNDED'
+export type UserRole = 'admin' | 'order_manager' | 'ship_manager'
+export type OrderStatus = 'paid' | 'shipped' | 'delivered' | 'refunded'
 export type CashbookType = 'sale' | 'inbound' | 'shipping' | 'adjustment' | 'refund'
 export type Currency = 'CNY' | 'KRW'
 export type Locale = 'ko' | 'zh-CN'

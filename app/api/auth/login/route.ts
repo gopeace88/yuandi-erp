@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
 
     // 프로필 정보 가져오기
     const { data: profile, error: profileError } = await supabase
-      .from('profiles')
+      .from('user_profiles')
       .select('*')
       .eq('id', authData.user.id)
       .single()
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
 
     // 마지막 로그인 시간 업데이트
     await supabase
-      .from('profiles')
+      .from('user_profiles')
       .update({ last_login_at: new Date().toISOString() })
       .eq('id', authData.user.id)
 

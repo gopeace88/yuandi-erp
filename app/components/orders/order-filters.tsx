@@ -19,10 +19,10 @@ export function OrderFilters({ filters, onFilterChange }: OrderFiltersProps) {
 
   const statusOptions = [
     { value: '', label: '전체 상태' },
-    { value: 'PAID', label: '결제완료' },
-    { value: 'SHIPPED', label: '배송중' },
-    { value: 'DONE', label: '완료' },
-    { value: 'REFUNDED', label: '환불' }
+    { value: 'paid', label: '결제완료' },
+    { value: 'shipped', label: '배송중' },
+    { value: 'delivered', label: '완료' },
+    { value: 'refunded', label: '환불' }
   ]
 
   const handleApply = () => {

@@ -11,7 +11,7 @@ interface TrackPageProps {
 }
 
 export default function TrackPage({ params: { locale } }: TrackPageProps) {
-  const [customerName, setCustomerName] = useState('');
+  const [customerName, setcustomerName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [orders, setOrders] = useState<any[]>([]);
   const [searchPerformed, setSearchPerformed] = useState(false);
@@ -107,7 +107,7 @@ export default function TrackPage({ params: { locale } }: TrackPageProps) {
               <input
                 type="text"
                 value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
+                onChange={(e) => setcustomerName(e.target.value)}
                 style={{
                   width: '100%',
                   padding: '0.5rem',

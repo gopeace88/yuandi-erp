@@ -138,14 +138,14 @@ export class SessionValidator {
         return { valid: false, error: 'No session found' }
       }
 
-      // Check session expiry
-      const sessionAge = Date.now() - new Date(session.created_at).getTime()
+      // Check session expiry  
+      const sessionAge = Date.now() - new Date(session.expires_at || Date.now()).getTime()
       if (sessionAge > SESSION_CONFIG.maxAge * 1000) {
         return { valid: false, error: 'Session expired' }
       }
 
       // Check if user is active
-      if (!session.user.is_active) {
+      if (!(session.user as any).active) {
         return { valid: false, error: 'User account is inactive' }
       }
 

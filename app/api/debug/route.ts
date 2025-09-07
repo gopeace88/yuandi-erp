@@ -30,7 +30,7 @@ export async function GET() {
     
     // Cashbook 테스트
     const { data: cashbook, error: cashbookError } = await supabase
-      .from('cashbook_transactions')
+      .from('cashbook')
       .select('*')
       .limit(1);
     

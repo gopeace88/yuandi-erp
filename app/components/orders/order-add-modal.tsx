@@ -138,7 +138,7 @@ export function OrderAddModal({ locale, onClose, onSuccess }: OrderAddModalProps
         total_amount: selectedProduct.sale_price_krw * formData.quantity,
         customer_memo: formData.customerMemo || null,
         internal_memo: formData.internalMemo || null,
-        status: 'PAID'
+        status: 'paid'
       }
 
       const response = await fetch('/api/orders', {

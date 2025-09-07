@@ -1,6 +1,6 @@
 import { test, expect, Page } from '@playwright/test';
 
-test.describe('Customer Order Tracking Page', () => {
+test.describe('customer Order Tracking Page', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/track');
   });
@@ -63,7 +63,7 @@ test.describe('Customer Order Tracking Page', () => {
             {
               id: '1',
               order_no: 'ORD-240823-001',
-              status: 'SHIPPED',
+              status: 'shipped',
               customer_name: '홍길동',
               customer_phone: '010-****-5678',
               customer_email: 'te***@example.com',
@@ -91,7 +91,7 @@ test.describe('Customer Order Tracking Page', () => {
             {
               id: '2',
               order_no: 'ORD-240822-005',
-              status: 'DONE',
+              status: 'delivered',
               customer_name: '홍길동',
               customer_phone: '010-****-5678',
               shipping_address: '서울시 강남구',
@@ -136,7 +136,7 @@ test.describe('Customer Order Tracking Page', () => {
             {
               id: '1',
               order_no: 'ORD-240823-001',
-              status: 'PAID',
+              status: 'paid',
               customer_name: '테스트',
               customer_phone: '010-****-1234',
               total_amount: 10000,
@@ -167,7 +167,7 @@ test.describe('Customer Order Tracking Page', () => {
             {
               id: '1',
               order_no: 'ORD-240823-001',
-              status: 'SHIPPED',
+              status: 'shipped',
               customer_name: '테스트',
               customer_phone: '010-****-1234',
               total_amount: 10000,
@@ -326,7 +326,7 @@ test.describe('Mobile Responsiveness', () => {
             {
               id: '1',
               order_no: 'ORD-240823-001',
-              status: 'SHIPPED',
+              status: 'shipped',
               customer_name: '테스트',
               customer_phone: '010-****-1234',
               total_amount: 10000,

@@ -53,12 +53,12 @@ export async function GET(request: NextRequest) {
     const { data: statusStats } = await supabase
       .from('orders')
       .select('status')
-      .in('status', ['PAID', 'SHIPPED', 'DONE']);
+      .in('status', ['paid', 'shipped', 'delivered']);
     
     const stats = {
-      pending: statusStats?.filter(s => s.status === 'PAID').length || 0,
-      shipped: statusStats?.filter(s => s.status === 'SHIPPED').length || 0,
-      completed: statusStats?.filter(s => s.status === 'DONE').length || 0
+      pending: statusStats?.filter(s => s.status === 'paid').length || 0,
+      shipped: statusStats?.filter(s => s.status === 'shipped').length || 0,
+      completed: statusStats?.filter(s => s.status === 'delivered').length || 0
     };
     
     return NextResponse.json({

@@ -17,28 +17,28 @@ export function OrderDetailModal({ order, locale, onClose }: OrderDetailModalPro
   // 주문 상태 히스토리 (실제로는 API에서 가져와야 함)
   const statusHistory = [
     {
-      status: 'PAID',
+      status: 'paid',
       date: order.order_date || order.created_at,
       note: '결제 완료',
       icon: CreditCard,
       color: 'text-blue-600 bg-blue-100'
     },
-    ...(order.status === 'SHIPPED' || order.status === 'DONE' ? [{
-      status: 'SHIPPED',
+    ...(order.status === 'shipped' || order.status === 'delivered' ? [{
+      status: 'shipped',
       date: order.shipped_at || new Date().toISOString(),
       note: `운송장: ${order.tracking_number || '등록중'}`,
       icon: Truck,
       color: 'text-yellow-600 bg-yellow-100'
     }] : []),
-    ...(order.status === 'DONE' ? [{
-      status: 'DONE',
+    ...(order.status === 'delivered' ? [{
+      status: 'delivered',
       date: order.delivered_at || new Date().toISOString(),
       note: '배송 완료',
       icon: CheckCircle,
       color: 'text-green-600 bg-green-100'
     }] : []),
-    ...(order.status === 'REFUNDED' ? [{
-      status: 'REFUNDED',
+    ...(order.status === 'refunded' ? [{
+      status: 'refunded',
       date: order.refunded_at || new Date().toISOString(),
       note: order.refund_reason || '고객 요청',
       icon: AlertCircle,
@@ -66,11 +66,11 @@ export function OrderDetailModal({ order, locale, onClose }: OrderDetailModalPro
   
   const getStatusLabel = (status: string) => {
     const statusMap: any = {
-      'PAID': t('orders.status.paid'),
-      'SHIPPED': t('orders.status.shipped'),
-      'DONE': t('orders.status.done'),
-      'REFUNDED': t('orders.status.refunded'),
-      'CANCELLED': t('orders.status.cancelled')
+      'paid': t('orders.status.paid'),
+      'shipped': t('orders.status.shipped'),
+      'delivered': t('orders.status.done'),
+      'refunded': t('orders.status.refunded'),
+      'cancelled': t('orders.status.cancelled')
     }
     return statusMap[status] || status
   }
@@ -117,10 +117,10 @@ export function OrderDetailModal({ order, locale, onClose }: OrderDetailModalPro
                 <div>
                   <span className="text-gray-500">{t('orders.currentStatus')}:</span>
                   <span className={`ml-2 px-2 py-1 text-xs rounded-full font-medium ${
-                    order.status === 'PAID' ? 'bg-blue-100 text-blue-800' :
-                    order.status === 'SHIPPED' ? 'bg-yellow-100 text-yellow-800' :
-                    order.status === 'DONE' ? 'bg-green-100 text-green-800' :
-                    order.status === 'REFUNDED' ? 'bg-red-100 text-red-800' :
+                    order.status === 'paid' ? 'bg-blue-100 text-blue-800' :
+                    order.status === 'shipped' ? 'bg-yellow-100 text-yellow-800' :
+                    order.status === 'delivered' ? 'bg-green-100 text-green-800' :
+                    order.status === 'refunded' ? 'bg-red-100 text-red-800' :
                     'bg-gray-100 text-gray-800'
                   }`}>
                     {getStatusLabel(order.status)}

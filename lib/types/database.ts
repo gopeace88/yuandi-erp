@@ -1,6 +1,6 @@
 // 데이터베이스 타입 정의
 export type UserRole = 'admin' | 'order_manager' | 'ship_manager' | 'customer'
-export type OrderStatus = 'PAID' | 'SHIPPED' | 'DONE' | 'REFUNDED'
+export type OrderStatus = 'paid' | 'shipped' | 'delivered' | 'refunded'
 export type ProductCategory = 
   | 'ELECTRONICS' | 'FASHION' | 'COSMETICS' | 'SUPPLEMENTS' 
   | 'TOYS' | 'BOOKS' | 'SPORTS' | 'HOME' | 'FOOD' | 'OTHER'

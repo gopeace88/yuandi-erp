@@ -158,10 +158,10 @@ export default function OrdersPage() {
 
   const getStatusBadge = (status: string) => {
     const statusColors = {
-      PAID: 'bg-blue-100 text-blue-800',
-      SHIPPED: 'bg-yellow-100 text-yellow-800',
-      DONE: 'bg-green-100 text-green-800',
-      REFUNDED: 'bg-purple-100 text-purple-800',
+      paid: 'bg-blue-100 text-blue-800',
+      shipped: 'bg-yellow-100 text-yellow-800',
+      delivered: 'bg-green-100 text-green-800',
+      refunded: 'bg-purple-100 text-purple-800',
       // Lowercase versions for backward compatibility
       paid: 'bg-blue-100 text-blue-800',
       shipped: 'bg-yellow-100 text-yellow-800',
@@ -255,10 +255,10 @@ export default function OrdersPage() {
             className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="">{t('orders.allStatus')}</option>
-            <option value="PAID">{t('orders.status.paid')}</option>
-            <option value="SHIPPED">{t('orders.status.shipped')}</option>
-            <option value="DONE">{t('orders.status.done')}</option>
-            <option value="REFUNDED">{t('orders.status.refunded')}</option>
+            <option value="paid">{t('orders.status.paid')}</option>
+            <option value="shipped">{t('orders.status.shipped')}</option>
+            <option value="delivered">{t('orders.status.done')}</option>
+            <option value="refunded">{t('orders.status.refunded')}</option>
           </select>
 
           <button

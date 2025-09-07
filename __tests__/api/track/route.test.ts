@@ -101,7 +101,7 @@ describe('Track API Route', () => {
           {
             id: '1',
             order_no: 'ORD-240823-001',
-            status: 'PAID',
+            status: 'paid',
             customer_name: '홍길동',
             customer_phone: '01012345678',
             customer_email: 'test@example.com',
@@ -194,7 +194,7 @@ describe('Track API Route', () => {
           {
             id: '1',
             order_no: 'ORD-240823-001',
-            status: 'PAID',
+            status: 'paid',
             customer_name: '홍길동',
             customer_phone: '01012345678',
             total_amount: 50000,
@@ -220,7 +220,7 @@ describe('Track API Route', () => {
           {
             id: '1',
             order_no: 'ORD-240823-001',
-            status: 'SHIPPED',
+            status: 'shipped',
             customer_name: '홍길동',
             customer_phone: '01012345678',
             total_amount: 50000,

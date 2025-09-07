@@ -14,7 +14,7 @@ import {
     Clock
 } from 'lucide-react'
 
-export type OrderStatus = 'PENDING' | 'PAID' | 'SHIPPED' | 'DONE' | 'REFUNDED' | 'CANCELLED'
+export type OrderStatus = 'PENDING' | 'paid' | 'shipped' | 'delivered' | 'refunded' | 'cancelled'
 
 interface OrderStatusFlowProps {
     currentStatus: OrderStatus
@@ -30,31 +30,31 @@ const statusConfig = {
         icon: Clock,
         description: '고객이 결제를 완료하기를 기다리는 상태'
     },
-    PAID: {
+    paid: {
         label: '결제완료',
         color: 'bg-blue-100 text-blue-800',
         icon: CreditCard,
         description: '입금 확인 후 주문이 생성된 상태'
     },
-    SHIPPED: {
+    shipped: {
         label: '배송중',
         color: 'bg-yellow-100 text-yellow-800',
         icon: Truck,
         description: '물류업체에 수거 완료, 배송 중인 상태'
     },
-    DONE: {
+    delivered: {
         label: '배송완료',
         color: 'bg-green-100 text-green-800',
         icon: CheckCircle,
         description: '고객이 상품을 정상적으로 수령한 상태'
     },
-    REFUNDED: {
+    refunded: {
         label: '환불완료',
         color: 'bg-red-100 text-red-800',
         icon: RotateCcw,
         description: '배송 후 환불이 처리된 상태'
     },
-    CANCELLED: {
+    cancelled: {
         label: '주문취소',
         color: 'bg-gray-100 text-gray-800',
         icon: XCircle,
@@ -62,10 +62,10 @@ const statusConfig = {
     }
 }
 
-const statusFlow = ['PENDING', 'PAID', 'SHIPPED', 'DONE'] as const
+const statusFlow = ['PENDING', 'paid', 'shipped', 'delivered'] as const
 const alternativeFlows = {
-    CANCELLED: ['PENDING', 'PAID'],
-    REFUNDED: ['PENDING', 'PAID', 'SHIPPED', 'DONE']
+    cancelled: ['PENDING', 'paid'],
+    refunded: ['PENDING', 'paid', 'shipped', 'delivered']
 }
 
 export function OrderStatusFlow({
@@ -77,11 +77,11 @@ export function OrderStatusFlow({
     const [isExpanded, setIsExpanded] = useState(false)
 
     const getFlowSteps = () => {
-        if (currentStatus === 'CANCELLED') {
-            return alternativeFlows.CANCELLED
+        if (currentStatus === 'cancelled') {
+            return alternativeFlows.cancelled
         }
-        if (currentStatus === 'REFUNDED') {
-            return alternativeFlows.REFUNDED
+        if (currentStatus === 'refunded') {
+            return alternativeFlows.refunded
         }
         return statusFlow
     }
@@ -108,11 +108,11 @@ export function OrderStatusFlow({
         if (targetStatus === currentStatus) return false
 
         // 특별한 경우들
-        if (targetStatus === 'CANCELLED') {
-            return currentStatus === 'PENDING' || currentStatus === 'PAID'
+        if (targetStatus === 'cancelled') {
+            return currentStatus === 'PENDING' || currentStatus === 'paid'
         }
-        if (targetStatus === 'REFUNDED') {
-            return currentStatus === 'SHIPPED' || currentStatus === 'DONE'
+        if (targetStatus === 'refunded') {
+            return currentStatus === 'shipped' || currentStatus === 'delivered'
         }
 
         // 일반적인 플로우
@@ -272,7 +272,7 @@ export function OrderStatusFlow({
 
 // 사용 예시 컴포넌트
 export function OrderStatusExample() {
-    const [currentStatus, setCurrentStatus] = useState<OrderStatus>('PAID')
+    const [currentStatus, setCurrentStatus] = useState<OrderStatus>('paid')
 
     return (
         <div className="space-y-6">

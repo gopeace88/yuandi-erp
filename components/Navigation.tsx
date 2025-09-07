@@ -38,9 +38,9 @@ export default function Navigation({ locale }: NavigationProps) {
       settings: '설정',
       logout: '로그아웃',
       // Roles
-      Admin: '관리자',
-      OrderManager: '주문 관리자',
-      ShipManager: '배송 관리자',
+      admin: '관리자',
+      order_manager: '주문 관리자',
+      ship_manager: '배송 관리자',
       // Others
       menu: '메뉴',
       close: '닫기'
@@ -61,9 +61,9 @@ export default function Navigation({ locale }: NavigationProps) {
       settings: '设置',
       logout: '退出',
       // Roles
-      Admin: '管理员',
-      OrderManager: '订单经理',
-      ShipManager: '配送经理',
+      admin: '管理员',
+      order_manager: '订单经理',
+      ship_manager: '配送经理',
       // Others
       menu: '菜单',
       close: '关闭'
@@ -94,43 +94,43 @@ export default function Navigation({ locale }: NavigationProps) {
       path: `/${locale}/dashboard`,
       label: t.dashboard,
       icon: '📊',
-      roles: ['Admin', 'OrderManager', 'ShipManager']
+      roles: ['admin', 'order_manager', 'ship_manager']
     },
     {
       path: `/${locale}/orders`,
       label: t.orders,
       icon: '📦',
-      roles: ['Admin', 'OrderManager']
+      roles: ['admin', 'order_manager']
     },
     {
       path: `/${locale}/shipments`,
       label: t.shipments,
       icon: '🚚',
-      roles: ['Admin', 'OrderManager', 'ShipManager']
+      roles: ['admin', 'order_manager', 'ship_manager']
     },
     {
       path: `/${locale}/inventory`,
       label: t.inventory,
       icon: '📋',
-      roles: ['Admin', 'OrderManager']
+      roles: ['admin', 'order_manager']
     },
     {
       path: `/${locale}/cashbook`,
       label: t.cashbook,
       icon: '💰',
-      roles: ['Admin', 'OrderManager', 'ShipManager']
+      roles: ['admin', 'order_manager', 'ship_manager']
     },
     {
       path: `/${locale}/users`,
       label: t.users,
       icon: '👥',
-      roles: ['Admin']
+      roles: ['admin']
     },
     {
       path: `/${locale}/track`,
       label: t.track,
       icon: '🔍',
-      roles: ['Admin', 'OrderManager', 'ShipManager']
+      roles: ['admin', 'order_manager', 'ship_manager']
     }
   ];
 

@@ -270,7 +270,7 @@ export async function sendSystemAlertSMS(
 }
 
 // 고객 서비스 응답 SMS
-export async function sendCustomerServiceSMS(
+export async function sendcustomerServiceSMS(
   customerPhone: string,
   serviceData: {
     customerName: string;

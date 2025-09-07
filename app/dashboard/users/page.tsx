@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic'
 
 async function getUserStats(supabase: any) {
   const { data: users, error } = await supabase
-    .from('profiles')
+    .from('user_profiles')
     .select('role, active')
 
   if (error) {
@@ -16,8 +16,8 @@ async function getUserStats(supabase: any) {
 
   const totalUsers = users.length
   const activeUsers = users.filter((u: any) => u.active).length
-  const adminUsers = users.filter((u: any) => u.role === 'Admin').length
-  const regularUsers = users.filter((u: any) => u.role !== 'Admin').length
+  const adminUsers = users.filter((u: any) => u.role === 'admin').length
+  const regularUsers = users.filter((u: any) => u.role !== 'admin').length
 
   return { totalUsers, activeUsers, adminUsers, regularUsers }
 }
@@ -29,8 +29,8 @@ export default async function UsersPage() {
     redirect('/auth/signin')
   }
 
-  // Check if user is Admin
-  if (session.user.role !== 'Admin') {
+  // Check if user is admin
+  if (session.user.role !== 'admin') {
     redirect('/dashboard')
   }
 
@@ -39,7 +39,7 @@ export default async function UsersPage() {
   // Fetch users and stats from database
   const [{ data: users, error }, stats] = await Promise.all([
     supabase
-      .from('profiles')
+      .from('user_profiles')
       .select('*')
       .order('created_at', { ascending: false }),
     getUserStats(supabase)

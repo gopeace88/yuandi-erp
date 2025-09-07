@@ -22,7 +22,7 @@ export async function getDashboardData() {
     .from('orders')
     .select('total_amount')
     .gte('created_at', startOfDay.toISOString())
-    .in('status', ['PAID', 'SHIPPED', 'DONE'])
+    .in('status', ['paid', 'shipped', 'delivered'])
   
   // 어제 매출
   const { data: yesterdaySalesData } = await supabase
@@ -30,7 +30,7 @@ export async function getDashboardData() {
     .select('total_amount')
     .gte('created_at', startOfYesterday.toISOString())
     .lt('created_at', startOfDay.toISOString())
-    .in('status', ['PAID', 'SHIPPED', 'DONE'])
+    .in('status', ['paid', 'shipped', 'delivered'])
   
   // 신규 주문
   const { data: newOrdersData } = await supabase
@@ -70,7 +70,7 @@ export async function getDashboardData() {
       .select('total_amount')
       .gte('created_at', start.toISOString())
       .lte('created_at', end.toISOString())
-      .in('status', ['PAID', 'SHIPPED', 'DONE'])
+      .in('status', ['paid', 'shipped', 'delivered'])
     
     salesTrend.push({
       date: start.toISOString().split('T')[0],
@@ -85,10 +85,10 @@ export async function getDashboardData() {
     .gte('created_at', startOfMonth.toISOString())
   
   const orderStatus = {
-    paid: orderStatusData?.filter(o => o.status === 'PAID').length || 0,
-    shipped: orderStatusData?.filter(o => o.status === 'SHIPPED').length || 0,
-    done: orderStatusData?.filter(o => o.status === 'DONE').length || 0,
-    refunded: orderStatusData?.filter(o => o.status === 'REFUNDED').length || 0,
+    paid: orderStatusData?.filter(o => o.status === 'paid').length || 0,
+    shipped: orderStatusData?.filter(o => o.status === 'shipped').length || 0,
+    done: orderStatusData?.filter(o => o.status === 'delivered').length || 0,
+    refunded: orderStatusData?.filter(o => o.status === 'refunded').length || 0,
   }
   
   // 최근 주문
@@ -107,7 +107,7 @@ export async function getDashboardData() {
   
   // 재고 부족 상품
   let lowStockProducts = []
-  if (session.user.role === 'Admin' || session.user.role === 'OrderManager') {
+  if (session.user.role === 'admin' || session.user.role === 'order_manager') {
     const { data } = await supabase
       .from('products')
       .select('id, name, on_hand, low_stock_threshold')
@@ -130,7 +130,7 @@ export async function getDashboardData() {
     ? Math.round(((newOrders - yesterdayOrders) / yesterdayOrders) * 100)
     : 0
   
-  const uniqueCustomers = new Set(customersData?.map(c => c.customer_phone) || [])
+  const uniquecustomers = new Set(customersData?.map(c => c.customer_phone) || [])
   
   return {
     todaySales,
@@ -138,7 +138,7 @@ export async function getDashboardData() {
     newOrders,
     orderGrowth,
     totalProducts: productsData?.length || 0,
-    activeCustomers: uniqueCustomers.size,
+    activecustomers: uniquecustomers.size,
     salesTrend,
     orderStatus,
     recentOrders: recentOrders || [],

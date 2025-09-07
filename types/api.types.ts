@@ -49,7 +49,7 @@ export interface DashboardData {
   newOrders: number
   orderGrowth: number
   totalProducts: number
-  activeCustomers: number
+  activecustomers: number
   salesTrend: Array<{
     date: string
     sales: number

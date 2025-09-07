@@ -46,16 +46,6 @@ export default function LoginPage() {
     }
   }
 
-  const fillTestAccount = (role: 'admin' | 'order' | 'ship') => {
-    const accounts = {
-      admin: { email: 'admin@yuandi.com', password: 'admin123' },
-      order: { email: 'order@yuandi.com', password: 'order123' },
-      ship: { email: 'ship@yuandi.com', password: 'ship123' },
-    }
-
-    setEmail(accounts[role].email)
-    setPassword(accounts[role].password)
-  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 py-4 px-4 sm:px-6 lg:px-8">
@@ -153,42 +143,6 @@ export default function LoginPage() {
               </Button>
             </form>
 
-            {/* Mobile-friendly test accounts */}
-            {process.env.NODE_ENV === 'development' && (
-              <div className="mt-6 pt-6 border-t border-gray-200">
-                <p className="text-sm text-gray-600 mb-4 text-center">테스트 계정 (개발용)</p>
-                <div className="grid grid-cols-1 gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => fillTestAccount('admin')}
-                    className="h-10 text-sm"
-                  >
-                    👑 관리자 계정
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => fillTestAccount('order')}
-                    className="h-10 text-sm"
-                  >
-                    📦 주문관리자 계정
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => fillTestAccount('ship')}
-                    className="h-10 text-sm"
-                  >
-                    🚚 배송관리자 계정
-                  </Button>
-                </div>
-              </div>
-            )}
-
             {/* Mobile support */}
             <div className="mt-6 text-center">
               <p className="text-sm text-gray-500">
@@ -201,17 +155,11 @@ export default function LoginPage() {
           </CardContent>
         </Card>
 
-        {/* Mobile app features */}
+        {/* Footer */}
         <div className="text-center">
-          <p className="text-sm text-gray-600 mb-4">모바일에서 더 편리하게</p>
-          <div className="flex justify-center space-x-4">
-            <button className="px-4 py-2 bg-white rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors shadow-sm border">
-              📱 홈 화면에 추가
-            </button>
-            <button className="px-4 py-2 bg-white rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors shadow-sm border">
-              🔔 알림 설정
-            </button>
-          </div>
+          <p className="text-sm text-gray-600">
+            © 2025 YUANDI Collection. All rights reserved.
+          </p>
         </div>
       </div>
     </div>

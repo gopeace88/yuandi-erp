@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
           body: JSON.stringify({
             name: 'YUANDI 관리자',
             email: 'yuandi1020@gmail.com',
-            role: 'Admin',
+            role: 'admin',
             active: true
           })
         })
@@ -55,14 +55,14 @@ CREATE TABLE profiles (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR(100) NOT NULL,
   email VARCHAR(255) NOT NULL UNIQUE,
-  role VARCHAR(20) NOT NULL DEFAULT 'OrderManager',
+  role VARCHAR(20) NOT NULL DEFAULT 'order_manager',
   active BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 INSERT INTO profiles (name, email, role, active) 
-VALUES ('YUANDI 관리자', 'yuandi1020@gmail.com', 'Admin', true);
+VALUES ('YUANDI 관리자', 'yuandi1020@gmail.com', 'admin', true);
         `
       }
     })

@@ -14,10 +14,10 @@ interface RecentOrdersProps {
 export function RecentOrders({ orders }: RecentOrdersProps) {
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      PAID: { label: '결제완료', className: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300' },
-      SHIPPED: { label: '배송중', className: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' },
-      DONE: { label: '완료', className: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300' },
-      REFUNDED: { label: '환불', className: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300' },
+      paid: { label: '결제완료', className: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300' },
+      shipped: { label: '배송중', className: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' },
+      delivered: { label: '완료', className: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300' },
+      refunded: { label: '환불', className: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300' },
     }
     
     const config = statusConfig[status as keyof typeof statusConfig]
