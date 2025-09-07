@@ -172,7 +172,8 @@ async function createProducts(categories, adminUser) {
         });
         
         // 출납장부 지출 기록 (상품 구매 비용)
-        const purchaseAmount = product.cost_cny * initialStock * 180; // CNY to KRW 환율 적용
+        // 금액이 너무 크면 오버플로우 발생하므로 적절히 제한
+        const purchaseAmount = Math.min(product.cost_cny * initialStock * 180, 90000000); // 최대 9천만원
         cashbookTransactions.push({
             transaction_date: new Date(currentDate.getTime() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
             type: 'inventory_purchase',
