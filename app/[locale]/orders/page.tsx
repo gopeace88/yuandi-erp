@@ -226,6 +226,8 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
       const { createClient } = await import('@/lib/supabase/client');
       const supabase = createClient();
       
+      console.log('🔄 주문 데이터 로드 시작...');
+      
       const { data: orders, error } = await supabase
         .from('orders')
         .select(`
@@ -242,7 +244,14 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
         .order('created_at', { ascending: false });
       
       if (error) {
-        console.error('주문 로드 에러:', error);
+        console.error('❌ 주문 로드 에러:', error);
+        setOrders([]);
+        return;
+      }
+      
+      // 데이터 유효성 체크
+      if (!orders) {
+        console.log('⚠️ 주문 데이터가 null입니다');
         setOrders([]);
         return;
       }
@@ -251,31 +260,50 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
         count: orders?.length, 
         isArray: Array.isArray(orders),
         firstOrder: orders?.[0],
-        type: typeof orders 
+        type: typeof orders,
+        rawData: orders
       });
       
-      // 데이터 변환 - 안전한 처리 추가
-      const transformedOrders = Array.isArray(orders) ? orders.map((order: any) => ({
-        id: order.id,
-        orderNo: order.order_number,
-        orderDate: order.created_at,
-        customerName: order.customer_name,
-        customerPhone: order.customer_phone,
-        customerEmail: order.customer_email,
-        pcccCode: order.pccc,
-        shippingAddress: order.shipping_address_line1,
-        shippingAddressDetail: order.shipping_address_line2,
-        zipCode: order.shipping_postal_code,
-        status: order.status?.toLowerCase() || 'paid',
-        totalAmount: order.total_krw,
-        productName: order.order_items?.[0]?.products?.name || '',
-        productSku: order.order_items?.[0]?.products?.sku || '',
-        quantity: order.order_items?.[0]?.quantity || 0,
-      })) : [];
+      // 데이터 변환 - 더 안전한 처리
+      const transformedOrders = [];
       
+      if (Array.isArray(orders)) {
+        for (const order of orders) {
+          try {
+            transformedOrders.push({
+              id: order.id || '',
+              orderNo: order.order_number || '',
+              orderDate: order.created_at || '',
+              customerName: order.customer_name || '',
+              customerPhone: order.customer_phone || '',
+              customerEmail: order.customer_email || '',
+              pcccCode: order.pccc || '',
+              shippingAddress: order.shipping_address_line1 || '',
+              shippingAddressDetail: order.shipping_address_line2 || '',
+              zipCode: order.shipping_postal_code || '',
+              status: (order.status?.toLowerCase() || 'paid') as Order['status'],
+              totalAmount: order.total_krw || 0,
+              productName: order.order_items?.[0]?.products?.name || '',
+              productSku: order.order_items?.[0]?.products?.sku || '',
+              quantity: order.order_items?.[0]?.quantity || 0,
+            });
+          } catch (itemError) {
+            console.error('❌ 개별 주문 변환 오류:', itemError, order);
+          }
+        }
+      } else {
+        console.error('❌ orders가 배열이 아닙니다:', typeof orders, orders);
+      }
+      
+      console.log('✅ 변환된 주문 데이터:', transformedOrders.length + '개');
       setOrders(transformedOrders);
     } catch (error) {
-      console.error('주문 로드 실패:', error);
+      console.error('❌ 주문 로드 실패 (catch):', error);
+      // 에러 상세 정보 출력
+      if (error instanceof Error) {
+        console.error('에러 메시지:', error.message);
+        console.error('에러 스택:', error.stack);
+      }
       setOrders([]);
     }
   };
@@ -342,23 +370,53 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
       return;
     }
     
-    // 데이터 변환 - 안전한 처리
-    const transformedProducts = Array.isArray(products) ? products.map((product: any) => ({
-      id: product.id,
-      sku: product.sku,
-      name: product.name,
-      category: product.product_categories?.name || '',
-      model: product.model || '',
-      color: product.color || '',
-      brand: product.brand || '',
-      onHand: product.inventory?.[0]?.on_hand || 0,
-      salePrice: product.price_krw || product.cost_cny * 180,
-      image_url: product.image_urls?.[0] || ''
-    })) : [];
+    // 데이터 유효성 체크
+    if (!products) {
+      console.log('⚠️ 제품 데이터가 null입니다');
+      setProducts([]);
+      return;
+    }
     
+    console.log('📦 로드된 제품 데이터:', {
+      count: products?.length,
+      isArray: Array.isArray(products),
+      type: typeof products
+    });
+    
+    // 데이터 변환 - 더 안전한 처리
+    const transformedProducts = [];
+    
+    if (Array.isArray(products)) {
+      for (const product of products) {
+        try {
+          transformedProducts.push({
+            id: product.id || '',
+            sku: product.sku || '',
+            name: product.name || '',
+            category: product.product_categories?.name || '',
+            model: product.model || '',
+            color: product.color || '',
+            brand: product.brand || '',
+            onHand: product.inventory?.[0]?.on_hand || 0,
+            salePrice: product.price_krw || (product.cost_cny ? product.cost_cny * 180 : 0),
+            image_url: product.image_urls?.[0] || ''
+          });
+        } catch (itemError) {
+          console.error('❌ 개별 제품 변환 오류:', itemError, product);
+        }
+      }
+    } else {
+      console.error('❌ products가 배열이 아닙니다:', typeof products, products);
+    }
+    
+    console.log('✅ 변환된 제품 데이터:', transformedProducts.length + '개');
     setProducts(transformedProducts);
     } catch (error) {
-      console.error('제품 로드 실패:', error);
+      console.error('❌ 제품 로드 실패 (catch):', error);
+      if (error instanceof Error) {
+        console.error('에러 메시지:', error.message);
+        console.error('에러 스택:', error.stack);
+      }
       setProducts([]);
     }
   };
@@ -631,19 +689,20 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
     return statusTexts[status] || status;
   };
 
-  const filteredOrders = orders.filter(order => {
+  const filteredOrders = Array.isArray(orders) ? orders.filter(order => {
+    if (!order) return false;
     const matchesStatus = filterStatus === 'all' || order.status === filterStatus;
-    const matchesSearch = order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          order.orderNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          order.customerPhone.includes(searchTerm);
+    const matchesSearch = (order.customerName?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+                          (order.orderNo?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+                          (order.customerPhone || '').includes(searchTerm);
     return matchesStatus && matchesSearch;
-  });
+  }) : [];
 
   // 페이지네이션 계산
   const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const paginatedOrders = filteredOrders.slice(startIndex, endIndex);
+  const paginatedOrders = Array.isArray(filteredOrders) ? filteredOrders.slice(startIndex, endIndex) : [];
 
   // 필터나 검색어 변경 시 첫 페이지로 리셋
   useEffect(() => {
@@ -773,7 +832,7 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
                 </tr>
               </thead>
               <tbody>
-                {paginatedOrders.map((order) => (
+                {Array.isArray(paginatedOrders) && paginatedOrders.map((order) => (
                   <tr 
                     key={order.id} 
                     onClick={() => handleOrderClick(order)}
@@ -985,7 +1044,7 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
                   required
                 >
                   <option value="">-- {texts.selectProduct} --</option>
-                  {products.map((product) => (
+                  {Array.isArray(products) && products.map((product) => (
                     <option key={product.id} value={product.id}>
                       {product.name} ({product.sku}) - {texts.stock}: {product.onHand} - ₩{product.salePrice.toLocaleString()}
                     </option>
