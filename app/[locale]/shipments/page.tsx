@@ -88,7 +88,7 @@ const MOCK_SHIPMENTS: Shipment[] = [];
 export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps) {
   const [orders, setOrders] = useState<Order[]>(MOCK_ORDERS);
   const [shipments, setShipments] = useState<Shipment[]>(MOCK_SHIPMENTS);
-  const [selectedTab, setSelectedTab] = useState<'pending' | 'shipping' | 'delivered'>('pending');
+  const [selectedTab, setSelectedTab] = useState<'pending' | 'shipping' | 'delivered' | 'refunded'>('pending');
   const [showShipModal, setShowShipModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -136,6 +136,7 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
       pendingTab: '배송 대기',
       shippingTab: '배송 중',
       deliveredTab: '배송 완료',
+      refundedTab: '환불',
       searchPlaceholder: '주문번호, 고객명, 전화번호 검색...',
       // Pending Orders
       orderNo: '주문번호',
@@ -192,6 +193,7 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
       pendingTab: '待发货',
       shippingTab: '配送中',
       deliveredTab: '已完成',
+      refundedTab: '退款',
       searchPlaceholder: '搜索订单号、客户名、电话号码...',
       // Pending Orders
       orderNo: '订单号',
@@ -488,6 +490,17 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
     return isDelivered && matchesSearch;
   });
 
+  // 환불 주문 필터링 (refunded 상태의 주문)
+  const refundedOrders = orders.filter(order => {
+    const isRefunded = order.status === 'refunded';
+    const matchesSearch = searchTerm === '' || 
+      order.orderNo.includes(searchTerm) ||
+      order.customerName.includes(searchTerm) ||
+      order.customerPhone.includes(searchTerm);
+    
+    return isRefunded && matchesSearch;
+  });
+
   // 배송 등록
   const handleShipRegister = async () => {
     if (!selectedOrder || !shipForm.courier || !shipForm.trackingNo) return;
@@ -765,6 +778,20 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
             }}
           >
             {t.deliveredTab} ({deliveredOrders.length})
+          </button>
+          <button
+            onClick={() => setSelectedTab('refunded')}
+            style={{
+              padding: '0.75rem 0',
+              borderBottom: selectedTab === 'refunded' ? '2px solid #2563eb' : 'none',
+              color: selectedTab === 'refunded' ? '#2563eb' : '#6b7280',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              fontWeight: selectedTab === 'refunded' ? '600' : '400'
+            }}
+          >
+            {t.refundedTab} ({refundedOrders.length})
           </button>
         </div>
       </div>
@@ -1208,6 +1235,114 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
               totalPages={totalDeliveredPages}
               onPageChange={setCurrentPage}
               totalItems={deliveredOrders.length}
+              itemsPerPage={itemsPerPage}
+              className="mt-4"
+            />
+          )}
+        </div>
+      )}
+
+      {/* 환불 목록 */}
+      {selectedTab === 'refunded' && (
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+            <button
+              onClick={() => {
+                const columns = [
+                  { header: t.orderDate, key: 'orderDate', width: 15 },
+                  { header: t.customer, key: 'customerName', width: 20 },
+                  { header: locale === 'ko' ? '전화번호' : '电话号码', key: 'customerPhone', width: 20 },
+                  { header: t.address, key: 'shippingAddress', width: 35 },
+                  { header: t.items, key: 'productName', width: 25 },
+                  { header: locale === 'ko' ? '환불일' : '退款日期', key: 'refundDate', width: 15 }
+                ];
+                
+                const data = refundedOrders.map(order => ({
+                  orderDate: order.orderDate,
+                  customerName: order.customerName,
+                  customerPhone: order.customerPhone,
+                  shippingAddress: order.shippingAddress,
+                  productName: order.items.map(item => `${item.productName}(${item.quantity})`).join(', '),
+                  refundDate: order.orderDate
+                }));
+                
+                exportToExcel(data, columns, `refunded_orders_${new Date().toISOString().split('T')[0]}`);
+              }}
+              style={{
+                padding: '0.5rem 1rem',
+                backgroundColor: '#059669',
+                color: 'white',
+                border: 'none',
+                borderRadius: '0.375rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}
+            >
+              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              {locale === 'ko' ? '엑셀 다운로드' : '导出Excel'}
+            </button>
+          </div>
+          {refundedOrders.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '3rem', color: '#6b7280' }}>
+              {locale === 'ko' ? '환불된 주문이 없습니다.' : '没有退款订单。'}
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#f3f4f6' }}>
+                    <th style={{ padding: '0.75rem', textAlign: 'left' }}>{t.orderNo}</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left' }}>{t.orderDate}</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left' }}>{t.customer}</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left' }}>{t.address}</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left' }}>{t.items}</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'center' }}>{locale === 'ko' ? '상태' : '状态'}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {refundedOrders.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map(order => (
+                    <tr key={order.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                      <td style={{ padding: '0.75rem' }}>{order.orderNo}</td>
+                      <td style={{ padding: '0.75rem' }}>{order.orderDate}</td>
+                      <td style={{ padding: '0.75rem' }}>
+                        <div>{order.customerName}</div>
+                        <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{order.customerPhone}</div>
+                      </td>
+                      <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>{order.shippingAddress}</td>
+                      <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>
+                        {order.items.map((item, idx) => (
+                          <div key={idx}>{item.productName} x {item.quantity}</div>
+                        ))}
+                      </td>
+                      <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                        <span style={{ 
+                          padding: '0.25rem 0.75rem', 
+                          backgroundColor: '#fee2e2', 
+                          color: '#dc2626',
+                          borderRadius: '9999px',
+                          fontSize: '0.875rem'
+                        }}>
+                          {locale === 'ko' ? '환불' : '退款'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          
+          {/* 페이지네이션 */}
+          {refundedOrders.length > itemsPerPage && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={Math.ceil(refundedOrders.length / itemsPerPage)}
+              onPageChange={setCurrentPage}
+              totalItems={refundedOrders.length}
               itemsPerPage={itemsPerPage}
               className="mt-4"
             />

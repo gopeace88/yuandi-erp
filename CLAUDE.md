@@ -194,6 +194,13 @@ psql $DATABASE_URL -f scripts/generate-test-data.sql
 ### Database Schema?
 → Check **[DATABASE_ERD.md](./docs/(250907-v1.1)DATABASE_ERD.md)**
 
+### Generate Test Data?
+→ Follow **[TEST_DATA_GUIDE.md](./docs/TEST_DATA_GUIDE.md)**
+```bash
+# PRD 비즈니스 워크플로우 기반 테스트 데이터 생성
+node scripts/generate-business-flow-data.js
+```
+
 ### Deploy to Production?
 → Follow **[DEPLOYMENT_GUIDE.md](./docs/(250907-v1.0)DEPLOYMENT_GUIDE.md)**
 

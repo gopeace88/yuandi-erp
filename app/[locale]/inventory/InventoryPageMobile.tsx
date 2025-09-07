@@ -56,6 +56,8 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
   const [showLowStock, setShowLowStock] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10; // 모바일에서는 10개씩 표시
 
   // 새 상품 폼 상태
   const [newProduct, setNewProduct] = useState({
@@ -422,6 +424,18 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
     return matchesSearch && matchesCategory && matchesLowStock;
   });
 
+  // 페이지네이션 계산
+  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
+  const paginatedProducts = filteredProducts.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const categories = Array.from(new Set(products.map(p => p.category)));
 
   return (
@@ -601,7 +615,7 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredProducts.map((product) => {
+                  {paginatedProducts.map((product) => {
                     const stockStatus = getStockStatus(product);
                     return (
                       <tr key={product.id} onClick={() => setSelectedProduct(product)} className="hover:bg-gray-50">
@@ -645,6 +659,33 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
                 </tbody>
               </table>
             </div>
+
+            {/* 모바일 페이지네이션 */}
+            {totalPages > 1 && (
+              <div className="lg:hidden flex items-center justify-between px-4 py-3 bg-white border-t border-gray-200">
+                <div className="flex-1 flex justify-between items-center">
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="relative inline-flex items-center px-3 py-1 rounded-md border border-gray-300 bg-white text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {locale === 'ko' ? '이전' : '上一页'}
+                  </button>
+                  
+                  <span className="text-xs text-gray-700">
+                    {currentPage} / {totalPages} {locale === 'ko' ? '페이지' : '页'}
+                  </span>
+                  
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="relative inline-flex items-center px-3 py-1 rounded-md border border-gray-300 bg-white text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {locale === 'ko' ? '다음' : '下一页'}
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* 데스크탑 테이블 레이아웃 (큰 화면) */}
             <div className="hidden lg:block bg-white rounded-lg shadow overflow-hidden">
