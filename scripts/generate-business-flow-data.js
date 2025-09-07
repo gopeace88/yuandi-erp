@@ -76,7 +76,7 @@ async function createCategories() {
     return data;
 }
 
-async function createProducts(categories) {
+async function createProducts(categories, adminUser) {
     console.log('🛍️ 상품 및 재고 생성 중...');
     
     const brands = ['나이키', '아디다스', '샤넬', '루이비통', '프라다', '구찌', '에르메스', '버버리', '코치', '발렌시아가'];
@@ -85,6 +85,10 @@ async function createProducts(categories) {
     
     const products = [];
     const inventories = [];
+    const inventoryTransactions = [];
+    const cashbookTransactions = [];
+    const currentDate = new Date();
+    const adminId = adminUser.id;
     
     // 500개 상품 생성
     for (let i = 1; i <= 500; i++) {
@@ -565,7 +569,7 @@ async function main() {
         console.log('');
         
         // 4. 상품 및 재고 생성
-        const products = await createProducts(categories);
+        const products = await createProducts(categories, adminUser);
         if (!products || products.length === 0) return;
         console.log('');
         
