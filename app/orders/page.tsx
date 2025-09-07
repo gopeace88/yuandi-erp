@@ -65,9 +65,12 @@ export default function OrdersPage() {
       const response = await fetch('/api/orders')
       if (!response.ok) throw new Error('Failed to fetch orders')
       const data = await response.json()
-      setOrders(data)
+      // API 응답 구조: { orders: [], total: 0, page: 1, limit: 20 }
+      const ordersArray = data.orders || data
+      setOrders(Array.isArray(ordersArray) ? ordersArray : [])
     } catch (error) {
       console.error('Error fetching orders:', error)
+      setOrders([])
     } finally {
       setLoading(false)
     }

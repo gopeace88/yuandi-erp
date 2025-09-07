@@ -108,23 +108,34 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
       }
       
       const data = await response.json();
-      const transformedOrders = data.map((order: any) => ({
+      console.log('📱 모바일: API 응답 데이터:', data);
+      
+      // API 응답 구조: { orders: [], total: 0, page: 1, limit: 20 }
+      const ordersArray = data.orders || data;
+      
+      if (!Array.isArray(ordersArray)) {
+        console.error('❌ 주문 데이터가 배열이 아닙니다:', typeof ordersArray, ordersArray);
+        setOrders([]);
+        return;
+      }
+      
+      const transformedOrders = ordersArray.map((order: any) => ({
         id: order.id,
-        orderNo: order.order_no,
-        orderDate: order.order_date,
+        orderNo: order.order_no || order.order_number,
+        orderDate: order.order_date || order.created_at,
         customerName: order.customer_name,
         customerPhone: order.customer_phone,
         customerEmail: order.customer_email,
-        pcccCode: order.pccc_code,
-        shippingAddress: order.shipping_address,
-        shippingAddressDetail: order.shipping_address_detail,
-        zipCode: order.zip_code,
+        pcccCode: order.pccc_code || order.pccc,
+        shippingAddress: order.shipping_address || order.shipping_address_line1,
+        shippingAddressDetail: order.shipping_address_detail || order.shipping_address_line2,
+        zipCode: order.zip_code || order.shipping_postal_code,
         status: order.status,
-        totalAmount: order.total_amount,
-        productName: order.order_items?.[0]?.product?.name || '',
-        productSku: order.order_items?.[0]?.product?.sku || '',
+        totalAmount: order.total_amount || order.total_krw,
+        productName: order.order_items?.[0]?.product_name || order.order_items?.[0]?.product?.name || '',
+        productSku: order.order_items?.[0]?.sku || order.order_items?.[0]?.product?.sku || '',
         quantity: order.order_items?.[0]?.quantity || 0,
-      })) || [];
+      }));
       
       setOrders(transformedOrders);
     } catch (error) {
