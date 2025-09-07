@@ -173,15 +173,15 @@ async function createProducts(categories, adminUser) {
         
         // 출납장부 지출 기록 (상품 구매 비용)
         // 금액이 너무 크면 오버플로우 발생하므로 적절히 제한
-        const purchaseAmountCny = Math.min(product.cost_cny * initialStock, 500000); // 최대 50만 CNY
-        const purchaseAmountKrw = Math.min(purchaseAmountCny * 180, 90000000); // 최대 9천만원
+        const purchaseAmountCny = Math.min(product.cost_cny * initialStock, 50000); // 최대 5만 CNY
+        const purchaseAmountKrw = Math.min(purchaseAmountCny * 180, 9000000); // 최대 900만원
         cashbookTransactions.push({
             transaction_date: new Date(currentDate.getTime() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            type: 'inventory_purchase',
-            amount_krw: -purchaseAmountKrw,
-            amount_cny: -purchaseAmountCny,
+            type: 'expense',
+            amount_krw: -Math.min(purchaseAmountKrw, 100000), // 최대 10만원으로 제한
+            amount_cny: -Math.min(purchaseAmountCny, 600), // 최대 600 CNY
             exchange_rate: 180,
-            balance_krw: 0,
+            balance_krw: Math.floor(Math.random() * 1000000), // 0~100만원 사이 랜덤 잔액
             description: `${product.name} 구매 (${initialStock}개) - ${product.sku}`,
             reference_type: 'product',
             reference_id: product.id,
