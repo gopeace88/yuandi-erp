@@ -9,7 +9,6 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api/client';
 import { exportToExcel } from '@/lib/utils/excel';
-import InventoryPageMobile from './InventoryPageMobile';
 import ImageUpload from '@/components/common/ImageUpload';
 import Pagination from '@/components/common/Pagination';
 
@@ -59,7 +58,6 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
   const [showLowStock, setShowLowStock] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   
   // 페이지네이션 상태
@@ -72,17 +70,6 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
     setShowDetailModal(true);
   };
 
-  // 모바일 감지
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
 
   // 새 상품 폼 상태
   const [newProduct, setNewProduct] = useState({
@@ -610,43 +597,23 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
 
   const categories = Array.from(new Set(products.map(p => p.category)));
 
-  // 모바일일 때는 InventoryPageMobile 컴포넌트 사용
-  if (isMobile) {
-    return <InventoryPageMobile params={{ locale }} />;
-  }
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f3f4f6' }}>
+    <div className="min-h-screen bg-gray-100">
       {/* 헤더 */}
-      <div style={{ backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', padding: '1rem 2rem' }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{texts.title}</h1>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
+      <div className="bg-white border-b border-gray-200 px-4 py-3 md:px-6 md:py-4">
+        <div className="max-w-7xl mx-auto flex justify-between items-center">
+          <h1 className="text-lg md:text-2xl font-bold">{texts.title}</h1>
+          <div className="flex gap-2">
             <button
               onClick={() => setShowProductModal(true)}
-              style={{
-                padding: '0.5rem 1rem',
-                backgroundColor: '#10b981',
-                color: 'white',
-                borderRadius: '0.375rem',
-                border: 'none',
-                cursor: 'pointer',
-                fontWeight: '500'
-              }}
+              className="px-3 py-1.5 md:px-4 md:py-2 bg-green-500 text-white rounded-md text-sm md:text-base font-medium hover:bg-green-600"
             >
               + {texts.addProduct}
             </button>
             <button
               onClick={() => setShowInboundModal(true)}
-              style={{
-                padding: '0.5rem 1rem',
-                backgroundColor: '#2563eb',
-                color: 'white',
-                borderRadius: '0.375rem',
-                border: 'none',
-                cursor: 'pointer',
-                fontWeight: '500'
-              }}
+              className="px-3 py-1.5 md:px-4 md:py-2 bg-blue-600 text-white rounded-md text-sm md:text-base font-medium hover:bg-blue-700"
             >
               + {texts.inbound}
             </button>
@@ -655,28 +622,19 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
       </div>
 
       {/* 필터 및 검색 */}
-      <div style={{ maxWidth: '1200px', margin: '2rem auto', padding: '0 2rem' }}>
-        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
+      <div className="max-w-7xl mx-auto px-4 py-4 md:px-6 md:py-6">
+        <div className="flex flex-col md:flex-row gap-3 mb-4">
           <input
             type="text"
             placeholder={texts.search}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            style={{
-              flex: 1,
-              padding: '0.5rem',
-              border: '1px solid #d1d5db',
-              borderRadius: '0.375rem'
-            }}
+            className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm md:text-base"
           />
           <select
             value={filterCategory}
             onChange={(e) => setFilterCategory(e.target.value)}
-            style={{
-              padding: '0.5rem',
-              border: '1px solid #d1d5db',
-              borderRadius: '0.375rem'
-            }}
+            className="px-3 py-2 border border-gray-300 rounded-md text-sm md:text-base"
           >
             <option value="all">{texts.all}</option>
             {categories.map(cat => (
@@ -685,14 +643,11 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
           </select>
           <button
             onClick={() => setShowLowStock(!showLowStock)}
-            style={{
-              padding: '0.5rem 1rem',
-              backgroundColor: showLowStock ? '#f59e0b' : 'white',
-              color: showLowStock ? 'white' : '#374151',
-              border: '1px solid #d1d5db',
-              borderRadius: '0.375rem',
-              cursor: 'pointer'
-            }}
+            className={`px-3 py-2 rounded-md text-sm md:text-base font-medium ${
+              showLowStock 
+                ? 'bg-yellow-500 text-white' 
+                : 'bg-white text-gray-700 border border-gray-300'
+            }`}
           >
             {texts.lowStock}
           </button>
@@ -771,84 +726,122 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
               {texts.noProducts}
             </div>
           ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ backgroundColor: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600' }}>{texts.sku}</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600' }}>{texts.productName}</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600' }}>{texts.category}</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'center', fontSize: '0.875rem', fontWeight: '600' }}>{texts.stock}</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'right', fontSize: '0.875rem', fontWeight: '600' }}>{texts.cost}</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'right', fontSize: '0.875rem', fontWeight: '600' }}>{texts.price}</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'center', fontSize: '0.875rem', fontWeight: '600' }}>{texts.status}</th>
-                </tr>
-              </thead>
-              <tbody>
+            <>
+              {/* 모바일 카드 뷰 */}
+              <div className="md:hidden">
                 {paginatedProducts.map((product) => {
                   const stockStatus = getStockStatus(product);
                   return (
-                    <tr 
-                      key={product.id} 
+                    <div 
+                      key={product.id}
                       onClick={() => handleProductClick(product)}
-                      style={{ 
-                        borderBottom: '1px solid #e5e7eb',
-                        cursor: 'pointer'
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
-                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
-                      <td style={{ padding: '0.75rem', fontSize: '0.75rem', fontFamily: 'monospace' }}>{product.sku}</td>
-                      <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          {product.imageUrl && (
-                            <img
-                              src={product.imageUrl}
-                              alt={product.name}
-                              style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '0.25rem' }}
-                            />
-                          )}
-                          <div>
-                            <p style={{ fontWeight: '600' }}>{product.name}</p>
-                            <p style={{ fontSize: '0.75rem', color: '#6b7280' }}>
-                              {product.model} / {product.color} / {product.brand}
-                            </p>
+                      className="p-4 border-b border-gray-200 hover:bg-gray-50 cursor-pointer"
+                    >
+                      <div className="flex items-start gap-3">
+                        {product.imageUrl && (
+                          <img
+                            src={product.imageUrl}
+                            alt={product.name}
+                            className="w-12 h-12 object-cover rounded"
+                          />
+                        )}
+                        <div className="flex-1">
+                          <div className="font-semibold text-sm">{product.name}</div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            {product.sku}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {product.category} | {product.brand}
+                          </div>
+                          <div className="flex justify-between items-center mt-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-semibold">재고: {product.onHand}</span>
+                              <span className="text-xs px-2 py-0.5 rounded" 
+                                style={{ backgroundColor: stockStatus.bgColor, color: stockStatus.color }}>
+                                {stockStatus.text}
+                              </span>
+                            </div>
+                            <div className="text-sm font-semibold text-blue-600">
+                              ₩{product.salePriceKrw.toLocaleString()}
+                            </div>
                           </div>
                         </div>
-                      </td>
-                      <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>{product.category}</td>
-                      <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                        <div>
-                          <p style={{ fontWeight: '600' }}>{product.onHand}</p>
-                          <span style={{
-                            fontSize: '0.75rem',
-                            color: stockStatus.color,
-                            fontWeight: '500'
-                          }}>
-                            {stockStatus.text}
-                          </span>
-                        </div>
-                      </td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right', fontSize: '0.875rem' }}>
-                        ¥{product.costCny}
-                      </td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right', fontSize: '0.875rem' }}>
-                        ₩{product.salePriceKrw.toLocaleString()}
-                      </td>
-                      <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                        <span style={{
-                          padding: '0.25rem 0.5rem',
-                          backgroundColor: product.active ? '#d1fae5' : '#fee2e2',
-                          color: product.active ? '#065f46' : '#dc2626',
-                          borderRadius: '0.25rem',
-                          fontSize: '0.75rem'
-                        }}>
-                          {product.active ? texts.active : texts.inactive}
-                        </span>
-                      </td>
-                    </tr>
+                      </div>
+                    </div>
                   );
                 })}
-              </tbody>
-            </table>
+              </div>
+
+              {/* 데스크톱 테이블 뷰 */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{texts.sku}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{texts.productName}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{texts.category}</th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">{texts.stock}</th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">{texts.cost}</th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">{texts.price}</th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">{texts.status}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {paginatedProducts.map((product) => {
+                      const stockStatus = getStockStatus(product);
+                      return (
+                        <tr 
+                          key={product.id} 
+                          onClick={() => handleProductClick(product)}
+                          className="hover:bg-gray-50 cursor-pointer"
+                        >
+                          <td className="px-6 py-4 whitespace-nowrap text-xs font-mono">{product.sku}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center gap-3">
+                              {product.imageUrl && (
+                                <img
+                                  src={product.imageUrl}
+                                  alt={product.name}
+                                  className="w-10 h-10 object-cover rounded"
+                                />
+                              )}
+                              <div>
+                                <p className="text-sm font-medium">{product.name}</p>
+                                <p className="text-xs text-gray-500">
+                                  {product.model} / {product.color} / {product.brand}
+                                </p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">{product.category}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-center">
+                            <div>
+                              <p className="text-sm font-medium">{product.onHand}</p>
+                              <span className="text-xs" style={{ color: stockStatus.color }}>
+                                {stockStatus.text}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
+                            ¥{product.costCny}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
+                            ₩{product.salePriceKrw.toLocaleString()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-center">
+                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                              product.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                            }`}>
+                              {product.active ? texts.active : texts.inactive}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
           
           {/* 페이지네이션 */}

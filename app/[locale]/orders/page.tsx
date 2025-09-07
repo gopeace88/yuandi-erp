@@ -9,7 +9,6 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api/client';
 import { exportToExcel } from '@/lib/utils/excel';
-import OrdersPageMobile from './OrdersPageMobile';
 import Pagination from '@/components/common/Pagination';
 
 interface OrdersPageProps {
@@ -49,7 +48,6 @@ interface Order {
 
 export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
   const router = useRouter();
-  const [isMobile, setIsMobile] = useState(false);
   
   // 페이지네이션 상태
   const [currentPage, setCurrentPage] = useState(1);
@@ -179,15 +177,6 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
 
   const texts = t[locale as keyof typeof t] || t.ko;
 
-  // 모바일 체크
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
 
   // 사용자 권한 체크
   useEffect(() => {
@@ -715,28 +704,16 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
     setShowDetailModal(true);
   };
 
-  // 모바일 화면일 경우 모바일 컴포넌트 렌더링
-  if (isMobile) {
-    return <OrdersPageMobile params={{ locale }} />;
-  }
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f3f4f6' }}>
+    <div className="min-h-screen bg-gray-100">
       {/* 헤더 */}
-      <div style={{ backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', padding: '1rem 2rem' }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{texts.title}</h1>
+      <div className="bg-white border-b border-gray-200 px-4 py-3 md:px-6 md:py-4">
+        <div className="max-w-7xl mx-auto flex justify-between items-center">
+          <h1 className="text-lg md:text-2xl font-bold">{texts.title}</h1>
           <button
             onClick={() => setShowCreateModal(true)}
-            style={{
-              padding: '0.5rem 1rem',
-              backgroundColor: '#2563eb',
-              color: 'white',
-              borderRadius: '0.375rem',
-              border: 'none',
-              cursor: 'pointer',
-              fontWeight: '500'
-            }}
+            className="px-3 py-1.5 md:px-4 md:py-2 bg-blue-600 text-white rounded-md text-sm md:text-base font-medium hover:bg-blue-700"
           >
             + {texts.createOrder}
           </button>
@@ -744,37 +721,28 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
       </div>
 
       {/* 필터 및 검색 */}
-      <div style={{ maxWidth: '1200px', margin: '2rem auto', padding: '0 2rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-          <div style={{ display: 'flex', gap: '1rem', flex: 1 }}>
-          <input
-            type="text"
-            placeholder={texts.search}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            style={{
-              flex: 1,
-              padding: '0.5rem',
-              border: '1px solid #d1d5db',
-              borderRadius: '0.375rem'
-            }}
-          />
-          <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            style={{
-              padding: '0.5rem',
-              border: '1px solid #d1d5db',
-              borderRadius: '0.375rem'
-            }}
-          >
-            <option value="all">{texts.all}</option>
-            <option value="paid">{texts.paid}</option>
-            <option value="shipped">{texts.shipped}</option>
-            <option value="delivered">{texts.done}</option>
-            <option value="cancelled">{texts.cancelled}</option>
-            <option value="refunded">{texts.refunded}</option>
-          </select>
+      <div className="max-w-7xl mx-auto px-4 py-4 md:px-6 md:py-6">
+        <div className="flex flex-col md:flex-row gap-3 mb-4">
+          <div className="flex flex-1 gap-2">
+            <input
+              type="text"
+              placeholder={texts.search}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm md:text-base"
+            />
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-md text-sm md:text-base"
+            >
+              <option value="all">{texts.all}</option>
+              <option value="paid">{texts.paid}</option>
+              <option value="shipped">{texts.shipped}</option>
+              <option value="delivered">{texts.done}</option>
+              <option value="cancelled">{texts.cancelled}</option>
+              <option value="refunded">{texts.refunded}</option>
+            </select>
           </div>
           <button
             onClick={() => {
@@ -794,78 +762,94 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
                 sheetName: locale === 'ko' ? '주문' : 'Orders'
               });
             }}
-            style={{
-              padding: '0.5rem 1rem',
-              backgroundColor: '#10b981',
-              color: 'white',
-              border: 'none',
-              borderRadius: '0.375rem',
-              fontSize: '0.875rem',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              whiteSpace: 'nowrap'
-            }}
+            className="px-3 py-2 bg-green-500 text-white rounded-md text-sm md:text-base font-medium hover:bg-green-600 flex items-center gap-2 whitespace-nowrap"
           >
             📥 {locale === 'ko' ? '엑셀 저장' : locale === 'zh-CN' ? '导出Excel' : 'Export'}
           </button>
         </div>
 
         {/* 주문 목록 */}
-        <div style={{ backgroundColor: 'white', borderRadius: '0.5rem', overflow: 'hidden' }}>
+        <div className="bg-white rounded-lg shadow overflow-hidden">
           {filteredOrders.length === 0 ? (
-            <div style={{ padding: '3rem', textAlign: 'center', color: '#6b7280' }}>
+            <div className="p-8 text-center text-gray-500">
               {texts.noOrders}
             </div>
           ) : (
-            <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
-                <thead>
-                <tr style={{ backgroundColor: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600' }}>{texts.orderNo}</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600' }}>{texts.orderDate}</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600' }}>{texts.customerName}</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600' }}>{texts.customerPhone}</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600' }}>{texts.status}</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'right', fontSize: '0.875rem', fontWeight: '600' }}>{texts.totalAmount}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {Array.isArray(paginatedOrders) && paginatedOrders.map((order) => (
-                  <tr 
-                    key={order.id} 
+            <>
+              {/* 모바일 카드 뷰 */}
+              <div className="md:hidden">
+                {paginatedOrders.map((order) => (
+                  <div 
+                    key={order.id}
                     onClick={() => handleOrderClick(order)}
-                    style={{ 
-                      borderBottom: '1px solid #e5e7eb',
-                      cursor: 'pointer'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
-                    <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>{order.orderNo}</td>
-                    <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>{order.orderDate}</td>
-                    <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>{order.customerName}</td>
-                    <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>{order.customerPhone}</td>
-                    <td style={{ padding: '0.75rem' }}>
-                      <span style={{
-                        padding: '0.25rem 0.5rem',
-                        backgroundColor: `${getStatusColor(order.status)}20`,
-                        color: getStatusColor(order.status),
-                        borderRadius: '0.25rem',
-                        fontSize: '0.75rem',
-                        fontWeight: '600'
-                      }}>
+                    className="p-4 border-b border-gray-200 hover:bg-gray-50 cursor-pointer"
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <div className="font-semibold text-sm">{order.orderNo}</div>
+                        <div className="text-xs text-gray-500">{order.orderDate}</div>
+                      </div>
+                      <span className={`px-2 py-1 text-xs font-semibold rounded-full`}
+                        style={{
+                          backgroundColor: `${getStatusColor(order.status)}20`,
+                          color: getStatusColor(order.status)
+                        }}>
                         {getStatusText(order.status)}
                       </span>
-                    </td>
-                    <td style={{ padding: '0.75rem', textAlign: 'right', fontSize: '0.875rem' }}>
-                      ₩{order.totalAmount.toLocaleString()}
-                    </td>
-                  </tr>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">{order.customerName}</span>
+                        <span className="font-semibold">₩{order.totalAmount.toLocaleString()}</span>
+                      </div>
+                      <div className="text-xs text-gray-500">{order.customerPhone}</div>
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-              </table>
-            </div>
+              </div>
+
+              {/* 데스크톱 테이블 뷰 */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{texts.orderNo}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{texts.orderDate}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{texts.customerName}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{texts.customerPhone}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{texts.status}</th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">{texts.totalAmount}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {paginatedOrders.map((order) => (
+                      <tr 
+                        key={order.id} 
+                        onClick={() => handleOrderClick(order)}
+                        className="hover:bg-gray-50 cursor-pointer"
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">{order.orderNo}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">{order.orderDate}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">{order.customerName}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">{order.customerPhone}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
+                            style={{
+                              backgroundColor: `${getStatusColor(order.status)}20`,
+                              color: getStatusColor(order.status)
+                            }}>
+                            {getStatusText(order.status)}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
+                          ₩{order.totalAmount.toLocaleString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
 
