@@ -10,6 +10,7 @@ import { useRouter } from 'next/navigation';
 import api from '@/lib/api/client';
 import { exportToExcel } from '@/lib/utils/excel';
 import Pagination from '@/components/common/Pagination';
+import NavigationMobile from '@/components/NavigationMobile';
 
 interface OrdersPageProps {
   params: { locale: string };
@@ -707,6 +708,11 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
 
   return (
     <div className="min-h-screen bg-gray-100">
+      {/* 모바일 네비게이션 바 */}
+      <div className="md:hidden">
+        <NavigationMobile locale={locale} />
+      </div>
+      
       {/* 헤더 */}
       <div className="bg-white border-b border-gray-200 px-4 py-3 md:px-6 md:py-4">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
