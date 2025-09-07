@@ -297,20 +297,34 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
       }
       
       if (ordersData) {
-        const formattedOrders: Order[] = ordersData.map(order => ({
-          id: order.id,
-          orderNo: order.order_number,
-          orderDate: order.created_at?.split('T')[0] || '',
-          customerName: order.customer_name,
-          customerPhone: order.customer_phone,
-          shippingAddress: `${order.shipping_address_line1} ${order.shipping_address_line2 || ''}`.trim(),
-          status: (order.status?.toLowerCase() || 'paid') as 'paid' | 'shipped' | 'delivered' | 'cancelled' | 'refunded',
-          totalAmount: order.total_krw,
-          items: order.order_items.map((item: any) => ({
-            productName: item.products?.name || '',
-            quantity: item.quantity
-          }))
-        }));
+        console.log('🔍 첫 번째 주문 구조:', ordersData[0]);
+        console.log('🔍 order_items 확인:', {
+          exists: ordersData[0]?.order_items !== undefined,
+          isArray: Array.isArray(ordersData[0]?.order_items),
+          value: ordersData[0]?.order_items
+        });
+        
+        const formattedOrders: Order[] = ordersData.map(order => {
+          // order_items가 배열인지 확인
+          const items = Array.isArray(order.order_items) 
+            ? order.order_items.map((item: any) => ({
+                productName: item.products?.name || item.product_name || '',
+                quantity: item.quantity || 0
+              }))
+            : [];
+          
+          return {
+            id: order.id,
+            orderNo: order.order_number,
+            orderDate: order.created_at?.split('T')[0] || '',
+            customerName: order.customer_name,
+            customerPhone: order.customer_phone,
+            shippingAddress: `${order.shipping_address_line1 || ''} ${order.shipping_address_line2 || ''}`.trim(),
+            status: (order.status?.toLowerCase() || 'paid') as 'paid' | 'shipped' | 'delivered' | 'cancelled' | 'refunded',
+            totalAmount: order.total_krw || 0,
+            items: items
+          };
+        });
         
         console.log('✅ 포맷된 주문 데이터:', formattedOrders.length + '개');
         console.log('첫 번째 주문 상세:', formattedOrders[0]);
