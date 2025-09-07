@@ -7,7 +7,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-// import { createClient } from '@/lib/supabase/client'; // 개발 모드에서는 비활성화
+import { createClient } from '@/lib/supabase/client';
 
 interface HomePageProps {
   params: { locale: string };
@@ -63,43 +63,51 @@ export default function HomePage({ params: { locale } }: HomePageProps) {
     setIsLoading(true);
     setError('');
     
-    console.log('Login attempt:', { email, password, locale });
-    
-    // 테스트 계정으로 로그인 (개발 모드)
-    if (email === 'admin@yuandi.com' && password === 'admin123') {
-      console.log('admin login successful');
-      localStorage.setItem('userRole', 'admin');
-      localStorage.setItem('userName', 'admin User');
-      setIsLoading(false);
-      // window.location.href 사용으로 변경
+    try {
+      const supabase = createClient();
+      
+      // Supabase 인증
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      
+      if (authError) {
+        console.error('Auth error:', authError);
+        setError(t.error);
+        setIsLoading(false);
+        return;
+      }
+      
+      // 사용자 프로필 조회
+      const { data: profile, error: profileError } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('id', authData.user?.id)
+        .single();
+      
+      if (profileError || !profile) {
+        console.error('Profile error:', profileError);
+        setError(t.error);
+        setIsLoading(false);
+        return;
+      }
+      
+      // 로컬 스토리지에 저장
+      localStorage.setItem('userRole', profile.role);
+      localStorage.setItem('userName', profile.name);
+      localStorage.setItem('userEmail', profile.email);
+      
+      // 대시보드로 이동
       window.location.href = `/${locale}/dashboard`;
-      return;
-    } else if (email === 'order@yuandi.com' && password === 'order123') {
-      console.log('order_manager login successful');
-      localStorage.setItem('userRole', 'order_manager');
-      localStorage.setItem('userName', 'Order Manager');
+      
+    } catch (error) {
+      console.error('Login error:', error);
+      setError(t.error);
       setIsLoading(false);
-      window.location.href = `/${locale}/dashboard`;
-      return;
-    } else if (email === 'ship@yuandi.com' && password === 'ship123') {
-      console.log('ship_manager login successful');
-      localStorage.setItem('userRole', 'ship_manager');
-      localStorage.setItem('userName', 'Ship Manager');
-      setIsLoading(false);
-      window.location.href = `/${locale}/dashboard`;
-      return;
     }
-    
-    console.log('Login failed: Invalid credentials');
-    // 잘못된 계정 정보
-    setError(t.error);
-    setIsLoading(false);
   };
 
-  const handleQuickLogin = (email: string, password: string) => {
-    setEmail(email);
-    setPassword(password);
-  };
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4 py-8">
@@ -186,64 +194,6 @@ export default function HomePage({ params: { locale } }: HomePageProps) {
           </a>
         </div>
 
-        {/* 테스트 계정 정보 (개발 모드) */}
-        <div style={{
-          marginTop: '2rem',
-          padding: '1rem',
-          backgroundColor: '#fef3c7',
-          borderRadius: '0.375rem',
-          fontSize: '0.875rem'
-        }}>
-          <p style={{ fontWeight: '600', marginBottom: '0.5rem' }}>{t.testAccount}:</p>
-          <div style={{ marginBottom: '0.25rem' }}>
-            <button
-              type="button"
-              onClick={() => handleQuickLogin('admin@yuandi.com', 'admin123')}
-              style={{
-                color: '#1e40af',
-                textDecoration: 'underline',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                padding: 0
-              }}
-            >
-              {t.adminRole}: admin@yuandi.com / admin123
-            </button>
-          </div>
-          <div style={{ marginBottom: '0.25rem' }}>
-            <button
-              type="button"
-              onClick={() => handleQuickLogin('order@yuandi.com', 'order123')}
-              style={{
-                color: '#1e40af',
-                textDecoration: 'underline',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                padding: 0
-              }}
-            >
-              {t.orderManagerRole}: order@yuandi.com / order123
-            </button>
-          </div>
-          <div>
-            <button
-              type="button"
-              onClick={() => handleQuickLogin('ship@yuandi.com', 'ship123')}
-              style={{
-                color: '#1e40af',
-                textDecoration: 'underline',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                padding: 0
-              }}
-            >
-              {t.shipManagerRole}: ship@yuandi.com / ship123
-            </button>
-          </div>
-        </div>
 
         {/* 언어 선택 */}
         <div style={{ 
