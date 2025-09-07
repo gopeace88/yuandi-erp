@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     
     // 기본 쿼리 생성
     let query = supabase
-      .from('cashbook')
+      .from('cashbook_transactions')
       .select('*')
       .order('transaction_date', { ascending: false });
     
@@ -49,12 +49,12 @@ export async function GET(request: NextRequest) {
     
     // 전체 개수 가져오기
     const { count } = await supabase
-      .from('cashbook')
+      .from('cashbook_transactions')
       .select('*', { count: 'exact', head: true });
     
     // 잔액 계산을 위한 요약 정보
     const { data: allTransactions } = await supabase
-      .from('cashbook')
+      .from('cashbook_transactions')
       .select('amount_krw, type')
       .order('transaction_date', { ascending: true });
     
@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
     // 이번 달 수익
     const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
     const { data: monthlyTransactions } = await supabase
-      .from('cashbook')
+      .from('cashbook_transactions')
       .select('amount_krw')
       .gte('transaction_date', currentMonth + '-01')
       .lt('transaction_date', new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toISOString());
@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
     
     // 거래 생성
     const { data: transaction, error } = await supabase
-      .from('cashbook')
+      .from('cashbook_transactions')
       .insert({
         type: body.type,
         amount_krw: body.amountKrw,

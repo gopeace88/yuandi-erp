@@ -241,7 +241,7 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
       console.log('💳 Supabase 클라이언트 생성 완료');
       
       const { data: transactions, error } = await supabase
-        .from('cashbook')
+        .from('cashbook_transactions')
         .select('*')
         .order('transaction_date', { ascending: false });
       
@@ -400,7 +400,7 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
       const supabase = createClient();
 
       const { data, error } = await supabase
-        .from('cashbook')
+        .from('cashbook_transactions')
         .insert({
           transaction_date: addForm.transactionDate,
           type: addForm.type,

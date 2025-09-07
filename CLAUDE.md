@@ -130,6 +130,21 @@ graph LR
 - **Stock**: Single `onHand` field, real-time validation
 - **Dual Shipping**: Korea + China tracking in shipments table
 
+## 📊 Test Data Management
+
+### Bulk Test Data Generation
+For pagination testing and development, use the following SQL script:
+```bash
+# Generate 100+ records for each table
+psql $DATABASE_URL -f scripts/generate-test-data.sql
+
+# Or use Supabase Dashboard SQL Editor
+# File: scripts/generate-test-data.sql
+# Creates: 10 categories, 100 products, 100 orders, 200+ order items
+```
+
+**⚠️ WARNING**: This script will TRUNCATE all existing data. Use only in development/test environments.
+
 ## 🔗 API Structure Map
 
 | Category | Endpoints | Auth |

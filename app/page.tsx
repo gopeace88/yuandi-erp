@@ -7,8 +7,16 @@ export default function HomePage() {
   const router = useRouter();
 
   useEffect(() => {
-    // 로그인 페이지로 바로 리다이렉트
-    router.push('/login');
+    // 브라우저 언어 감지
+    const browserLang = navigator.language || navigator.languages[0];
+    
+    // 중국어 체크 (zh, zh-CN, zh-TW, zh-HK 등)
+    if (browserLang.toLowerCase().startsWith('zh')) {
+      router.push('/zh-CN');
+    } else {
+      // 한국어 또는 기타 언어는 모두 한국어로
+      router.push('/ko');
+    }
   }, [router]);
 
   // 리다이렉트 중에 보여줄 로딩 화면

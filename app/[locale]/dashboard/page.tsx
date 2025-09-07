@@ -380,7 +380,8 @@ export default function DashboardPage({ params: { locale } }: DashboardPageProps
                     'refunded': { bg: '#fee2e2', color: '#991b1b', text: locale === 'ko' ? '환불' : locale === 'zh-CN' ? '已退款' : 'Refunded' }
                   };
                   
-                  const status = statusColors[order.status as keyof typeof statusColors];
+                  const status = statusColors[order.status as keyof typeof statusColors] || 
+                    { bg: '#f3f4f6', color: '#374151', text: order.status || 'Unknown' };
                   
                   return (
                     <tr 

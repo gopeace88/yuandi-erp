@@ -65,7 +65,7 @@ export class CashbookService {
         : Math.round(entry.amount * fxRate);
       
       const { data, error } = await this.supabase
-        .from('cashbook')
+        .from('cashbook_transactions')
         .insert({
           date: entry.date || new Date(),
           type: entry.type,
@@ -256,7 +256,7 @@ export class CashbookService {
       endOfDay.setHours(23, 59, 59, 999);
       
       const { data, error } = await this.supabase
-        .from('cashbook')
+        .from('cashbook_transactions')
         .select('*')
         .gte('date', startOfDay.toISOString())
         .lte('date', endOfDay.toISOString())
@@ -341,7 +341,7 @@ export class CashbookService {
       const endDate = new Date(year, month, 0, 23, 59, 59, 999);
       
       const { data, error } = await this.supabase
-        .from('cashbook')
+        .from('cashbook_transactions')
         .select('*')
         .gte('date', startDate.toISOString())
         .lte('date', endDate.toISOString());
@@ -424,7 +424,7 @@ export class CashbookService {
   }> {
     try {
       let query = this.supabase
-        .from('cashbook')
+        .from('cashbook_transactions')
         .select('amount, currency, amount_krw');
       
       if (untilDate) {

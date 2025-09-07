@@ -23,7 +23,7 @@ interface Order {
   customerName: string;
   customerPhone: string;
   shippingAddress: string;
-  status: 'paid' | 'shipped' | 'delivered' | 'cancelled' | 'refunded';
+  status: 'paid' | 'shipped' | 'delivered' | 'done' | 'cancelled' | 'refunded';
   totalAmount: number;
   items: Array<{
     productName: string;
@@ -304,7 +304,7 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
           customerName: order.customer_name,
           customerPhone: order.customer_phone,
           shippingAddress: `${order.shipping_address_line1} ${order.shipping_address_line2 || ''}`.trim(),
-          status: (order.status?.toUpperCase() || 'paid') as 'paid' | 'shipped' | 'delivered' | 'cancelled' | 'refunded',
+          status: (order.status?.toLowerCase() || 'paid') as 'paid' | 'shipped' | 'delivered' | 'cancelled' | 'refunded',
           totalAmount: order.total_krw,
           items: order.order_items.map((item: any) => ({
             productName: item.products?.name || '',
@@ -463,9 +463,9 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
     return isShipping && matchesSearch;
   });
 
-  // 배송 완료 주문 필터링 (delivered 상태의 주문)
+  // 배송 완료 주문 필터링 (done 상태의 주문)
   const deliveredOrders = orders.filter(order => {
-    const isDelivered = order.status === 'delivered';
+    const isDelivered = order.status === 'done' || order.status === 'delivered';
     const matchesSearch = searchTerm === '' || 
       order.orderNo.includes(searchTerm) ||
       order.customerName.includes(searchTerm) ||

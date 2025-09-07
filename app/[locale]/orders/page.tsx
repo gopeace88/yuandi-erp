@@ -533,7 +533,7 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
         
         // 출납장부에 환불 기록 추가
         const { error: cashbookError } = await supabase
-          .from('cashbook')
+          .from('cashbook_transactions')
           .insert({
             transaction_date: new Date().toISOString().split('T')[0],
             type: 'refund',
