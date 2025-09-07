@@ -247,6 +247,13 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
         return;
       }
       
+      console.log('📋 로드된 주문 데이터:', { 
+        count: orders?.length, 
+        isArray: Array.isArray(orders),
+        firstOrder: orders?.[0],
+        type: typeof orders 
+      });
+      
       // 데이터 변환 - 안전한 처리 추가
       const transformedOrders = Array.isArray(orders) ? orders.map((order: any) => ({
         id: order.id,
@@ -335,8 +342,8 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
       return;
     }
     
-    // 데이터 변환
-    const transformedProducts = products?.map((product: any) => ({
+    // 데이터 변환 - 안전한 처리
+    const transformedProducts = Array.isArray(products) ? products.map((product: any) => ({
       id: product.id,
       sku: product.sku,
       name: product.name,
@@ -347,7 +354,7 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
       onHand: product.inventory?.[0]?.on_hand || 0,
       salePrice: product.price_krw || product.cost_cny * 180,
       image_url: product.image_urls?.[0] || ''
-    })) || [];
+    })) : [];
     
     setProducts(transformedProducts);
     } catch (error) {

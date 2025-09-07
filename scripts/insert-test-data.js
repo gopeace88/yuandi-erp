@@ -250,12 +250,117 @@ async function insertTestData() {
                 .eq('id', order.id);
         }
 
+        // 5. 출납장부 데이터 생성
+        console.log('💰 출납장부 데이터 생성 중...');
+        
+        // Admin 사용자 ID 가져오기
+        const { data: adminUser } = await supabase
+            .from('user_profiles')
+            .select('id')
+            .eq('email', 'admin@yuandi.com')
+            .single();
+        
+        if (!adminUser) {
+            console.log('❌ Admin 사용자를 찾을 수 없습니다.');
+            return;
+        }
+        
+        const adminId = adminUser.id;
+        const cashbookEntries = [];
+        
+        // 수입 데이터 (주문 결제)
+        let balance = 0;
+        for (let i = 1; i <= 10; i++) {
+            const amount = 50000 + (i * 10000);
+            balance += amount;
+            cashbookEntries.push({
+                type: 'income',
+                category: 'sales',
+                amount_krw: amount,
+                balance_krw: balance,
+                amount_cny: null,
+                exchange_rate: 180,
+                description: `주문 #${i} 결제 - 테스트 판매 수입`,
+                transaction_date: new Date(Date.now() - (10 - i) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                reference_type: 'order',
+                reference_id: null,
+                tags: ['판매', '수입'],
+                created_by: adminId
+            });
+        }
+        
+        // 지출 데이터 (상품 구매)
+        for (let i = 1; i <= 10; i++) {
+            const cnyAmount = 200 + (i * 50);
+            const krwAmount = cnyAmount * 180;
+            balance -= krwAmount;
+            cashbookEntries.push({
+                type: 'expense',
+                category: 'purchase',
+                amount_krw: krwAmount,
+                balance_krw: balance,
+                amount_cny: cnyAmount,
+                exchange_rate: 180,
+                description: `상품 구매 #${i} - 테스트 구매 지출`,
+                transaction_date: new Date(Date.now() - (15 - i) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                reference_type: 'purchase',
+                reference_id: null,
+                tags: ['구매', '지출'],
+                created_by: adminId
+            });
+        }
+        
+        // 기타 지출 (운영비)
+        balance -= 150000;
+        cashbookEntries.push({
+            type: 'expense',
+            category: 'shipping',
+            amount_krw: 150000,
+            balance_krw: balance,
+            amount_cny: null,
+            exchange_rate: 180,
+            description: '배송비 정산 - 월간 배송비',
+            transaction_date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            reference_type: null,
+            reference_id: null,
+            tags: ['배송비', '운영비'],
+            created_by: adminId
+        });
+        
+        balance -= 200000;
+        cashbookEntries.push({
+            type: 'expense',
+            category: 'operational',
+            amount_krw: 200000,
+            balance_krw: balance,
+            amount_cny: null,
+            exchange_rate: 180,
+            description: '사무실 임대료 - 월간 임대료',
+            transaction_date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            reference_type: null,
+            reference_id: null,
+            tags: ['임대료', '운영비'],
+            created_by: adminId
+        });
+        
+        // 출납장부 데이터 삽입
+        for (const entry of cashbookEntries) {
+            const { error } = await supabase
+                .from('cashbook_transactions')
+                .insert(entry);
+            
+            if (error) {
+                console.log(`출납장부 항목 생성 오류:`, error.message);
+            }
+        }
+        
         console.log('✅ 테스트 데이터 생성 완료!');
         console.log('📊 생성된 데이터:');
         console.log('- 카테고리: 10개');
         console.log('- 상품: 20개');
         console.log('- 주문: 10개');
         console.log('- 재고: 20개');
+        console.log('- 출납장부: 22개');
 
     } catch (error) {
         console.error('❌ 테스트 데이터 생성 중 오류:', error);
