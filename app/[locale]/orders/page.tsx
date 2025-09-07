@@ -40,7 +40,7 @@ interface Order {
   shippingAddress: string;
   shippingAddressDetail?: string;
   zipCode: string;
-  status: 'paid' | 'shipped' | 'delivered' | 'cancelled' | 'refunded';
+  status: 'paid' | 'shipped' | 'delivered' | 'done' | 'cancelled' | 'refunded';
   totalAmount: number;
   productName: string;
   productSku: string;
@@ -247,8 +247,8 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
         return;
       }
       
-      // 데이터 변환
-      const transformedOrders = orders?.map((order: any) => ({
+      // 데이터 변환 - 안전한 처리 추가
+      const transformedOrders = Array.isArray(orders) ? orders.map((order: any) => ({
         id: order.id,
         orderNo: order.order_number,
         orderDate: order.created_at,
@@ -259,12 +259,12 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
         shippingAddress: order.shipping_address_line1,
         shippingAddressDetail: order.shipping_address_line2,
         zipCode: order.shipping_postal_code,
-        status: order.status?.toUpperCase() || 'paid',
+        status: order.status?.toLowerCase() || 'paid',
         totalAmount: order.total_krw,
         productName: order.order_items?.[0]?.products?.name || '',
         productSku: order.order_items?.[0]?.products?.sku || '',
         quantity: order.order_items?.[0]?.quantity || 0,
-      })) || [];
+      })) : [];
       
       setOrders(transformedOrders);
     } catch (error) {
@@ -605,10 +605,11 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
       paid: '#3b82f6',
       shipped: '#f59e0b',
       delivered: '#10b981',
+      done: '#10b981',
       cancelled: '#6b7280',
       refunded: '#ef4444',
     };
-    return colors[status];
+    return colors[status] || '#6b7280';
   };
 
   const getStatusText = (status: Order['status']) => {
@@ -616,10 +617,11 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
       paid: texts.paid,
       shipped: texts.shipped,
       delivered: texts.done,
+      done: texts.done,
       cancelled: texts.cancelled,
       refunded: texts.refunded,
     };
-    return statusTexts[status];
+    return statusTexts[status] || status;
   };
 
   const filteredOrders = orders.filter(order => {

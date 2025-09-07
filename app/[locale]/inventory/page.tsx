@@ -282,7 +282,7 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
           salePriceKrw: 125000,
           onHand: 15,
           lowStockThreshold: 5,
-          imageUrl: 'https://via.placeholder.com/150',
+          imageUrl: '',
           description: locale === 'ko' ? '고급 소재로 제작된 프리미엄 가방' : '用高级材料制作的高级包',
           active: true,
         },
@@ -298,7 +298,7 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
           salePriceKrw: 89000,
           onHand: 3, // 재고 부족
           lowStockThreshold: 5,
-          imageUrl: 'https://via.placeholder.com/150',
+          imageUrl: '',
           active: true,
         },
         {
@@ -333,7 +333,7 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
       salePriceKrw: product.price_krw || product.cost_cny * 180,
       onHand: product.inventory?.[0]?.on_hand || 0,
       lowStockThreshold: product.low_stock_threshold,
-      imageUrl: product.image_urls?.[0] || 'https://via.placeholder.com/150',
+      imageUrl: product.image_urls?.[0] || '',
       description: product.description,
       active: product.is_active
     })) || [];
