@@ -315,7 +315,7 @@ export default function UsersPage({ params: { locale } }: UsersPageProps) {
   };
 
   // 사용자 추가
-  const handleAddUser = () => {
+  const handleAddUser = async () => {
     if (!userForm.name || !userForm.email || !userForm.password) {
       alert(t.required);
       return;
@@ -336,25 +336,77 @@ export default function UsersPage({ params: { locale } }: UsersPageProps) {
       return;
     }
 
-    const newUser: User = {
-      id: Date.now().toString(),
-      name: userForm.name,
-      email: userForm.email,
-      phone: userForm.phone,
-      role: userForm.role,
-      locale: userForm.locale,
-      active: true,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-
-    setUsers([...users, newUser]);
-    setShowAddModal(false);
-    resetForm();
+    try {
+      // Supabase Auth에 사용자 생성
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
+      
+      // 1. Auth 사용자 생성
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: userForm.email,
+        password: userForm.password,
+        options: {
+          data: {
+            name: userForm.name,
+            role: userForm.role
+          }
+        }
+      });
+      
+      if (authError) {
+        console.error('Auth 사용자 생성 실패:', authError);
+        alert(locale === 'ko' ? '사용자 생성에 실패했습니다.' : '用户创建失败');
+        return;
+      }
+      
+      if (authData.user) {
+        // 2. user_profiles 테이블에 프로필 생성
+        const { error: profileError } = await supabase
+          .from('user_profiles')
+          .insert({
+            id: authData.user.id,
+            email: userForm.email,
+            name: userForm.name,
+            phone: userForm.phone,
+            role: userForm.role,
+            locale: userForm.locale,
+            active: true
+          });
+        
+        if (profileError) {
+          console.error('프로필 생성 실패:', profileError);
+          // Auth 사용자 삭제 시도
+          await supabase.auth.admin.deleteUser(authData.user.id);
+          alert(locale === 'ko' ? '프로필 생성에 실패했습니다.' : '用户配置文件创建失败');
+          return;
+        }
+        
+        // UI 업데이트
+        const newUser: User = {
+          id: authData.user.id,
+          name: userForm.name,
+          email: userForm.email,
+          phone: userForm.phone,
+          role: userForm.role,
+          locale: userForm.locale,
+          active: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        
+        setUsers([...users, newUser]);
+        setShowAddModal(false);
+        resetForm();
+        alert(locale === 'ko' ? '사용자가 추가되었습니다.' : '用户已添加');
+      }
+    } catch (error) {
+      console.error('사용자 추가 중 오류:', error);
+      alert(locale === 'ko' ? '사용자 추가 중 오류가 발생했습니다.' : '添加用户时发生错误');
+    }
   };
 
   // 사용자 수정
-  const handleEditUser = () => {
+  const handleEditUser = async () => {
     if (!selectedUser || !userForm.name || !userForm.email) {
       alert(t.required);
       return;
@@ -370,38 +422,133 @@ export default function UsersPage({ params: { locale } }: UsersPageProps) {
       return;
     }
 
-    setUsers(users.map(u =>
-      u.id === selectedUser.id
-        ? {
-            ...u,
-            name: userForm.name,
-            email: userForm.email,
-            phone: userForm.phone,
-            role: userForm.role,
-            locale: userForm.locale,
-            updatedAt: new Date().toISOString()
-          }
-        : u
-    ));
-
-    setShowEditModal(false);
-    setSelectedUser(null);
-    resetForm();
+    try {
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
+      
+      // user_profiles 테이블 업데이트
+      const { error: profileError } = await supabase
+        .from('user_profiles')
+        .update({
+          name: userForm.name,
+          email: userForm.email,
+          phone: userForm.phone,
+          role: userForm.role,
+          locale: userForm.locale,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', selectedUser.id);
+      
+      if (profileError) {
+        console.error('프로필 업데이트 실패:', profileError);
+        alert(locale === 'ko' ? '사용자 수정에 실패했습니다.' : '用户修改失败');
+        return;
+      }
+      
+      // 비밀번호 변경이 있는 경우
+      if (userForm.password) {
+        const { error: passwordError } = await supabase.auth.updateUser({
+          password: userForm.password
+        });
+        
+        if (passwordError) {
+          console.error('비밀번호 변경 실패:', passwordError);
+          alert(locale === 'ko' ? '비밀번호 변경에 실패했습니다.' : '密码更改失败');
+        }
+      }
+      
+      // UI 업데이트
+      setUsers(users.map(u =>
+        u.id === selectedUser.id
+          ? {
+              ...u,
+              name: userForm.name,
+              email: userForm.email,
+              phone: userForm.phone,
+              role: userForm.role,
+              locale: userForm.locale,
+              updatedAt: new Date().toISOString()
+            }
+          : u
+      ));
+      
+      setShowEditModal(false);
+      setSelectedUser(null);
+      resetForm();
+      alert(locale === 'ko' ? '사용자가 수정되었습니다.' : '用户已修改');
+    } catch (error) {
+      console.error('사용자 수정 중 오류:', error);
+      alert(locale === 'ko' ? '사용자 수정 중 오류가 발생했습니다.' : '修改用户时发生错误');
+    }
   };
 
   // 사용자 활성/비활성화
-  const handleToggleActive = (userId: string) => {
-    setUsers(users.map(u =>
-      u.id === userId
-        ? { ...u, active: !u.active, updatedAt: new Date().toISOString() }
-        : u
-    ));
+  const handleToggleActive = async (userId: string) => {
+    const user = users.find(u => u.id === userId);
+    if (!user) return;
+    
+    try {
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
+      
+      const newActiveStatus = !user.active;
+      
+      const { error } = await supabase
+        .from('user_profiles')
+        .update({
+          active: newActiveStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', userId);
+      
+      if (error) {
+        console.error('사용자 상태 변경 실패:', error);
+        alert(locale === 'ko' ? '사용자 상태 변경에 실패했습니다.' : '用户状态更改失败');
+        return;
+      }
+      
+      // UI 업데이트
+      setUsers(users.map(u =>
+        u.id === userId
+          ? { ...u, active: newActiveStatus, updatedAt: new Date().toISOString() }
+          : u
+      ));
+      
+      alert(locale === 'ko' 
+        ? `사용자가 ${newActiveStatus ? '활성화' : '비활성화'}되었습니다.` 
+        : `用户已${newActiveStatus ? '激活' : '停用'}`);
+    } catch (error) {
+      console.error('사용자 상태 변경 중 오류:', error);
+      alert(locale === 'ko' ? '사용자 상태 변경 중 오류가 발생했습니다.' : '更改用户状态时发生错误');
+    }
   };
 
   // 사용자 삭제
-  const handleDeleteUser = (userId: string) => {
-    if (confirm(t.deleteConfirm)) {
+  const handleDeleteUser = async (userId: string) => {
+    if (!confirm(t.deleteConfirm)) return;
+    
+    try {
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
+      
+      // user_profiles에서 삭제 (Auth 사용자는 cascade로 자동 삭제)
+      const { error } = await supabase
+        .from('user_profiles')
+        .delete()
+        .eq('id', userId);
+      
+      if (error) {
+        console.error('사용자 삭제 실패:', error);
+        alert(locale === 'ko' ? '사용자 삭제에 실패했습니다.' : '用户删除失败');
+        return;
+      }
+      
+      // UI 업데이트
       setUsers(users.filter(u => u.id !== userId));
+      alert(locale === 'ko' ? '사용자가 삭제되었습니다.' : '用户已删除');
+    } catch (error) {
+      console.error('사용자 삭제 중 오류:', error);
+      alert(locale === 'ko' ? '사용자 삭제 중 오류가 발생했습니다.' : '删除用户时发生错误');
     }
   };
 
