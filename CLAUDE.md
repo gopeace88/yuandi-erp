@@ -74,9 +74,9 @@ PORT=8081 pnpm dev
 
 ### Latest Migration
 ```sql
-# Migration 007: Fix foreign key CASCADE constraints
-# Run this in Supabase dashboard if user deletion fails
-# Path: /supabase/migrations/007_fix_foreign_key_cascade.sql
+# Migration 009: Increase numeric field limits
+# Supports: cashbook 100억원, products 1천만원
+# Path: /supabase/migrations/009_increase_numeric_limits.sql
 ```
 
 ### Environment Setup
@@ -185,6 +185,7 @@ psql $DATABASE_URL -f scripts/generate-test-data.sql
 
 ### Recently Fixed
 - **Foreign Key Constraints**: Added CASCADE DELETE to all user_profiles references (Migration 007)
+- **Numeric Field Limits**: Increased to support cashbook 100억원, products 1천만원 (Migration 009)
 
 ## 📝 Quick Tasks
 

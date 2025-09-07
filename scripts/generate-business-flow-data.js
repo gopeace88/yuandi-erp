@@ -101,8 +101,8 @@ async function createProducts(categories, adminUser) {
         const hash = Math.random().toString(36).substring(2, 7).toUpperCase();
         const sku = `${category.name.substring(0, 2)}-${model}-${color.substring(0, 2)}-${brand.substring(0, 2)}-${hash}`;
         
-        const costCny = 100 + Math.floor(Math.random() * 900); // 100-1000 CNY
-        const priceKrw = Math.floor(costCny * 180 * 1.5); // 환율 180, 마진 50%
+        const costCny = 100 + Math.floor(Math.random() * 50000); // 100-50,000 CNY (최대 900만원)
+        const priceKrw = Math.floor(costCny * 180 * 1.5); // 환율 180, 마진 50% (최대 1천3백만원)
         
         products.push({
             sku: sku,
@@ -172,16 +172,16 @@ async function createProducts(categories, adminUser) {
         });
         
         // 출납장부 지출 기록 (상품 구매 비용)
-        // 금액이 너무 크면 오버플로우 발생하므로 적절히 제한
-        const purchaseAmountCny = Math.min(product.cost_cny * initialStock, 50000); // 최대 5만 CNY
-        const purchaseAmountKrw = Math.min(purchaseAmountCny * 180, 9000000); // 최대 900만원
+        // 스키마 확대로 더 큰 금액 가능 (NUMERIC 12,2 = 최대 100억원)
+        const purchaseAmountCny = Math.min(product.cost_cny * initialStock, 5000000); // 최대 500만 CNY
+        const purchaseAmountKrw = Math.min(purchaseAmountCny * 180, 900000000); // 최대 9억원
         cashbookTransactions.push({
             transaction_date: new Date(currentDate.getTime() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
             type: 'expense',
-            amount_krw: -Math.min(purchaseAmountKrw, 100000), // 최대 10만원으로 제한
-            amount_cny: -Math.min(purchaseAmountCny, 600), // 최대 600 CNY
+            amount_krw: -purchaseAmountKrw,
+            amount_cny: -purchaseAmountCny,
             exchange_rate: 180,
-            balance_krw: Math.floor(Math.random() * 1000000), // 0~100만원 사이 랜덤 잔액
+            balance_krw: Math.floor(Math.random() * 100000000), // 0~1억원 사이 랜덤 잔액
             description: `${product.name} 구매 (${initialStock}개) - ${product.sku}`,
             reference_type: 'product',
             reference_id: product.id,
