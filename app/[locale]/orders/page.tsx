@@ -362,26 +362,89 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
     if (!selectedProduct) return;
 
     try {
-      const orderData = {
-        customer_name: newOrder.customerName,
-        customer_phone: newOrder.customerPhone,
-        customer_email: newOrder.customerEmail || null,
-        customer_kakao_id: newOrder.kakaoId,  // 아이디 추가
-        pccc_code: newOrder.pcccCode,
-        shipping_address: newOrder.shippingAddress,
-        shipping_address_detail: newOrder.shippingAddressDetail || null,
-        zip_code: newOrder.zipCode,
-        customer_memo: newOrder.customerMemo || null,
-        items: [{
+      // Supabase 직접 호출
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
+      
+      // 주문 번호 생성
+      const today = new Date();
+      const dateStr = today.toISOString().slice(2, 10).replace(/-/g, '');
+      
+      // 오늘 날짜의 마지막 주문 번호 조회
+      const { data: lastOrder } = await supabase
+        .from('orders')
+        .select('order_number')
+        .like('order_number', `ORD-${dateStr}-%`)
+        .order('order_number', { ascending: false })
+        .limit(1)
+        .single();
+      
+      let orderNumber;
+      if (lastOrder) {
+        const lastNum = parseInt(lastOrder.order_number.split('-')[2]);
+        orderNumber = `ORD-${dateStr}-${String(lastNum + 1).padStart(3, '0')}`;
+      } else {
+        orderNumber = `ORD-${dateStr}-001`;
+      }
+      
+      // 주문 생성
+      const { data: order, error: orderError } = await supabase
+        .from('orders')
+        .insert({
+          order_number: orderNumber,
+          customer_name: newOrder.customerName,
+          customer_phone: newOrder.customerPhone,
+          customer_email: newOrder.customerEmail || null,
+          customer_kakao_id: newOrder.kakaoId,
+          pccc: newOrder.pcccCode,
+          shipping_address_line1: newOrder.shippingAddress,
+          shipping_address_line2: newOrder.shippingAddressDetail || null,
+          shipping_postal_code: newOrder.zipCode,
+          shipping_city: '',
+          shipping_state: '',
+          status: 'paid',
+          subtotal_krw: selectedProduct.salePrice * newOrder.quantity,
+          shipping_fee_krw: 0,
+          total_krw: selectedProduct.salePrice * newOrder.quantity,
+          payment_method: 'card',
+          paid_at: new Date().toISOString(),
+          notes: newOrder.customerMemo || null
+        })
+        .select()
+        .single();
+      
+      if (orderError) {
+        console.error('주문 생성 에러:', orderError);
+        alert(locale === 'ko' ? '주문 생성에 실패했습니다.' : '订单创建失败');
+        return;
+      }
+      
+      // 주문 아이템 생성
+      const { error: itemError } = await supabase
+        .from('order_items')
+        .insert({
+          order_id: order.id,
           product_id: selectedProduct.id,
-          sku: selectedProduct.sku,
-          product_name: selectedProduct.name,
           quantity: newOrder.quantity,
-          unit_price: selectedProduct.salePrice
-        }]
-      };
-
-      const response = await api.orders.create(orderData);
+          unit_price_krw: selectedProduct.salePrice,
+          total_price_krw: selectedProduct.salePrice * newOrder.quantity
+        });
+      
+      if (itemError) {
+        console.error('주문 아이템 생성 에러:', itemError);
+      }
+      
+      // 재고 업데이트
+      const { error: inventoryError } = await supabase.rpc('allocate_inventory', {
+        p_product_id: selectedProduct.id,
+        p_quantity: newOrder.quantity
+      });
+      
+      if (inventoryError) {
+        console.error('재고 할당 에러:', inventoryError);
+      }
+      
+      alert(locale === 'ko' ? '주문이 생성되었습니다.' : '订单已创建');
       
       // 주문 목록 새로고침
       await loadOrders();
@@ -444,24 +507,88 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
         return;
       }
       
+      // Supabase 직접 호출
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
+      
+      // 상태를 소문자로 변환 (DB는 소문자 사용)
+      const dbStatus = newStatus.toLowerCase();
+      
       // 주문취소 처리
       if (newStatus === 'CANCELLED' && selectedOrder) {
         // 주문 상태 변경
-        await api.orders.updateStatus(orderId, newStatus);
+        const { error: statusError } = await supabase
+          .from('orders')
+          .update({ 
+            status: dbStatus,
+            cancelled_at: new Date().toISOString()
+          })
+          .eq('id', orderId);
         
-        // 출납장부에 환불 기록 추가 (실제 구현 시 API 호출)
-        console.log('환불 기록 추가:', {
-          type: 'refund',
-          amount: -selectedOrder.totalAmount,
-          refType: 'order',
-          refNo: selectedOrder.orderNo,
-          description: `주문 취소 - ${selectedOrder.customerName}`,
-        });
+        if (statusError) {
+          console.error('주문 상태 변경 실패:', statusError);
+          alert(locale === 'ko' ? '주문 상태 변경에 실패했습니다.' : '订单状态更改失败');
+          return;
+        }
+        
+        // 출납장부에 환불 기록 추가
+        const { error: cashbookError } = await supabase
+          .from('cashbook')
+          .insert({
+            transaction_date: new Date().toISOString().split('T')[0],
+            type: 'refund',
+            amount: -selectedOrder.totalAmount,
+            currency: 'KRW',
+            fx_rate: 1,
+            amount_krw: -selectedOrder.totalAmount,
+            description: `주문 취소 - ${selectedOrder.customerName}`,
+            reference_type: 'order',
+            reference_id: orderId,
+            notes: `주문번호: ${selectedOrder.orderNo}`
+          });
+        
+        if (cashbookError) {
+          console.error('출납장부 기록 실패:', cashbookError);
+        }
+        
+        // 재고 복구
+        const { data: orderItems } = await supabase
+          .from('order_items')
+          .select('product_id, quantity')
+          .eq('order_id', orderId);
+        
+        if (orderItems) {
+          for (const item of orderItems) {
+            await supabase.rpc('deallocate_inventory', {
+              p_product_id: item.product_id,
+              p_quantity: item.quantity
+            });
+          }
+        }
         
         alert(locale === 'ko' ? '주문이 취소되었습니다.' : '订单已取消');
       } else {
         // 기타 상태 변경
-        await api.orders.updateStatus(orderId, newStatus);
+        let updateData: any = { status: dbStatus };
+        
+        if (newStatus === 'DONE') {
+          updateData.delivered_at = new Date().toISOString();
+        } else if (newStatus === 'REFUNDED') {
+          updateData.cancelled_at = new Date().toISOString();
+        }
+        
+        const { error } = await supabase
+          .from('orders')
+          .update(updateData)
+          .eq('id', orderId);
+        
+        if (error) {
+          console.error('주문 상태 변경 실패:', error);
+          alert(locale === 'ko' ? '주문 상태 변경에 실패했습니다.' : '订单状态更改失败');
+          return;
+        }
+        
+        alert(locale === 'ko' ? '주문 상태가 변경되었습니다.' : '订单状态已更改');
       }
       
       // 주문 목록 새로고침

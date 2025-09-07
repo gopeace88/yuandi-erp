@@ -483,33 +483,79 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
     }
   };
 
-  const handleAdjustment = (productId: string, quantity: number, reason: string) => {
+  const handleAdjustment = async (productId: string, quantity: number, reason: string) => {
     const product = products.find(p => p.id === productId);
     if (!product) return;
 
-    // 재고 업데이트
-    setProducts(products.map(p => 
-      p.id === productId 
-        ? { ...p, onHand: Math.max(0, p.onHand + quantity) }
-        : p
-    ));
+    try {
+      // Supabase에 재고 조정 저장
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
 
-    // 이동 내역 추가
-    const movement: StockMovement = {
-      id: String(movements.length + 1),
-      productId: product.id,
-      productName: product.name,
-      type: 'adjustment',
-      quantity: quantity,
-      balanceBefore: product.onHand,
-      balanceAfter: Math.max(0, product.onHand + quantity),
-      note: reason,
-      date: new Date().toISOString().slice(0, 10),
-      createdBy: localStorage.getItem('userName') || 'User',
-    };
+      // 재고 조정 트랜잭션
+      const newQuantity = Math.max(0, product.onHand + quantity);
+      
+      // 1. 재고 업데이트
+      const { error: inventoryError } = await supabase
+        .from('inventory')
+        .update({ 
+          on_hand: newQuantity,
+          updated_at: new Date().toISOString()
+        })
+        .eq('product_id', productId);
 
-    setMovements([movement, ...movements]);
-    setShowAdjustModal(false);
+      if (inventoryError) {
+        console.error('재고 업데이트 실패:', inventoryError);
+        alert(locale === 'ko' ? '재고 조정에 실패했습니다.' : '库存调整失败');
+        return;
+      }
+
+      // 2. 재고 이동 내역 기록
+      const { error: movementError } = await supabase
+        .from('inventory_movements')
+        .insert({
+          product_id: productId,
+          type: 'adjustment',
+          quantity: quantity,
+          balance_before: product.onHand,
+          balance_after: newQuantity,
+          notes: reason,
+          created_by: localStorage.getItem('userName') || 'User'
+        });
+
+      if (movementError) {
+        console.error('재고 이동 내역 기록 실패:', movementError);
+      }
+
+      // UI 업데이트
+      setProducts(products.map(p => 
+        p.id === productId 
+          ? { ...p, onHand: newQuantity }
+          : p
+      ));
+
+      // 이동 내역 추가
+      const movement: StockMovement = {
+        id: String(movements.length + 1),
+        productId: product.id,
+        productName: product.name,
+        type: 'adjustment',
+        quantity: quantity,
+        balanceBefore: product.onHand,
+        balanceAfter: newQuantity,
+        note: reason,
+        date: new Date().toISOString().slice(0, 10),
+        createdBy: localStorage.getItem('userName') || 'User',
+      };
+
+      setMovements([movement, ...movements]);
+      setShowAdjustModal(false);
+      
+      alert(locale === 'ko' ? '재고가 조정되었습니다.' : '库存已调整');
+    } catch (error) {
+      console.error('재고 조정 중 오류:', error);
+      alert(locale === 'ko' ? '재고 조정 중 오류가 발생했습니다.' : '库存调整时发生错误');
+    }
   };
 
   const resetProductForm = () => {

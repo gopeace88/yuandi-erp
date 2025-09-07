@@ -381,7 +381,7 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
   summary.netAmount = summary.totalIn - summary.totalOut;
 
   // 거래 추가
-  const handleAddTransaction = () => {
+  const handleAddTransaction = async () => {
     const amount = parseFloat(addForm.amount);
     const fxRate = parseFloat(addForm.fxRate);
     const amountKrw = addForm.currency === 'KRW' ? amount : amount * fxRate;
@@ -394,37 +394,72 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
       ? -Math.abs(amountKrw)
       : amountKrw;
 
-    const newTransaction: Transaction = {
-      id: Date.now().toString(),
-      transactionDate: addForm.transactionDate,
-      type: addForm.type,
-      amount: finalAmount,
-      currency: addForm.currency,
-      fxRate: fxRate,
-      amountKrw: finalAmountKrw,
-      description: addForm.description,
-      note: addForm.note || undefined,
-      bankName: addForm.bankName || undefined,
-      accountNo: addForm.accountNo || undefined,
-      createdAt: new Date().toISOString(),
-      createdBy: localStorage.getItem('userName') || 'Unknown'
-    };
+    try {
+      // Supabase에 거래 저장
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
 
-    setTransactions([...transactions, newTransaction]);
-    setShowAddModal(false);
-    
-    // 폼 초기화
-    setAddForm({
-      transactionDate: new Date().toISOString().split('T')[0],
-      type: 'adjustment',
-      amount: '',
-      currency: 'KRW',
-      fxRate: '1',
-      description: '',
-      note: '',
-      bankName: '',
-      accountNo: ''
-    });
+      const { data, error } = await supabase
+        .from('cashbook')
+        .insert({
+          transaction_date: addForm.transactionDate,
+          type: addForm.type,
+          amount: finalAmount,
+          currency: addForm.currency,
+          fx_rate: fxRate,
+          amount_krw: finalAmountKrw,
+          description: addForm.description,
+          notes: addForm.note || null,
+          bank_name: addForm.bankName || null,
+          account_no: addForm.accountNo || null
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('거래 추가 실패:', error);
+        alert(locale === 'ko' ? '거래 추가에 실패했습니다.' : '交易添加失败');
+        return;
+      }
+
+      // UI 업데이트
+      const newTransaction: Transaction = {
+        id: data.id,
+        transactionDate: data.transaction_date,
+        type: data.type,
+        amount: data.amount,
+        currency: data.currency,
+        fxRate: data.fx_rate,
+        amountKrw: data.amount_krw,
+        description: data.description,
+        note: data.notes,
+        bankName: data.bank_name,
+        accountNo: data.account_no,
+        createdAt: data.created_at,
+        createdBy: localStorage.getItem('userName') || 'Unknown'
+      };
+
+      setTransactions([...transactions, newTransaction]);
+      setShowAddModal(false);
+      
+      // 폼 초기화
+      setAddForm({
+        transactionDate: new Date().toISOString().split('T')[0],
+        type: 'adjustment',
+        amount: '',
+        currency: 'KRW',
+        fxRate: '1',
+        description: '',
+        note: '',
+        bankName: '',
+        accountNo: ''
+      });
+      
+      alert(locale === 'ko' ? '거래가 추가되었습니다.' : '交易已添加');
+    } catch (error) {
+      console.error('거래 추가 중 오류:', error);
+      alert(locale === 'ko' ? '거래 추가 중 오류가 발생했습니다.' : '添加交易时发生错误');
+    }
   };
 
   return (
