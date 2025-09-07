@@ -23,13 +23,20 @@ export interface Product {
   model?: string
   color?: string
   brand?: string
-  costCny: number
-  salePriceKrw?: number
+  cost_cny: number       // 원가 (위안화)
+  price_krw?: number     // 판매가 (원화)
+  cost_krw?: number      // 원가 원화 환산 (자동 계산)
+  price_cny?: number     // 판매가 위안화 환산 (자동 계산)
   onHand: number
   lowStockThreshold: number
+  barcode?: string
+  image_url?: string
+  description?: string
+  notes?: string
   active: boolean
   createdAt: string
   updatedAt: string
+  created_by?: string
 }
 
 export interface Order {
@@ -108,6 +115,18 @@ export interface Cashbook {
   note?: string
   createdAt: string
   createdBy?: User
+}
+
+export interface ExchangeRate {
+  id: string
+  date: string
+  base_currency: string
+  target_currency: string
+  rate: number
+  source: 'manual' | 'api_bank' | 'api_forex' | 'default'
+  is_active: boolean
+  created_at: string
+  updated_at: string
 }
 
 export interface EventLog {

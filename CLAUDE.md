@@ -11,6 +11,7 @@
 |----------|---------|----------|
 | 📘 **[PRD.md](./docs/(250907-v2.0)PRD.md)** | Product Requirements (중심 문서) | ⭐⭐⭐ |
 | 🗄️ **[DATABASE_ERD.md](./docs/(250907-v1.1)DATABASE_ERD.md)** | Database Schema | ⭐⭐⭐ |
+| 🔄 **[SCHEMA_CHANGE_PROCESS.md](./docs/SCHEMA_CHANGE_PROCESS.md)** | DB 스키마 변경 프로세스 | ⭐⭐⭐ |
 | 🔄 **[ITERATIVE_DEVELOPMENT.md](./docs/(250907-v1.0)ITERATIVE_DEVELOPMENT.md)** | Development Process | ⭐⭐ |
 | 🚀 **[DEPLOYMENT_GUIDE.md](./docs/(250907-v1.0)DEPLOYMENT_GUIDE.md)** | Deployment Steps | ⭐ |
 | 🛠️ **[SETUP_GUIDE.md](./docs/(250907-v1.0)SETUP_GUIDE.md)** | Local Setup | ⭐ |

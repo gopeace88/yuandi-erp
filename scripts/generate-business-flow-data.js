@@ -102,7 +102,10 @@ async function createProducts(categories, adminUser) {
         const sku = `${category.name.substring(0, 2)}-${model}-${color.substring(0, 2)}-${brand.substring(0, 2)}-${hash}`;
         
         const costCny = 100 + Math.floor(Math.random() * 50000); // 100-50,000 CNY (최대 900만원)
-        const priceKrw = Math.floor(costCny * 180 * 1.5); // 환율 180, 마진 50% (최대 1천3백만원)
+        const exchangeRate = 178.50; // 기본 환율
+        const priceKrw = Math.floor(costCny * exchangeRate * 1.5); // 마진 50%
+        const costKrw = costCny * exchangeRate; // 원가 원화 환산
+        const priceCny = priceKrw / exchangeRate; // 판매가 위안화 환산
         
         products.push({
             sku: sku,
@@ -114,6 +117,8 @@ async function createProducts(categories, adminUser) {
             brand: brand,
             cost_cny: costCny,
             price_krw: priceKrw,
+            cost_krw: costKrw,    // 원가 원화 환산 (자동 계산될 예정이지만 초기값 제공)
+            price_cny: priceCny,  // 판매가 위안화 환산 (자동 계산될 예정이지만 초기값 제공)
             weight_g: 200 + Math.floor(Math.random() * 800),
             dimensions_cm: `${10 + Math.floor(Math.random() * 20)}x${10 + Math.floor(Math.random() * 20)}x${5 + Math.floor(Math.random() * 15)}`,
             description: `${brand} 브랜드의 ${category.name} 제품입니다. ${model} 모델, ${color} 색상`,
@@ -157,13 +162,16 @@ async function createProducts(categories, adminUser) {
             // available은 generated column이므로 제외
         });
         
-        // 재고 입고 트랜잭션 생성
+        // 재고 입고 트랜잭션 생성 (환율 적용)
+        const exchangeRate = 178.50; // 기본 환율
         inventoryTransactions.push({
             product_id: product.id,
             transaction_type: 'inbound',
             quantity: initialStock,
             cost_per_unit_cny: product.cost_cny,
             total_cost_cny: product.cost_cny * initialStock,
+            cost_per_unit_krw: product.cost_cny * exchangeRate,  // 원화 환산
+            total_cost_krw: product.cost_cny * initialStock * exchangeRate,  // 원화 환산
             reference_type: 'initial_stock',
             reference_id: null,
             notes: '초기 재고 입고',
