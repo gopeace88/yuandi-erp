@@ -10,7 +10,6 @@ import { useRouter } from 'next/navigation';
 import api from '@/lib/api/client';
 import { exportToExcel } from '@/lib/utils/excel';
 import Pagination from '@/components/common/Pagination';
-import NavigationMobile from '@/components/NavigationMobile';
 
 interface OrdersPageProps {
   params: { locale: string };
@@ -701,18 +700,19 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
 
   // 테이블 행 클릭 핸들러
   const handleOrderClick = (order: Order) => {
-    setSelectedOrder(order);
-    setShowDetailModal(true);
+    // PAID 상태의 주문은 배송 관리로 이동하여 송장 입력 모달 열기
+    if (order.status === 'paid') {
+      router.push(`/${locale}/shipments?orderId=${order.id}&action=register`);
+    } else {
+      // 다른 상태의 주문은 상세 모달 표시
+      setSelectedOrder(order);
+      setShowDetailModal(true);
+    }
   };
 
 
   return (
     <div className="min-h-screen bg-gray-100">
-      {/* 모바일 네비게이션 바 */}
-      <div className="md:hidden">
-        <NavigationMobile locale={locale} />
-      </div>
-      
       {/* 헤더 */}
       <div className="bg-white border-b border-gray-200 px-4 py-3 md:px-6 md:py-4">
         <div className="max-w-7xl mx-auto flex justify-between items-center">

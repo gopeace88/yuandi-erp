@@ -11,7 +11,6 @@ import api from '@/lib/api/client';
 import { exportToExcel } from '@/lib/utils/excel';
 import ImageUpload from '@/components/common/ImageUpload';
 import Pagination from '@/components/common/Pagination';
-import NavigationMobile from '@/components/NavigationMobile';
 
 interface InventoryPageProps {
   params: { locale: string };
@@ -609,11 +608,6 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
 
   return (
     <div className="min-h-screen bg-gray-100">
-      {/* 모바일 네비게이션 바 */}
-      <div className="md:hidden">
-        <NavigationMobile locale={locale} />
-      </div>
-      
       {/* 헤더 */}
       <div className="bg-white border-b border-gray-200 px-4 py-3 md:px-6 md:py-4">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
@@ -635,42 +629,6 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
         </div>
       </div>
 
-      {/* 모바일 재고 통계 요약 카드 - 2x2 그리드 */}
-      <div className="md:hidden px-4 py-4">
-        <div className="grid grid-cols-2 gap-3">
-          {/* 총 상품수 */}
-          <div className="bg-white rounded-lg shadow p-3">
-            <div className="text-xs text-gray-500">{texts.totalProducts || '총 상품'}</div>
-            <div className="text-xl font-bold text-blue-600 mt-1">
-              {products.length}
-            </div>
-          </div>
-
-          {/* 재고 수량 */}
-          <div className="bg-white rounded-lg shadow p-3">
-            <div className="text-xs text-gray-500">{texts.totalStock || '총 재고'}</div>
-            <div className="text-xl font-bold text-green-600 mt-1">
-              {products.reduce((sum, p) => sum + p.onHand, 0).toLocaleString()}
-            </div>
-          </div>
-
-          {/* 재고 부족 */}
-          <div className="bg-white rounded-lg shadow p-3">
-            <div className="text-xs text-gray-500">{texts.lowStockItems || '재고 부족'}</div>
-            <div className="text-xl font-bold text-yellow-600 mt-1">
-              {products.filter(p => p.onHand <= p.lowStockThreshold).length}
-            </div>
-          </div>
-
-          {/* 재고 가치 */}
-          <div className="bg-white rounded-lg shadow p-3">
-            <div className="text-xs text-gray-500">{texts.stockValue || '재고 가치'}</div>
-            <div className="text-lg font-bold text-purple-600 mt-1">
-              ₩{products.reduce((sum, p) => sum + p.onHand * p.salePriceKrw, 0).toLocaleString()}
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* 필터 및 검색 */}
       <div className="max-w-7xl mx-auto px-4 py-4 md:px-6 md:py-6">
@@ -704,25 +662,25 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
           </button>
         </div>
 
-        {/* 재고 통계 */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
-          <div style={{ backgroundColor: 'white', padding: '1rem', borderRadius: '0.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-            <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>총 상품 수</p>
-            <p style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{products.length}개</p>
+        {/* 재고 통계 - 모바일에서는 2x2, 데스크톱에서는 4열 */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          <div className="bg-white p-3 md:p-4 rounded-lg shadow">
+            <p className="text-xs md:text-sm text-gray-500">총 상품 수</p>
+            <p className="text-lg md:text-2xl font-bold mt-1">{products.length}개</p>
           </div>
-          <div style={{ backgroundColor: 'white', padding: '1rem', borderRadius: '0.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-            <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>총 재고 수량</p>
-            <p style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{products.reduce((sum, p) => sum + p.onHand, 0)}개</p>
+          <div className="bg-white p-3 md:p-4 rounded-lg shadow">
+            <p className="text-xs md:text-sm text-gray-500">총 재고 수량</p>
+            <p className="text-lg md:text-2xl font-bold mt-1">{products.reduce((sum, p) => sum + p.onHand, 0)}개</p>
           </div>
-          <div style={{ backgroundColor: 'white', padding: '1rem', borderRadius: '0.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-            <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>재고 부족 상품</p>
-            <p style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#f59e0b' }}>
+          <div className="bg-white p-3 md:p-4 rounded-lg shadow">
+            <p className="text-xs md:text-sm text-gray-500">재고 부족 상품</p>
+            <p className="text-lg md:text-2xl font-bold text-amber-600 mt-1">
               {products.filter(p => p.onHand <= p.lowStockThreshold).length}개
             </p>
           </div>
-          <div style={{ backgroundColor: 'white', padding: '1rem', borderRadius: '0.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-            <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>재고 가치</p>
-            <p style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>
+          <div className="bg-white p-3 md:p-4 rounded-lg shadow">
+            <p className="text-xs md:text-sm text-gray-500">재고 가치</p>
+            <p className="text-lg md:text-2xl font-bold mt-1">
               ₩{products.reduce((sum, p) => sum + p.onHand * p.salePriceKrw, 0).toLocaleString()}
             </p>
           </div>

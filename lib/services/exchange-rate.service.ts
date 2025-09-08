@@ -16,13 +16,33 @@ export interface ExchangeRate {
 export class ExchangeRateService {
   /**
    * 한국수출입은행 API에서 환율 조회
-   * API: https://www.koreaexim.go.kr/site/program/financial/exchangeJSON
+   * API 문서: https://www.koreaexim.go.kr/ir/HPHKIR020M01?apino=2&viewtype=C#none
    */
-  async fetchFromKoreaExim(): Promise<number | null> {
+  async fetchFromKoreaExim(searchdate?: string): Promise<number | null> {
     try {
-      const authkey = process.env.KOREA_EXIM_API_KEY || 'demo'; // API 키 필요
-      const searchdate = new Date().toISOString().split('T')[0].replace(/-/g, '');
-      const url = `https://www.koreaexim.go.kr/site/program/financial/exchangeJSON?authkey=${authkey}&searchdate=${searchdate}&data=AP01`;
+      const authkey = process.env.KOREA_EXIM_API_KEY;
+      if (!authkey) {
+        console.error('KOREA_EXIM_API_KEY not configured');
+        return null;
+      }
+      
+      // 날짜가 지정되지 않으면 가장 최근 영업일 사용
+      if (!searchdate) {
+        const now = new Date();
+        const koreaTime = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Seoul"}));
+        
+        // 주말이면 금요일로 조정
+        const dayOfWeek = koreaTime.getDay();
+        if (dayOfWeek === 0) { // 일요일
+          koreaTime.setDate(koreaTime.getDate() - 2);
+        } else if (dayOfWeek === 6) { // 토요일
+          koreaTime.setDate(koreaTime.getDate() - 1);
+        }
+        
+        searchdate = koreaTime.toISOString().split('T')[0].replace(/-/g, '');
+      }
+      
+      const url = `https://oapi.koreaexim.go.kr/site/program/financial/exchangeJSON?authkey=${authkey}&searchdate=${searchdate}&data=AP01`;
       
       const response = await fetch(url);
       if (!response.ok) {
@@ -32,14 +52,33 @@ export class ExchangeRateService {
       
       const data = await response.json();
       
-      // CNY 환율 찾기
-      const cnyRate = data.find((item: any) => item.cur_unit === 'CNY');
-      if (cnyRate) {
-        // deal_bas_r은 매매기준율 (문자열로 제공됨, 쉼표 포함)
+      // 응답 확인
+      if (!Array.isArray(data) || data.length === 0) {
+        console.error('Invalid response from Korea Exim API');
+        return null;
+      }
+      
+      // 결과 코드 확인 (1: 성공)
+      if (data[0]?.result !== 1) {
+        const errorMessages: { [key: number]: string } = {
+          2: 'DATA 코드 오류',
+          3: '인증코드 오류',
+          4: '일일제한횟수 마감'
+        };
+        console.error(`Korea Exim API error: ${errorMessages[data[0]?.result] || 'Unknown error'}`);
+        return null;
+      }
+      
+      // CNH (위안화) 환율 찾기
+      const cnyRate = data.find((item: any) => item.cur_unit === 'CNH');
+      if (cnyRate && cnyRate.deal_bas_r) {
+        // deal_bas_r은 매매기준율 (문자열로 제공됨, 쉼표 포함 가능)
         const rate = parseFloat(cnyRate.deal_bas_r.replace(/,/g, ''));
+        console.log(`✅ 환율 조회 성공: 1 CNY = ${rate} KRW`);
         return rate;
       }
       
+      console.warn('CNH rate not found in response');
       return null;
     } catch (error) {
       console.error('Failed to fetch exchange rate:', error);
@@ -73,14 +112,26 @@ export class ExchangeRateService {
   }
 
   /**
-   * 오늘의 환율 업데이트
+   * 환율 업데이트 (주 1회: 일요일 새벽 3시)
+   * 지난 금요일의 환율 데이터를 가져와서 일주일 동안 사용
    */
-  async updateDailyRate(): Promise<boolean> {
+  async updateWeeklyRate(): Promise<boolean> {
     try {
-      const supabase = createClient();
+      const supabase = await createClient();
       
-      // 1. API에서 환율 가져오기
-      let rate = await this.fetchFromKoreaExim();
+      // 지난 금요일 날짜 계산
+      const today = new Date();
+      const lastFriday = new Date(today);
+      const daysSinceFriday = (today.getDay() + 2) % 7; // 일요일=0이므로 금요일까지 2일
+      lastFriday.setDate(today.getDate() - daysSinceFriday);
+      
+      console.log(`주간 환율 업데이트 시작 (${lastFriday.toISOString().split('T')[0]} 금요일 데이터 조회)`);
+      
+      // 금요일 환율 조회를 위해 날짜 설정
+      const searchdate = lastFriday.toISOString().split('T')[0].replace(/-/g, '');
+      
+      // 1. API에서 금요일 환율 가져오기
+      let rate = await this.fetchFromKoreaExim(searchdate);
       let source = 'api_bank';
       
       // 2. 실패시 대체 API 시도
@@ -89,19 +140,32 @@ export class ExchangeRateService {
         source = 'api_forex';
       }
       
-      // 3. 그래도 실패시 기본값 사용
+      // 3. 그래도 실패시 최근 환율 유지
       if (!rate) {
-        rate = 178.50; // 기본값
-        source = 'default';
+        const { data: lastRate } = await supabase
+          .from('exchange_rates')
+          .select('rate')
+          .order('date', { ascending: false })
+          .limit(1)
+          .single();
+        
+        if (lastRate) {
+          rate = lastRate.rate;
+          source = 'cached';
+          console.log('API 실패, 최근 환율 유지:', rate);
+        } else {
+          rate = 178.50; // 최후의 기본값
+          source = 'default';
+        }
       }
       
-      const today = new Date().toISOString().split('T')[0];
+      const todayDate = new Date().toISOString().split('T')[0];
       
       // 4. exchange_rates 테이블에 저장
       const { error: insertError } = await supabase
         .from('exchange_rates')
         .upsert({
-          date: today,
+          date: todayDate,
           base_currency: 'CNY',
           target_currency: 'KRW',
           rate: rate,
@@ -120,7 +184,7 @@ export class ExchangeRateService {
       const { error: cacheError } = await supabase
         .from('daily_exchange_cache')
         .upsert({
-          date: today,
+          date: todayDate,
           cny_to_krw: rate,
           krw_to_cny: 1 / rate
         }, {
@@ -142,40 +206,72 @@ export class ExchangeRateService {
   }
 
   /**
-   * 현재 환율 조회
+   * 현재 환율 조회 (DB에 없으면 API 자동 호출)
    */
   async getCurrentRate(): Promise<number> {
     try {
-      const supabase = createClient();
+      const supabase = await createClient();
       
-      // 캐시에서 오늘 환율 조회
-      const today = new Date().toISOString().split('T')[0];
-      const { data, error } = await supabase
-        .from('daily_exchange_cache')
-        .select('cny_to_krw')
-        .eq('date', today)
-        .single();
+      // 1. 캐시에서 최근 7일 이내 환율 조회
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
       
-      if (data && !error) {
-        return data.cny_to_krw;
-      }
-      
-      // 캐시에 없으면 최신 환율 조회
-      const { data: latestRate } = await supabase
+      const { data: cachedRate, error } = await supabase
         .from('exchange_rates')
-        .select('rate')
+        .select('rate, date')
         .eq('base_currency', 'CNY')
         .eq('target_currency', 'KRW')
         .eq('is_active', true)
+        .gte('date', sevenDaysAgo.toISOString().split('T')[0])
         .order('date', { ascending: false })
         .limit(1)
         .single();
       
-      if (latestRate) {
-        return latestRate.rate;
+      if (cachedRate && !error) {
+        console.log(`캐시된 환율 사용: ${cachedRate.rate} (${cachedRate.date})`);
+        return cachedRate.rate;
       }
       
-      // 기본값
+      // 2. 캐시에 없거나 7일 이상 지났으면 API 호출
+      console.log('환율 캐시 없음, API 호출 시작...');
+      
+      // 가장 최근 금요일 날짜 계산
+      const today = new Date();
+      let lastFriday = new Date(today);
+      const dayOfWeek = today.getDay();
+      
+      // 오늘이 금요일이 아니면 지난 금요일로
+      if (dayOfWeek !== 5) {
+        const daysToSubtract = dayOfWeek === 0 ? 2 : (dayOfWeek + 2) % 7;
+        lastFriday.setDate(today.getDate() - daysToSubtract);
+      }
+      
+      const searchdate = lastFriday.toISOString().split('T')[0].replace(/-/g, '');
+      const rate = await this.fetchFromKoreaExim(searchdate);
+      
+      if (rate) {
+        // API 성공시 DB에 저장
+        const { error: saveError } = await supabase
+          .from('exchange_rates')
+          .upsert({
+            date: lastFriday.toISOString().split('T')[0],
+            base_currency: 'CNY',
+            target_currency: 'KRW',
+            rate: rate,
+            source: 'api_bank',
+            is_active: true
+          }, {
+            onConflict: 'date,base_currency,target_currency'
+          });
+        
+        if (!saveError) {
+          console.log(`✅ 환율 API 호출 및 저장 성공: ${rate}`);
+        }
+        return rate;
+      }
+      
+      // 3. API도 실패하면 기본값
+      console.warn('환율 API 호출 실패, 기본값 사용');
       return 178.50;
       
     } catch (error) {
@@ -189,7 +285,7 @@ export class ExchangeRateService {
    */
   async getRateByDate(date: string): Promise<number> {
     try {
-      const supabase = createClient();
+      const supabase = await createClient();
       
       const { data, error } = await supabase
         .from('exchange_rates')

@@ -89,12 +89,15 @@ export default function DashboardPage({ params: { locale } }: DashboardPageProps
       const sortedOrders = (orders || [])
         .slice(0, 20)
         .map((order: any) => ({
+          id: order.id,
+          order_number: order.order_number,
           date: order.created_at.split('T')[0],
           name: order.customer_name,
-          status: order.status?.toUpperCase() || 'paid',
+          status: order.status || 'paid',
           amount: locale === 'ko' 
             ? `₩${(order.total_krw || 0).toLocaleString()}` 
-            : `¥${Math.floor((order.total_krw || 0) / 180).toLocaleString()}`
+            : `¥${Math.floor((order.total_krw || 0) / 180).toLocaleString()}`,
+          total_krw: order.total_krw || 0
         }));
       
       setRecentOrders(sortedOrders);
@@ -392,7 +395,8 @@ export default function DashboardPage({ params: { locale } }: DashboardPageProps
                       }}
                       onClick={() => {
                         if (order.status === 'paid') {
-                          router.push(`/${locale}/shipments`);
+                          // 배송관리 페이지로 이동하면서 주문 ID 전달
+                          router.push(`/${locale}/shipments?orderId=${order.id}&action=register`);
                         }
                       }}
                       onMouseEnter={(e) => {

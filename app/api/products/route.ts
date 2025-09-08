@@ -9,7 +9,7 @@ import { ExchangeRateService } from '@/lib/services/exchange-rate.service';
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     
     // 검색 파라미터
     const { searchParams } = new URL(request.url);
@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
         cost_krw,
         price_cny
       `)
-      .eq('active', true)
+      .eq('is_active', true)
       .order('created_at', { ascending: false });
     
     // 필터 적용
@@ -77,12 +77,27 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     const body = await request.json();
     
     // 환율 서비스 초기화
     const exchangeService = new ExchangeRateService();
     const currentRate = await exchangeService.getCurrentRate();
+    
+    // category_id 처리 (카테고리 이름으로 받았을 경우 ID로 변환)
+    let category_id = body.category_id;
+    if (!category_id && body.category) {
+      // 카테고리 이름으로 ID 조회
+      const { data: categoryData } = await supabase
+        .from('product_categories')
+        .select('id')
+        .eq('name', body.category)
+        .single();
+      
+      if (categoryData) {
+        category_id = categoryData.id;
+      }
+    }
     
     // SKU 생성 (아직 없는 경우)
     if (!body.sku) {
@@ -107,23 +122,23 @@ export async function POST(request: NextRequest) {
     // 상품 데이터 준비
     const productData = {
       sku: body.sku,
-      category: body.category,
+      category_id: category_id,
       name: body.name,
       model: body.model,
       color: body.color,
       brand: body.brand,
+      manufacturer: body.manufacturer,
       cost_cny: cost_cny,
       price_krw: price_krw,
       cost_krw: cost_krw,      // 자동 계산된 원가 원화 환산
       price_cny: price_cny,    // 자동 계산된 판매가 위안화 환산
-      on_hand: body.on_hand || 0,
+      exchange_rate: currentRate,
+      exchange_date: new Date().toISOString().split('T')[0],
       low_stock_threshold: body.low_stock_threshold || 5,
-      barcode: body.barcode,
-      image_url: body.image_url,
+      image_urls: body.image_urls || [],
       description: body.description,
       notes: body.notes,
-      active: true,
-      created_by: body.created_by
+      is_active: true
     };
     
     const { data: product, error } = await supabase
@@ -161,7 +176,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     const body = await request.json();
     const { id, ...updateData } = body;
     
@@ -184,6 +199,9 @@ export async function PUT(request: NextRequest) {
       if (updateData.price_krw !== undefined) {
         updateData.price_cny = updateData.price_krw / currentRate;
       }
+      // 환율 정보도 업데이트
+      updateData.exchange_rate = currentRate;
+      updateData.exchange_date = new Date().toISOString().split('T')[0];
     }
     
     const { data: product, error } = await supabase
@@ -220,7 +238,7 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     
@@ -231,10 +249,10 @@ export async function DELETE(request: NextRequest) {
       );
     }
     
-    // Soft delete (active = false)
+    // Soft delete (is_active = false)
     const { error } = await supabase
       .from('products')
-      .update({ active: false })
+      .update({ is_active: false })
       .eq('id', id);
     
     if (error) {

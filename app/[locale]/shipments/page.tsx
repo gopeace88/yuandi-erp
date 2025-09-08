@@ -6,7 +6,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { MobileBottomNav } from '@/components/Navigation';
 import { exportToExcel } from '@/lib/utils/excel';
 import ImageUpload from '@/components/common/ImageUpload';
@@ -101,6 +101,7 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20; // 페이지당 20개 항목 표시
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   // 모바일 체크
   useEffect(() => {
@@ -456,6 +457,28 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
       sessionStorage.removeItem('pendingShipment');
     }
   }, [locale, router]);
+
+  // URL 파라미터로 전달받은 주문 확인 (대시보드에서 왔을 때)
+  useEffect(() => {
+    const orderId = searchParams.get('orderId');
+    const action = searchParams.get('action');
+    
+    if (orderId && action === 'register' && orders.length > 0) {
+      console.log('🔍 대시보드에서 전달받은 파라미터:', { orderId, action });
+      
+      // 해당 주문 찾기
+      const order = orders.find(o => o.id === orderId);
+      if (order && order.status === 'paid') {
+        console.log('✅ 주문 찾음, 배송 등록 모달 열기:', order);
+        setSelectedOrder(order);
+        setShowShipModal(true);
+        
+        // URL 파라미터 제거 (모달 닫을 때 다시 열리지 않도록)
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, '', newUrl);
+      }
+    }
+  }, [searchParams, orders]);
 
   // 배송 대기 주문 필터링 (paid 상태인 주문만)
   const pendingOrders = orders.filter(order => {

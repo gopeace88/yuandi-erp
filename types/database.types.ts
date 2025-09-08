@@ -27,6 +27,8 @@ export interface Product {
   price_krw?: number     // 판매가 (원화)
   cost_krw?: number      // 원가 원화 환산 (자동 계산)
   price_cny?: number     // 판매가 위안화 환산 (자동 계산)
+  exchange_rate?: number // 사용된 환율
+  exchange_date?: string // 환율 날짜
   onHand: number
   lowStockThreshold: number
   barcode?: string

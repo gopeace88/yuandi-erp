@@ -39,7 +39,7 @@
     },
     {
       "path": "/api/exchange-rate/update",
-      "schedule": "0 0 * * *"
+      "schedule": "0 3 * * 0"
     }
   ],
   "headers": [
