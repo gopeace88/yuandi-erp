@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { MobileBottomNav } from '@/components/Navigation';
 import { exportToExcel } from '@/lib/utils/excel';
@@ -85,7 +85,7 @@ const MOCK_ORDERS: Order[] = [];
 
 const MOCK_SHIPMENTS: Shipment[] = [];
 
-export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps) {
+function ShipmentsPageContent({ locale }: { locale: string }) {
   const [orders, setOrders] = useState<Order[]>(MOCK_ORDERS);
   const [shipments, setShipments] = useState<Shipment[]>(MOCK_SHIPMENTS);
   const [selectedTab, setSelectedTab] = useState<'pending' | 'shipping' | 'delivered' | 'refunded'>('pending');
@@ -1890,5 +1890,13 @@ export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps
       {/* 모바일에서만 하단 네비게이션 표시 */}
       {isMobile && <MobileBottomNav locale={locale} />}
     </div>
+  );
+}
+
+export default function ShipmentsPage({ params: { locale } }: ShipmentsPageProps) {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ShipmentsPageContent locale={locale} />
+    </Suspense>
   );
 }
