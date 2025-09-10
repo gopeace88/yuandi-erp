@@ -83,7 +83,7 @@ export async function createFullBackup(
       'order_items',
       'customers',
       'inventory',
-      'inventory_transactions',
+      'inventory_movements',
       'shipments',
       'shipment_photos',
       'cashbook_entries',
@@ -362,7 +362,7 @@ export async function exportData(
     if (type === 'all' || type === 'inventory') {
       const { data } = await supabase
         .from('inventory')
-        .select('*, product:products(*), transactions:inventory_transactions(*)');
+        .select('*, product:products(*), transactions:inventory_movements(*)');
       exportData.inventory = data || [];
     }
 

@@ -1,7 +1,7 @@
 /**
  * 주문번호 생성기
- * 패턴: ORD-YYMMDD-###
- * 예시: ORD-241225-001
+ * 패턴: YYMMDD-###
+ * 예시: 241225-001
  * 
  * 특징:
  * - 일별 순번 자동 증가
@@ -12,7 +12,7 @@
 export class OrderNumberGenerator {
   private static counters = new Map<string, number>();
   private static locks = new Map<string, Promise<void>>();
-  private static readonly PREFIX = 'ORD';
+  // PREFIX 제거 - 더 이상 사용하지 않음
   private static readonly SEPARATOR = '-';
   private static readonly SEQUENCE_DIGITS = 3;
   
@@ -108,7 +108,7 @@ export class OrderNumberGenerator {
    */
   private static formatOrderNumber(dateKey: string, sequence: number): string {
     const sequenceStr = sequence.toString().padStart(this.SEQUENCE_DIGITS, '0');
-    return `${this.PREFIX}${this.SEPARATOR}${dateKey}${this.SEPARATOR}${sequenceStr}`;
+    return `${dateKey}${this.SEPARATOR}${sequenceStr}`;
   }
   
   /**
@@ -116,7 +116,7 @@ export class OrderNumberGenerator {
    */
   private static findMaxSequence(orderNumbers: string[], dateKey: string): number {
     let maxSequence = 0;
-    const prefix = `${this.PREFIX}${this.SEPARATOR}${dateKey}${this.SEPARATOR}`;
+    const prefix = `${dateKey}${this.SEPARATOR}`;
     
     for (const orderNo of orderNumbers) {
       if (orderNo.startsWith(prefix)) {
@@ -153,8 +153,8 @@ export class OrderNumberGenerator {
    * 주문번호 유효성 검증
    */
   static validate(orderNo: string): boolean {
-    // 패턴: ORD-YYMMDD-###
-    const pattern = /^ORD-\d{6}-\d{3}$/;
+    // 패턴: YYMMDD-###
+    const pattern = /^\d{6}-\d{3}$/;
     
     if (!pattern.test(orderNo)) {
       return false;
@@ -162,7 +162,7 @@ export class OrderNumberGenerator {
     
     // 날짜 유효성 검증
     const parts = orderNo.split(this.SEPARATOR);
-    const dateStr = parts[1];
+    const dateStr = parts[0];
     
     const year = 2000 + parseInt(dateStr.substring(0, 2), 10);
     const month = parseInt(dateStr.substring(2, 4), 10) - 1;
@@ -187,8 +187,8 @@ export class OrderNumberGenerator {
     }
     
     const parts = orderNo.split(this.SEPARATOR);
-    const dateStr = parts[1];
-    const sequenceStr = parts[2];
+    const dateStr = parts[0];
+    const sequenceStr = parts[1];
     
     const year = 2000 + parseInt(dateStr.substring(0, 2), 10);
     const month = parseInt(dateStr.substring(2, 4), 10) - 1;

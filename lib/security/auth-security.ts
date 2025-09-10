@@ -231,7 +231,7 @@ export class PasswordValidator {
 
   private static isCommonPassword(password: string): boolean {
     const commonPasswords = [
-      'password', '12345678', 'password123', 'admin123',
+      'password', '12345678', 'password123', 'yuandi123!',
       'qwerty123', 'letmein', 'welcome123', 'monkey123',
     ]
     

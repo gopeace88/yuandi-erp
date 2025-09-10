@@ -106,6 +106,7 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
     adminOnly: '관리자만 접근 가능합니다.',
     email: '이메일',
     name: '이름',
+    password: '비밀번호',
     role: '역할',
     status: '상태',
     active: '활성',
@@ -153,6 +154,7 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
     adminOnly: '仅管理员可访问。',
     email: '邮箱',
     name: '姓名',
+    password: '密码',
     role: '角色',
     status: '状态',
     active: '启用',
@@ -1698,7 +1700,7 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
                   color: '#374151',
                   fontWeight: '500'
                 }}>
-                  {t.password || '비밀번호'} {!editUser?.id && '*'}
+                  {t.password} {!editUser?.id && '*'}
                 </label>
                 <input
                   type="password"

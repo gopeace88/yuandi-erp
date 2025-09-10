@@ -16,19 +16,45 @@ import {
     X
 } from 'lucide-react'
 
-const navigationItems = [
-    { name: '대시보드', href: '/dashboard', icon: Home },
-    { name: '주문 관리', href: '/dashboard/orders', icon: ShoppingCart },
-    { name: '재고 관리', href: '/dashboard/inventory', icon: Package },
-    { name: '배송 관리', href: '/dashboard/shipping', icon: Truck },
-    { name: '출납장부', href: '/dashboard/cashbook', icon: DollarSign },
-    { name: '보고서', href: '/dashboard/reports', icon: BarChart3 },
-    { name: '설정', href: '/dashboard/settings', icon: Settings },
-]
-
 export function MobileNavigation() {
     const [isOpen, setIsOpen] = useState(false)
     const pathname = usePathname()
+    
+    // Extract locale from pathname
+    const currentLocale = pathname.split('/')[1] || 'ko'
+    
+    const navigationItems = [
+        { 
+            name: currentLocale === 'ko' ? '대시보드' : '仪表板', 
+            href: `/${currentLocale}/dashboard`, 
+            icon: Home 
+        },
+        { 
+            name: currentLocale === 'ko' ? '주문 관리' : '订单管理', 
+            href: `/${currentLocale}/orders`, 
+            icon: ShoppingCart 
+        },
+        { 
+            name: currentLocale === 'ko' ? '재고 관리' : '库存管理', 
+            href: `/${currentLocale}/inventory`, 
+            icon: Package 
+        },
+        { 
+            name: currentLocale === 'ko' ? '배송 관리' : '配送管理', 
+            href: `/${currentLocale}/shipments`, 
+            icon: Truck 
+        },
+        { 
+            name: currentLocale === 'ko' ? '출납장부' : '出纳簿', 
+            href: `/${currentLocale}/cashbook`, 
+            icon: DollarSign 
+        },
+        { 
+            name: currentLocale === 'ko' ? '설정' : '设置', 
+            href: `/${currentLocale}/settings`, 
+            icon: Settings 
+        },
+    ]
 
     return (
         <>
@@ -102,11 +128,11 @@ export function BottomNavigation() {
     const pathname = usePathname()
 
     const bottomNavItems = [
-        { name: '홈', href: '/dashboard', icon: Home },
-        { name: '주문', href: '/dashboard/orders', icon: ShoppingCart },
-        { name: '재고', href: '/dashboard/inventory', icon: Package },
-        { name: '배송', href: '/dashboard/shipping', icon: Truck },
-        { name: '더보기', href: '/dashboard/settings', icon: Menu },
+        { name: '홈', href: '/ko/dashboard', icon: Home },
+        { name: '주문', href: '/ko/orders', icon: ShoppingCart },
+        { name: '재고', href: '/ko/inventory', icon: Package },
+        { name: '배송', href: '/ko/shipments', icon: Truck },
+        { name: '더보기', href: '/ko/users', icon: Menu },
     ]
 
     return (

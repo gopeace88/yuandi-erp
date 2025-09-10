@@ -43,7 +43,7 @@ export async function getNextSequenceNumber(
     }
 
     // 마지막 시퀀스 번호 추출
-    const lastSequence = parseInt(data.order_no.split('-')[2], 10);
+    const lastSequence = parseInt(data.order_no.split('-')[1], 10);
     
     // 일일 최대 주문 수 체크 (999개)
     if (lastSequence >= 999) {
@@ -87,7 +87,7 @@ export async function generateOrderNumber(
   while (attempts < maxAttempts) {
     try {
       sequence = await getNextSequenceNumber(supabase, dateString);
-      const orderNo = `ORD-${dateString}-${sequence.toString().padStart(3, '0')}`;
+      const orderNo = `${dateString}-${sequence.toString().padStart(3, '0')}`;
       
       // 재시도 로직이 활성화된 경우, 중복 체크를 위한 임시 insert 시도
       if (withRetry && attempts > 0) {
@@ -130,7 +130,7 @@ export function parseOrderNumber(orderNo: string): {
     return null;
   }
 
-  const pattern = /^ORD-(\d{2})(\d{2})(\d{2})-(\d{3})$/;
+  const pattern = /^(\d{2})(\d{2})(\d{2})-(\d{3})$/;
   const match = orderNo.match(pattern);
   
   if (!match) {
@@ -165,7 +165,7 @@ export function isValidOrderNumber(orderNo: string): boolean {
     return false;
   }
 
-  const pattern = /^ORD-\d{6}-\d{3}$/;
+  const pattern = /^\d{6}-\d{3}$/;
   if (!pattern.test(orderNo)) {
     return false;
   }

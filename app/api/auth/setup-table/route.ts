@@ -19,10 +19,7 @@ export async function POST(request: NextRequest) {
             'Prefer': 'return=minimal'
           },
           body: JSON.stringify({
-            name: 'YUANDI 관리자',
-            email: 'yuandi1020@gmail.com',
-            role: 'admin',
-            active: true
+            // No hardcoded credentials - use Supabase Auth
           })
         })
 
@@ -61,8 +58,7 @@ CREATE TABLE profiles (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-INSERT INTO profiles (name, email, role, active) 
-VALUES ('YUANDI 관리자', 'yuandi1020@gmail.com', 'admin', true);
+-- Users should be created through Supabase Auth Dashboard
         `
       }
     })

@@ -4,24 +4,48 @@ import { getSupabaseadmin } from '@/lib/supabase/api'
 
 export async function GET(request: NextRequest) {
   try {
+    // Debug: Check cookies
+    const cookies = request.cookies.getAll()
+    console.log('===== Users GET API Debug =====')
+    console.log('Total cookies:', cookies.length)
+    console.log('Cookie names:', cookies.map(c => c.name))
+    console.log('Supabase cookies:', cookies.filter(c => c.name.includes('sb-')).map(c => c.name))
+    
     const supabase = await createClient()
     
     // Get the current session
-    const { data: { session } } = await supabase.auth.getSession()
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    
+    console.log('Session check:', {
+      hasSession: !!session,
+      userId: session?.user?.id,
+      email: session?.user?.email,
+      error: sessionError?.message
+    })
+    
+    // Also try to get user
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    console.log('User check:', {
+      hasUser: !!user,
+      userId: user?.id,
+      email: user?.email,
+      error: userError?.message
+    })
     
     // Check if user is authenticated
-    if (!session) {
-      console.log('❌ No session found')
+    if (!session && !user) {
+      console.log('❌ No session or user found')
       return NextResponse.json({ error: 'Unauthorized - Please login first' }, { status: 401 })
     }
     
-    console.log('✅ Session found:', { userId: session.user.id, email: session.user.email })
+    const authenticatedUserId = session?.user?.id || user?.id
+    console.log('✅ Authenticated user:', authenticatedUserId)
     
     // Get user role from profiles
     const { data: profile } = await supabase
       .from('user_profiles')
       .select('role')
-      .eq('id', session.user.id)
+      .eq('id', authenticatedUserId)
       .single()
     
     // Only admin can view all users

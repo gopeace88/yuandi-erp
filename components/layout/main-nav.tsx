@@ -13,46 +13,44 @@ import {
   Home,
 } from 'lucide-react'
 
-const navItems = [
-  {
-    href: '/',
-    label: '대시보드',
-    icon: Home,
-  },
-  {
-    href: '/products',
-    label: '상품 관리',
-    icon: Package,
-  },
-  {
-    href: '/orders',
-    label: '주문 관리',
-    icon: ShoppingCart,
-  },
-  {
-    href: '/shipments',
-    label: '배송 관리',
-    icon: Truck,
-  },
-  {
-    href: '/reports',
-    label: '리포트',
-    icon: BarChart3,
-  },
-  {
-    href: '/customers',
-    label: '고객 관리',
-    icon: Users,
-  },
-  {
-    href: '/settings',
-    label: '설정',
-    icon: Settings,
-  },
-]
-
 export function MainNav() {
   const pathname = usePathname()
+  
+  // Extract locale from pathname
+  const currentLocale = pathname.split('/')[1] || 'ko'
+  
+  const navItems = [
+    {
+      href: `/${currentLocale}/dashboard`,
+      label: currentLocale === 'ko' ? '대시보드' : '仪表板',
+      icon: Home,
+    },
+    {
+      href: `/${currentLocale}/inventory`,
+      label: currentLocale === 'ko' ? '재고 관리' : '库存管理',
+      icon: Package,
+    },
+    {
+      href: `/${currentLocale}/orders`,
+      label: currentLocale === 'ko' ? '주문 관리' : '订单管理',
+      icon: ShoppingCart,
+    },
+    {
+      href: `/${currentLocale}/shipments`,
+      label: currentLocale === 'ko' ? '배송 관리' : '配送管理',
+      icon: Truck,
+    },
+    {
+      href: `/${currentLocale}/cashbook`,
+      label: currentLocale === 'ko' ? '출납장부' : '出纳簿',
+      icon: BarChart3,
+    },
+    {
+      href: `/${currentLocale}/settings`,
+      label: currentLocale === 'ko' ? '설정' : '设置',
+      icon: Settings,
+    },
+  ]
 
   return (
     <nav className="flex flex-col gap-1 p-2">

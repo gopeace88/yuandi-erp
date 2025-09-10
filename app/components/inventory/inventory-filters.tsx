@@ -12,29 +12,58 @@ interface InventoryFiltersProps {
     lowStock: boolean
   }
   onFilterChange: (filters: any) => void
+  locale?: string
+  categories?: Array<{
+    id: string
+    code: string
+    name_ko: string
+    name_zh: string
+  }>
 }
 
-export function InventoryFilters({ filters, onFilterChange }: InventoryFiltersProps) {
+export function InventoryFilters({ filters, onFilterChange, locale = 'ko', categories = [] }: InventoryFiltersProps) {
   const [localFilters, setLocalFilters] = useState(filters)
 
-  const categoryOptions = [
-    { value: '', label: '전체 카테고리' },
-    { value: 'ELECTRONICS', label: '전자제품' },
-    { value: 'FASHION', label: '패션' },
-    { value: 'COSMETICS', label: '화장품' },
-    { value: 'SUPPLEMENTS', label: '건강보조식품' },
-    { value: 'TOYS', label: '완구' },
-    { value: 'BOOKS', label: '도서' },
-    { value: 'SPORTS', label: '스포츠' },
-    { value: 'HOME', label: '생활용품' },
-    { value: 'FOOD', label: '식품' },
-    { value: 'OTHER', label: '기타' }
-  ]
+  // 번역 텍스트
+  const t = {
+    ko: {
+      detailFilter: '상세 필터',
+      reset: '초기화',
+      category: '카테고리',
+      allCategories: '전체 카테고리',
+      productStatus: '상품 상태',
+      allProducts: '전체 상품',
+      activeProductsOnly: '활성 상품만',
+      inactiveProductsOnly: '비활성 상품만',
+      stockStatus: '재고 상태',
+      showLowStockOnly: '재고 부족만 표시',
+      quickFilter: '빠른 필터',
+      lowStockProducts: '재고 부족 상품',
+      applyFilter: '필터 적용'
+    },
+    'zh-CN': {
+      detailFilter: '详细筛选',
+      reset: '重置',
+      category: '类别',
+      allCategories: '所有类别',
+      productStatus: '产品状态',
+      allProducts: '所有产品',
+      activeProductsOnly: '仅活动产品',
+      inactiveProductsOnly: '仅非活动产品',
+      stockStatus: '库存状态',
+      showLowStockOnly: '仅显示库存不足',
+      quickFilter: '快速筛选',
+      lowStockProducts: '库存不足产品',
+      applyFilter: '应用筛选'
+    }
+  }
+
+  const texts = t[locale as keyof typeof t] || t.ko
 
   const statusOptions = [
-    { value: '', label: '전체 상품' },
-    { value: 'true', label: '활성 상품만' },
-    { value: 'false', label: '비활성 상품만' }
+    { value: '', label: texts.allProducts },
+    { value: 'true', label: texts.activeProductsOnly },
+    { value: 'false', label: texts.inactiveProductsOnly }
   ]
 
   const handleApply = () => {
@@ -50,7 +79,7 @@ export function InventoryFilters({ filters, onFilterChange }: InventoryFiltersPr
   return (
     <div className="bg-white rounded-lg shadow p-6">
       <div className="flex justify-between items-center mb-4">
-        <h3 className="font-semibold text-gray-900">상세 필터</h3>
+        <h3 className="font-semibold text-gray-900">{texts.detailFilter}</h3>
         <Button
           variant="ghost"
           size="sm"
@@ -58,7 +87,7 @@ export function InventoryFilters({ filters, onFilterChange }: InventoryFiltersPr
           className="text-gray-500"
         >
           <X className="w-4 h-4 mr-1" />
-          초기화
+          {texts.reset}
         </Button>
       </div>
 
@@ -66,16 +95,17 @@ export function InventoryFilters({ filters, onFilterChange }: InventoryFiltersPr
         {/* 카테고리 */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            카테고리
+            {texts.category}
           </label>
           <select
             value={localFilters.category}
             onChange={(e) => setLocalFilters(prev => ({ ...prev, category: e.target.value }))}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            {categoryOptions.map(option => (
-              <option key={option.value} value={option.value}>
-                {option.label}
+            <option value="">{texts.allCategories}</option>
+            {categories.map(cat => (
+              <option key={cat.id} value={cat.code}>
+                {locale === 'ko' ? cat.name_ko : cat.name_zh}
               </option>
             ))}
           </select>
@@ -84,7 +114,7 @@ export function InventoryFilters({ filters, onFilterChange }: InventoryFiltersPr
         {/* 상품 상태 */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            상품 상태
+            {texts.productStatus}
           </label>
           <select
             value={localFilters.active}
@@ -102,7 +132,7 @@ export function InventoryFilters({ filters, onFilterChange }: InventoryFiltersPr
         {/* 재고 상태 */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            재고 상태
+            {texts.stockStatus}
           </label>
           <div className="flex items-center h-10">
             <label className="flex items-center">
@@ -112,7 +142,7 @@ export function InventoryFilters({ filters, onFilterChange }: InventoryFiltersPr
                 onChange={(e) => setLocalFilters(prev => ({ ...prev, lowStock: e.target.checked }))}
                 className="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
               />
-              <span className="text-sm text-gray-700">재고 부족만 표시</span>
+              <span className="text-sm text-gray-700">{texts.showLowStockOnly}</span>
             </label>
           </div>
         </div>
@@ -120,7 +150,7 @@ export function InventoryFilters({ filters, onFilterChange }: InventoryFiltersPr
         {/* 빠른 액션 */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            빠른 필터
+            {texts.quickFilter}
           </label>
           <div className="flex flex-col gap-1">
             <Button
@@ -134,7 +164,7 @@ export function InventoryFilters({ filters, onFilterChange }: InventoryFiltersPr
               }))}
               className="text-xs"
             >
-              재고 부족 상품
+              {texts.lowStockProducts}
             </Button>
           </div>
         </div>
@@ -142,10 +172,10 @@ export function InventoryFilters({ filters, onFilterChange }: InventoryFiltersPr
 
       <div className="flex justify-end mt-4 gap-2">
         <Button variant="outline" onClick={handleReset}>
-          초기화
+          {texts.reset}
         </Button>
         <Button onClick={handleApply}>
-          필터 적용
+          {texts.applyFilter}
         </Button>
       </div>
     </div>

@@ -98,9 +98,14 @@ export async function getDashboardData() {
       id,
       order_no,
       customer_name,
+      customer_phone,
       total_amount,
       status,
-      created_at
+      created_at,
+      order_items (
+        product_name,
+        quantity
+      )
     `)
     .order('created_at', { ascending: false })
     .limit(5)

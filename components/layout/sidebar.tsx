@@ -94,38 +94,35 @@ export function Sidebar({ user }: SidebarProps) {
 
   const t = (key: string) => translate(locale, key)
 
+  // Extract locale from pathname
+  const currentLocale = pathname.split('/')[1] || locale
+
   const navigation: NavigationItem[] = [
     { 
-      name: t('nav.dashboard'), 
-      href: '/dashboard', 
+      name: currentLocale === 'ko' ? '대시보드' : '仪表板', 
+      href: `/${currentLocale}/dashboard`, 
       icon: DashboardIcon 
     },
     { 
-      name: t('nav.orders'), 
-      href: '/dashboard/orders', 
+      name: currentLocale === 'ko' ? '주문 관리' : '订单管理', 
+      href: `/${currentLocale}/orders`, 
       icon: OrdersIcon,
       roles: ['admin', 'order_manager']
     },
     { 
-      name: t('nav.inventory'), 
-      href: '/dashboard/inventory', 
+      name: currentLocale === 'ko' ? '재고 관리' : '库存管理', 
+      href: `/${currentLocale}/inventory`, 
       icon: InventoryIcon,
       roles: ['admin', 'order_manager']
     },
     { 
-      name: t('nav.cashbook'), 
-      href: '/dashboard/cashbook', 
+      name: currentLocale === 'ko' ? '출납장부' : '出纳簿', 
+      href: `/${currentLocale}/cashbook`, 
       icon: CashbookIcon 
     },
     { 
-      name: t('nav.users'), 
-      href: '/dashboard/users', 
-      icon: UsersIcon,
-      roles: ['admin']
-    },
-    { 
-      name: t('nav.settings'), 
-      href: '/dashboard/settings', 
+      name: currentLocale === 'ko' ? '설정' : '设置', 
+      href: `/${currentLocale}/settings`, 
       icon: SettingsIcon,
       roles: ['admin']
     },
@@ -217,9 +214,9 @@ export function Sidebar({ user }: SidebarProps) {
                 {user.name}
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                {user.role === 'admin' ? '관리자' : 
-                 user.role === 'order_manager' ? '주문관리자' : 
-                 user.role === 'ship_manager' ? '배송관리자' : user.role}
+                {user.role === 'admin' ? (locale === 'ko' ? '시스템 관리자' : '系统管理员') :
+                 user.role === 'order_manager' ? (locale === 'ko' ? '주문 관리자' : '订单管理员') :
+                 user.role === 'ship_manager' ? (locale === 'ko' ? '배송 관리자' : '配送管理员') : user.role}
               </p>
             </div>
           </div>

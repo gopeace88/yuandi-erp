@@ -12,7 +12,7 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
-      profiles: {
+      user_profiles: {
         Row: {
           id: string
           name: string
@@ -60,7 +60,7 @@ export interface Database {
           color: string | null
           brand: string | null
           cost_cny: number
-          sale_price_krw: number | null
+          price_krw: number | null
           on_hand: number
           low_stock_threshold: number
           barcode: string | null
@@ -81,7 +81,7 @@ export interface Database {
           color?: string | null
           brand?: string | null
           cost_cny: number
-          sale_price_krw?: number | null
+          price_krw?: number | null
           on_hand?: number
           low_stock_threshold?: number
           barcode?: string | null
@@ -102,7 +102,7 @@ export interface Database {
           color?: string | null
           brand?: string | null
           cost_cny?: number
-          sale_price_krw?: number | null
+          price_krw?: number | null
           on_hand?: number
           low_stock_threshold?: number
           barcode?: string | null
@@ -367,7 +367,7 @@ export interface Database {
           created_by?: string | null
         }
       }
-      cashbook: {
+      cashbook_transactions: {
         Row: {
           id: string
           transaction_date: string

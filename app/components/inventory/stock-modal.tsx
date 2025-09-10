@@ -30,12 +30,32 @@ export function StockModal({ locale, type, product, onClose, onSuccess }: StockM
     
     setIsLoading(true)
     try {
-      // API 호출 시뮬레이션
-      await new Promise(resolve => setTimeout(resolve, 500))
+      // 실제 API 호출
+      const response = await fetch('/api/inventory/movements', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          product_id: product.id,
+          type: type,
+          quantity: quantity,
+          notes: note
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || '처리 중 오류가 발생했습니다')
+      }
+
+      const result = await response.json()
+      console.log('Inventory movement created:', result)
+      
       onSuccess(quantity, note)
     } catch (error) {
       console.error('Error:', error)
-      alert(t('common.error'))
+      alert(error instanceof Error ? error.message : t('common.error'))
     } finally {
       setIsLoading(false)
     }

@@ -7,6 +7,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { getLowStockThreshold, clearSystemSettingsCache } from '@/lib/utils/system-settings';
 import api from '@/lib/api/client';
 import { exportToExcel } from '@/lib/utils/excel';
 import ImageUpload from '@/components/common/ImageUpload';
@@ -37,6 +38,9 @@ interface StockMovement {
   id: string;
   productId: string;
   productName: string;
+  productModel?: string;
+  productColor?: string;
+  productCategory?: string;
   type: 'inbound' | 'sale' | 'adjustment';
   quantity: number;
   balanceBefore: number;
@@ -54,11 +58,13 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
   const [showInboundModal, setShowInboundModal] = useState(false);
   const [showProductModal, setShowProductModal] = useState(false);
   const [showAdjustModal, setShowAdjustModal] = useState(false);
+  const [showStockEditModal, setShowStockEditModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
   const [showLowStock, setShowLowStock] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [categories, setCategories] = useState<{id: string, name_ko: string, name_zh: string}[]>([]);
   
   // 페이지네이션 상태
   const [currentPage, setCurrentPage] = useState(1);
@@ -80,16 +86,27 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
     brand: '',
     costCny: 0,
     salePriceKrw: 0,
-    lowStockThreshold: 5,
+    onHand: 1,
+    lowStockThreshold: 5, // 초기값, useEffect에서 DB값으로 업데이트
     description: '',
     imageUrl: '',
   });
+  const [defaultLowStockThreshold, setDefaultLowStockThreshold] = useState<number>(5);
 
   // 입고 폼 상태
   const [inboundForm, setInboundForm] = useState({
     productId: '',
     quantity: 0,
     unitCost: 0,
+    note: '',
+  });
+
+  // 재고수정 폼 상태
+  const [stockEditForm, setStockEditForm] = useState({
+    productId: '',
+    quantity: 0,
+    unitCost: 0,
+    reason: 'loss', // 'loss' | 'recovery'
     note: '',
   });
 
@@ -100,6 +117,7 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
       addProduct: '상품 등록',
       inbound: '재고 입고',
       adjust: '재고 조정',
+      stockEdit: '재고 수정',
       search: '검색',
       filter: '카테고리',
       all: '전체',
@@ -138,6 +156,10 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
       totalStock: '총 재고',
       lowStockItems: '재고 부족',
       stockValue: '재고 가치',
+      totalProductsCount: '총 상품 수',
+      totalStockQuantity: '총 재고 수량',
+      lowStockProducts: '재고 부족 상품',
+      stockValueTotal: '재고 가치',
       totalCost: '총액',
       note: '메모',
       currentStock: '현재 재고',
@@ -155,12 +177,19 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
       operator: '담당자',
       viewDetails: '상세보기',
       close: '닫기',
+      initialStock: '초기 재고 수량',
+      stockEditTitle: '재고 수정',
+      reason: '사유',
+      loss: '분실',
+      recovery: '회수',
+      adjustNote: '수정 사유를 입력하세요',
     },
     'zh-CN': {
       title: '库存管理',
       addProduct: '产品注册',
       inbound: '入库',
       adjust: '库存调整',
+      stockEdit: '库存修改',
       search: '搜索',
       filter: '类别',
       all: '全部',
@@ -199,6 +228,10 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
       totalStock: '总库存',
       lowStockItems: '库存不足',
       stockValue: '库存价值',
+      totalProductsCount: '总产品数',
+      totalStockQuantity: '总库存数量',
+      lowStockProducts: '库存不足产品',
+      stockValueTotal: '库存价值',
       totalCost: '总额',
       note: '备注',
       currentStock: '当前库存',
@@ -216,6 +249,12 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
       operator: '操作员',
       viewDetails: '查看详情',
       close: '关闭',
+      initialStock: '初始库存数量',
+      stockEditTitle: '库存修改',
+      reason: '原因',
+      loss: '丢失',
+      recovery: '找回',
+      adjustNote: '请输入修改原因',
     }
   };
 
@@ -238,7 +277,28 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
   useEffect(() => {
     loadProducts();
     loadMovements();
+    loadCategories();
+    loadSystemSettings();
   }, []);
+
+  // 시스템 설정 로드
+  const loadSystemSettings = async () => {
+    const threshold = await getLowStockThreshold();
+    setDefaultLowStockThreshold(threshold);
+    setNewProduct(prev => ({ ...prev, lowStockThreshold: threshold }));
+  };
+
+  const loadCategories = async () => {
+    try {
+      const response = await fetch('/api/categories');
+      if (response.ok) {
+        const data = await response.json();
+        setCategories(data);
+      }
+    } catch (error) {
+      console.error('Error loading categories:', error);
+    }
+  };
 
   const loadProducts = async () => {
     try {
@@ -250,11 +310,11 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
         .from('products')
         .select(`
           *,
-          inventory (
+          inventory!left (
             on_hand,
             allocated
           ),
-          product_categories (
+          categories (
             name
           )
         `)
@@ -262,57 +322,8 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
       
       if (error) {
         console.error('제품 로드 에러:', error);
-        // 폴백으로 목 데이터 사용
-      // 폴백으로 목 데이터 사용
-      const mockProducts: Product[] = [
-        {
-          id: '1',
-          sku: 'BAG-LX2024-BLACK-YUAND-A1B2C',
-          name: locale === 'ko' ? '프리미엄 가방' : '高级包',
-          category: locale === 'ko' ? '패션' : '时尚',
-          model: 'LX2024',
-          color: locale === 'ko' ? '검정' : '黑色',
-          brand: 'YUANDI',
-          costCny: 450,
-          salePriceKrw: 125000,
-          onHand: 15,
-          lowStockThreshold: 5,
-          imageUrl: '',
-          description: locale === 'ko' ? '고급 소재로 제작된 프리미엄 가방' : '用高级材料制作的高级包',
-          active: true,
-        },
-        {
-          id: '2',
-          sku: 'WATCH-SW100-SILVER-TECH-D3E4F',
-          name: locale === 'ko' ? '스마트 워치' : '智能手表',
-          category: locale === 'ko' ? '전자제품' : '电子产品',
-          model: 'SW-100',
-          color: locale === 'ko' ? '실버' : '银色',
-          brand: 'TechBrand',
-          costCny: 320,
-          salePriceKrw: 89000,
-          onHand: 3, // 재고 부족
-          lowStockThreshold: 5,
-          imageUrl: '',
-          active: true,
-        },
-        {
-          id: '3',
-          sku: 'COSM-BEAUTY-A-BEAUT-G5H6I',
-          name: locale === 'ko' ? '화장품 세트' : '化妆品套装',
-          category: locale === 'ko' ? '뷰티' : '美容',
-          model: 'Beauty-A',
-          color: '-',
-          brand: 'BeautyPlus',
-          costCny: 240,
-          salePriceKrw: 67000,
-          onHand: 25,
-          lowStockThreshold: 10,
-          active: true,
-        },
-      ];
-      setProducts(mockProducts);
-      return;
+        setProducts([]);
+        return;
     }
     
     // 데이터 변환
@@ -320,15 +331,15 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
       id: product.id,
       sku: product.sku,
       name: product.name,
-      category: product.product_categories?.name || '',
+      category: product.categories?.name || '',
       model: product.model || '',
       color: product.color || '',
       brand: product.brand || '',
       costCny: product.cost_cny,
       salePriceKrw: product.price_krw || product.cost_cny * 180,
-      onHand: product.inventory?.[0]?.on_hand || 0,
+      onHand: product.on_hand || product.inventory?.on_hand || 0,  // products 테이블 우선, inventory 백업
       lowStockThreshold: product.low_stock_threshold,
-      imageUrl: product.image_urls?.[0] || '',
+      imageUrl: product.image_url || '',
       description: product.description,
       active: product.is_active
     })) || [];
@@ -347,12 +358,15 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
       const supabase = createClient();
       
       const { data: movements, error } = await supabase
-        .from('inventory_transactions')
+        .from('inventory_movements')
         .select(`
           *,
           products (
             name,
-            sku
+            sku,
+            model,
+            color,
+            category
           )
         `)
         .order('created_at', { ascending: false })
@@ -369,14 +383,17 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
         id: movement.id,
         productId: movement.product_id,
         productName: movement.products?.name || '',
-        type: movement.transaction_type,
+        productModel: movement.products?.model || '',
+        productColor: movement.products?.color || '',
+        productCategory: movement.products?.category || '',
+        type: movement.movement_type,
         quantity: movement.quantity,
-        balanceBefore: 0,
-        balanceAfter: 0,
+        balanceBefore: movement.balance_before || 0,
+        balanceAfter: movement.balance_after || 0,
         unitCost: movement.cost_per_unit_cny,
         note: movement.notes,
         date: movement.created_at,
-        createdBy: 'System'
+        createdBy: movement.created_by || 'System'
       })) || [];
       
       setMovements(transformedMovements);
@@ -426,6 +443,28 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
   };
 
   const handleProductSave = async () => {
+    console.log('🔥🔥🔥 handleProductSave 함수 호출됨! 🔥🔥🔥');
+    console.log('📝 현재 newProduct 상태:', newProduct);
+    
+    // 페이지 타이틀 임시 변경으로 함수 호출 확인
+    document.title = '함수 호출됨! - ' + new Date().toLocaleTimeString();
+    
+    // 디버깅을 위해 window 객체에 함수 노출
+    if (typeof window !== 'undefined') {
+      (window as any).testProductSave = handleProductSave;
+      (window as any).currentProductData = newProduct;
+    }
+    
+    // 필수 필드 체크 (brand 제외)
+    const requiredFields = ['name', 'category', 'model'];
+    const missingFields = requiredFields.filter(field => !newProduct[field]);
+    console.log('❗ 누락된 필수 필드:', missingFields);
+    
+    if (missingFields.length > 0) {
+      alert(`필수 필드가 누락되었습니다: ${missingFields.join(', ')}`);
+      return;
+    }
+    
     try {
       const productData = {
         name: newProduct.name,
@@ -434,21 +473,29 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
         color: newProduct.color,
         brand: newProduct.brand,
         cost_cny: newProduct.costCny,
-        sale_price_krw: newProduct.salePriceKrw,
+        price_krw: newProduct.salePriceKrw,
         low_stock_threshold: newProduct.lowStockThreshold,
         description: newProduct.description,
-        on_hand: 0,
+        on_hand: newProduct.onHand || 0,  // 초기 재고 설정
         active: true
       };
 
-      await api.products.create(productData);
+      console.log('📤 API로 전송할 데이터:', productData);
+      console.log('🚀 api.products.create 호출 시작...');
       
-      // 제품 목록 새로고침
+      const result = await api.products.create(productData);
+      
+      console.log('✅ API 호출 성공:', result);
+      
+      // 제품 목록 및 재고 이동 내역 새로고침
       await loadProducts();
+      await loadMovements();  // 재고 이동 내역도 새로고침
       setShowProductModal(false);
       resetProductForm();
+      
+      console.log('🎉 상품 등록 완료!');
     } catch (error) {
-      console.error('제품 생성 실패:', error);
+      console.error('❌ 제품 생성 실패:', error);
       alert(locale === 'ko' ? '제품 생성에 실패했습니다.' : '产品创建失败');
     }
   };
@@ -475,6 +522,54 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
     } catch (error) {
       console.error('재고 입고 실패:', error);
       alert(locale === 'ko' ? '재고 입고에 실패했습니다.' : '库存入库失败');
+    }
+  };
+
+  const handleStockEdit = async () => {
+    const product = products.find(p => p.id === stockEditForm.productId);
+    if (!product) return;
+
+    try {
+      const adjustmentData = {
+        product_id: stockEditForm.productId,
+        quantity: stockEditForm.quantity, // 마이너스 값도 가능
+        type: 'adjustment',
+        reason: stockEditForm.reason,
+        note: stockEditForm.note || `${stockEditForm.reason === 'loss' ? texts.loss : texts.recovery}`,
+        // 출납장부에는 기록하지 않음
+        skip_cashbook: true
+      };
+
+      // API 호출
+      const response = await fetch('/api/inventory/adjustment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(adjustmentData)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to adjust stock');
+      }
+      
+      // 제품 및 재고 이동 목록 새로고침
+      await loadProducts();
+      await loadMovements();
+      setShowStockEditModal(false);
+      // 폼 초기화
+      setStockEditForm({
+        productId: '',
+        quantity: 0,
+        unitCost: 0,
+        reason: 'loss',
+        note: '',
+      });
+      
+      alert(locale === 'ko' ? '재고가 수정되었습니다.' : '库存已修改');
+    } catch (error) {
+      console.error('재고 수정 실패:', error);
+      alert(locale === 'ko' ? '재고 수정에 실패했습니다.' : '库存修改失败');
     }
   };
 
@@ -562,7 +657,8 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
       brand: '',
       costCny: 0,
       salePriceKrw: 0,
-      lowStockThreshold: 5,
+      onHand: 0,
+      lowStockThreshold: defaultLowStockThreshold,
       description: '',
       imageUrl: '',
     });
@@ -578,8 +674,11 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
   };
 
   const getStockStatus = (product: Product) => {
+    // 품절: 재고가 0일 때만
     if (product.onHand === 0) return { text: locale === 'ko' ? '품절' : '缺货', color: '#ef4444' };
-    if (product.onHand <= product.lowStockThreshold) return { text: locale === 'ko' ? '부족' : '不足', color: '#f59e0b' };
+    // 재고 부족: 재고가 있지만 임계값 이하일 때 (0 < onHand <= threshold)
+    if (product.onHand > 0 && product.onHand <= product.lowStockThreshold) return { text: locale === 'ko' ? '부족' : '不足', color: '#f59e0b' };
+    // 정상: 재고가 임계값보다 많을 때
     return { text: locale === 'ko' ? '정상' : '正常', color: '#10b981' };
   };
 
@@ -603,7 +702,7 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
     setCurrentPage(1);
   }, [searchTerm, filterCategory, showLowStock]);
 
-  const categories = Array.from(new Set(products.map(p => p.category)));
+  const productCategories = Array.from(new Set(products.map(p => p.category)));
 
 
   return (
@@ -624,6 +723,12 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
               className="px-3 py-1.5 md:px-4 md:py-2 bg-blue-600 text-white rounded-md text-sm md:text-base font-medium hover:bg-blue-700"
             >
               + {texts.inbound}
+            </button>
+            <button
+              onClick={() => setShowStockEditModal(true)}
+              className="px-3 py-1.5 md:px-4 md:py-2 bg-orange-500 text-white rounded-md text-sm md:text-base font-medium hover:bg-orange-600"
+            >
+              + {texts.stockEdit}
             </button>
           </div>
         </div>
@@ -647,7 +752,9 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
           >
             <option value="all">{texts.all}</option>
             {categories.map(cat => (
-              <option key={cat} value={cat}>{cat}</option>
+              <option key={cat.id} value={cat.name_ko}>
+                {locale === 'ko' ? cat.name_ko : cat.name_zh}
+              </option>
             ))}
           </select>
           <button
@@ -665,29 +772,35 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
         {/* 재고 통계 - 모바일에서는 2x2, 데스크톱에서는 4열 */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
           <div className="bg-white p-3 md:p-4 rounded-lg shadow">
-            <p className="text-xs md:text-sm text-gray-500">총 상품 수</p>
+            <p className="text-xs md:text-sm text-gray-500">{texts.totalProductsCount}</p>
             <p className="text-lg md:text-2xl font-bold mt-1">{products.length}개</p>
           </div>
           <div className="bg-white p-3 md:p-4 rounded-lg shadow">
-            <p className="text-xs md:text-sm text-gray-500">총 재고 수량</p>
+            <p className="text-xs md:text-sm text-gray-500">{texts.totalStockQuantity}</p>
             <p className="text-lg md:text-2xl font-bold mt-1">{products.reduce((sum, p) => sum + p.onHand, 0)}개</p>
           </div>
           <div className="bg-white p-3 md:p-4 rounded-lg shadow">
-            <p className="text-xs md:text-sm text-gray-500">재고 부족 상품</p>
+            <p className="text-xs md:text-sm text-gray-500">{texts.lowStockProducts}</p>
             <p className="text-lg md:text-2xl font-bold text-amber-600 mt-1">
               {products.filter(p => p.onHand <= p.lowStockThreshold).length}개
             </p>
           </div>
           <div className="bg-white p-3 md:p-4 rounded-lg shadow">
-            <p className="text-xs md:text-sm text-gray-500">재고 가치</p>
+            <p className="text-xs md:text-sm text-gray-500">{texts.stockValueTotal}</p>
             <p className="text-lg md:text-2xl font-bold mt-1">
               ₩{products.reduce((sum, p) => sum + p.onHand * p.salePriceKrw, 0).toLocaleString()}
             </p>
           </div>
         </div>
 
-        {/* 상품 목록 */}
-        <div style={{ backgroundColor: 'white', borderRadius: '0.5rem', overflow: 'hidden' }}>
+        {/* 재고 내역 테이블 */}
+        <div style={{ marginBottom: '2rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>
+              {locale === 'ko' ? '재고 내역' : '库存明细'}
+            </h2>
+          </div>
+          <div style={{ backgroundColor: 'white', borderRadius: '0.5rem', overflow: 'hidden' }}>
           <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '1rem' }}>
             <button
               onClick={() => {
@@ -744,7 +857,18 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
                     <div 
                       key={product.id}
                       onClick={() => handleProductClick(product)}
-                      className="p-4 border-b border-gray-200 hover:bg-gray-50 cursor-pointer"
+                      style={{
+                        padding: '1rem',
+                        borderBottom: '1px solid #e5e7eb',
+                        cursor: 'pointer',
+                        transition: 'background-color 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#f9fafb';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                      }}
                     >
                       <div className="flex items-start gap-3">
                         {product.imageUrl && (
@@ -786,13 +910,14 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
                 <table className="w-full">
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{texts.sku}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{texts.date}</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{texts.productName}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{texts.model}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{texts.color}</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{texts.category}</th>
                       <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">{texts.stock}</th>
                       <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">{texts.cost}</th>
                       <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">{texts.price}</th>
-                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">{texts.status}</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
@@ -802,9 +927,20 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
                         <tr 
                           key={product.id} 
                           onClick={() => handleProductClick(product)}
-                          className="hover:bg-gray-50 cursor-pointer"
+                          style={{
+                            cursor: 'pointer',
+                            transition: 'background-color 0.2s'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = '#f9fafb';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                          }}
                         >
-                          <td className="px-6 py-4 whitespace-nowrap text-xs font-mono">{product.sku}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            {new Date().toLocaleDateString('ko-KR', { year: '2-digit', month: '2-digit', day: '2-digit' }).replace(/\. /g, '').replace(/\./g, '')}
+                          </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center gap-3">
                               {product.imageUrl && (
@@ -814,14 +950,11 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
                                   className="w-10 h-10 object-cover rounded"
                                 />
                               )}
-                              <div>
-                                <p className="text-sm font-medium">{product.name}</p>
-                                <p className="text-xs text-gray-500">
-                                  {product.model} / {product.color} / {product.brand}
-                                </p>
-                              </div>
+                              <p className="text-sm font-medium">{product.name}</p>
                             </div>
                           </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">{product.model}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">{product.color || '-'}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">{product.category}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-center">
                             <div>
@@ -836,13 +969,6 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
                             ₩{product.salePriceKrw.toLocaleString()}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-center">
-                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                              product.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                            }`}>
-                              {product.active ? texts.active : texts.inactive}
-                            </span>
                           </td>
                         </tr>
                       );
@@ -864,6 +990,7 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
               className="mt-4 px-4 pb-4"
             />
           )}
+          </div>
         </div>
 
         {/* 재고 이동 내역 */}
@@ -912,31 +1039,42 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ backgroundColor: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600' }}>{texts.date}</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600' }}>{texts.productName}</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'center', fontSize: '0.875rem', fontWeight: '600' }}>{texts.movementType}</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'right', fontSize: '0.875rem', fontWeight: '600' }}>{texts.quantity}</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'right', fontSize: '0.875rem', fontWeight: '600' }}>{texts.balance}</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600' }}>{texts.note}</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600' }}>{texts.operator}</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600' }}>
+                    {locale === 'ko' ? '날짜' : '日期'}
+                  </th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600' }}>
+                    {texts.productName}
+                  </th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600' }}>
+                    {texts.model}
+                  </th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600' }}>
+                    {texts.color}
+                  </th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600' }}>
+                    {texts.category}
+                  </th>
+                  <th style={{ padding: '0.75rem', textAlign: 'right', fontSize: '0.875rem', fontWeight: '600' }}>
+                    {locale === 'ko' ? '수량' : '数量'}
+                  </th>
+                  <th style={{ padding: '0.75rem', textAlign: 'right', fontSize: '0.875rem', fontWeight: '600' }}>
+                    {locale === 'ko' ? '잔량' : '余额'}
+                  </th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600' }}>
+                    {locale === 'ko' ? '담당자' : '操作员'}
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {movements.slice(0, 10).map((movement) => (
                   <tr key={movement.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                    <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>{movement.date}</td>
-                    <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>{movement.productName}</td>
-                    <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                      <span style={{
-                        padding: '0.25rem 0.5rem',
-                        backgroundColor: movement.type === 'inbound' ? '#dbeafe' : movement.type === 'sale' ? '#fef3c7' : '#fee2e2',
-                        color: movement.type === 'inbound' ? '#1e40af' : movement.type === 'sale' ? '#92400e' : '#dc2626',
-                        borderRadius: '0.25rem',
-                        fontSize: '0.75rem'
-                      }}>
-                        {movement.type === 'inbound' ? texts.inboundType : movement.type === 'sale' ? texts.saleType : texts.adjustmentType}
-                      </span>
+                    <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>
+                      {new Date(movement.date).toLocaleDateString('ko-KR', { year: '2-digit', month: '2-digit', day: '2-digit' }).replace(/\. /g, '-').replace(/\./g, '')}
                     </td>
+                    <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>{movement.productName}</td>
+                    <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>{movement.productModel || '-'}</td>
+                    <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>{movement.productColor || '-'}</td>
+                    <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>{movement.productCategory || '-'}</td>
                     <td style={{ 
                       padding: '0.75rem', 
                       textAlign: 'right', 
@@ -949,9 +1087,6 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
                     <td style={{ padding: '0.75rem', textAlign: 'right', fontSize: '0.875rem' }}>
                       {movement.balanceAfter}
                     </td>
-                    <td style={{ padding: '0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>
-                      {movement.note || '-'}
-                    </td>
                     <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>{movement.createdBy}</td>
                   </tr>
                 ))}
@@ -961,181 +1096,6 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
         </div>
       </div>
 
-      {/* 상품 등록/수정 모달 */}
-      {showProductModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 50
-        }}>
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '0.5rem',
-            width: '90%',
-            maxWidth: '600px',
-            maxHeight: '90vh',
-            overflow: 'auto',
-            padding: '2rem'
-          }}>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1.5rem' }}>
-              {texts.newProduct}
-            </h2>
-
-            {/* 상품 정보 */}
-            <div style={{ marginBottom: '1.5rem' }}>
-              <h3 style={{ fontWeight: '600', marginBottom: '1rem' }}>{texts.productInfo}</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div style={{ gridColumn: 'span 2' }}>
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.productName} *</label>
-                  <input
-                    type="text"
-                    value={newProduct.name}
-                    onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
-                    required
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.category} *</label>
-                  <input
-                    type="text"
-                    value={newProduct.category}
-                    onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })}
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
-                    required
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.model} *</label>
-                  <input
-                    type="text"
-                    value={newProduct.model}
-                    onChange={(e) => setNewProduct({ ...newProduct, model: e.target.value })}
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
-                    required
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.color}</label>
-                  <input
-                    type="text"
-                    value={newProduct.color}
-                    onChange={(e) => setNewProduct({ ...newProduct, color: e.target.value })}
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.brand} *</label>
-                  <input
-                    type="text"
-                    value={newProduct.brand}
-                    onChange={(e) => setNewProduct({ ...newProduct, brand: e.target.value })}
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
-                    required
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* 가격 정보 */}
-            <div style={{ marginBottom: '1.5rem' }}>
-              <h3 style={{ fontWeight: '600', marginBottom: '1rem' }}>{texts.priceInfo}</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.cost} *</label>
-                  <input
-                    type="number"
-                    value={newProduct.costCny}
-                    onChange={(e) => setNewProduct({ ...newProduct, costCny: parseFloat(e.target.value) || 0 })}
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
-                    required
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.price} *</label>
-                  <input
-                    type="number"
-                    value={newProduct.salePriceKrw}
-                    onChange={(e) => setNewProduct({ ...newProduct, salePriceKrw: parseFloat(e.target.value) || 0 })}
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
-                    required
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.lowStockThreshold}</label>
-                  <input
-                    type="number"
-                    value={newProduct.lowStockThreshold}
-                    onChange={(e) => setNewProduct({ ...newProduct, lowStockThreshold: parseInt(e.target.value) || 5 })}
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* 이미지 업로드 */}
-            <div style={{ marginBottom: '1.5rem' }}>
-              <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.imageUpload}</label>
-              <input
-                type="text"
-                placeholder="https://example.com/image.jpg"
-                value={newProduct.imageUrl}
-                onChange={(e) => setNewProduct({ ...newProduct, imageUrl: e.target.value })}
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
-              />
-            </div>
-
-            {/* 설명 */}
-            <div style={{ marginBottom: '1.5rem' }}>
-              <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.description}</label>
-              <textarea
-                value={newProduct.description}
-                onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem', minHeight: '80px' }}
-              />
-            </div>
-
-            {/* 버튼 */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
-              <button
-                onClick={() => {
-                  setShowProductModal(false);
-                  resetProductForm();
-                }}
-                style={{
-                  padding: '0.5rem 1rem',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '0.375rem',
-                  backgroundColor: 'white',
-                  cursor: 'pointer'
-                }}
-              >
-                {texts.cancel}
-              </button>
-              <button
-                onClick={handleProductSave}
-                style={{
-                  padding: '0.5rem 1rem',
-                  backgroundColor: '#10b981',
-                  color: 'white',
-                  borderRadius: '0.375rem',
-                  border: 'none',
-                  cursor: 'pointer'
-                }}
-              >
-                {texts.save}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* 재고 입고 모달 */}
       {showInboundModal && (
@@ -1171,11 +1131,13 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
                 required
               >
                 <option value="">-- {texts.selectProduct} --</option>
-                {products.map((product) => (
-                  <option key={product.id} value={product.id}>
-                    {product.name} ({product.sku}) - {texts.currentStock}: {product.onHand}
-                  </option>
-                ))}
+                {products
+                  .sort((a, b) => (a.model || '').localeCompare(b.model || ''))
+                  .map((product) => (
+                    <option key={product.id} value={product.id}>
+                      {product.model} | {product.name} | {product.category} | {texts.stock}: {product.onHand}
+                    </option>
+                  ))}
               </select>
             </div>
 
@@ -1261,6 +1223,157 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
         </div>
       )}
 
+      {/* 재고 수정 모달 */}
+      {showStockEditModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 50
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '0.5rem',
+            width: '90%',
+            maxWidth: '500px',
+            padding: '2rem'
+          }}>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1.5rem' }}>
+              {texts.stockEditTitle}
+            </h2>
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.selectProduct} *</label>
+              <select
+                value={stockEditForm.productId}
+                onChange={(e) => {
+                  const selectedProduct = products.find(p => p.id === e.target.value);
+                  setStockEditForm({ 
+                    ...stockEditForm, 
+                    productId: e.target.value,
+                    unitCost: selectedProduct?.costCny || 0
+                  });
+                }}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
+                required
+              >
+                <option value="">-- {texts.selectProduct} --</option>
+                {products
+                  .sort((a, b) => (a.model || '').localeCompare(b.model || ''))
+                  .map((product) => (
+                    <option key={product.id} value={product.id}>
+                      {product.model} | {product.name} | {product.category} | {texts.stock}: {product.onHand}
+                    </option>
+                  ))}
+              </select>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.quantity} *</label>
+                <input
+                  type="number"
+                  value={stockEditForm.quantity}
+                  onChange={(e) => setStockEditForm({ ...stockEditForm, quantity: parseInt(e.target.value) || 0 })}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
+                  placeholder={locale === 'ko' ? '+ 증가, - 감소' : '+ 增加, - 减少'}
+                  required
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.unitCost} (CNY)</label>
+                <input
+                  type="number"
+                  value={stockEditForm.unitCost}
+                  readOnly
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem', backgroundColor: '#f3f4f6' }}
+                />
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.reason} *</label>
+              <select
+                value={stockEditForm.reason}
+                onChange={(e) => setStockEditForm({ ...stockEditForm, reason: e.target.value })}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
+                required
+              >
+                <option value="loss">{texts.loss}</option>
+                <option value="recovery">{texts.recovery}</option>
+              </select>
+            </div>
+
+            {stockEditForm.productId && stockEditForm.quantity !== 0 && (
+              <div style={{ marginBottom: '1rem', padding: '1rem', backgroundColor: '#f3f4f6', borderRadius: '0.375rem' }}>
+                <p style={{ fontSize: '0.875rem', marginBottom: '0.5rem' }}>
+                  {texts.currentStock}: <strong>{products.find(p => p.id === stockEditForm.productId)?.onHand || 0}</strong>
+                </p>
+                <p style={{ fontSize: '0.875rem', marginBottom: '0.5rem', color: stockEditForm.quantity > 0 ? '#10b981' : '#ef4444' }}>
+                  {locale === 'ko' ? '변경 후 재고' : '修改后库存'}: <strong>{(products.find(p => p.id === stockEditForm.productId)?.onHand || 0) + stockEditForm.quantity}</strong>
+                </p>
+                <p style={{ fontSize: '0.875rem' }}>
+                  {locale === 'ko' ? '조정 사유' : '调整原因'}: <strong>{stockEditForm.reason === 'loss' ? texts.loss : texts.recovery}</strong>
+                </p>
+              </div>
+            )}
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.note}</label>
+              <textarea
+                value={stockEditForm.note}
+                onChange={(e) => setStockEditForm({ ...stockEditForm, note: e.target.value })}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem', minHeight: '60px' }}
+                placeholder={texts.adjustNote}
+              />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+              <button
+                onClick={() => {
+                  setShowStockEditModal(false);
+                  setStockEditForm({
+                    productId: '',
+                    quantity: 0,
+                    unitCost: 0,
+                    reason: 'loss',
+                    note: '',
+                  });
+                }}
+                style={{
+                  padding: '0.5rem 1rem',
+                  backgroundColor: '#f3f4f6',
+                  borderRadius: '0.375rem',
+                  border: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                {texts.cancel}
+              </button>
+              <button
+                onClick={handleStockEdit}
+                style={{
+                  padding: '0.5rem 1rem',
+                  backgroundColor: '#f97316',
+                  color: 'white',
+                  borderRadius: '0.375rem',
+                  border: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                {texts.save}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 상품 등록 모달 */}
       {showProductModal && (
         <div style={{
@@ -1304,13 +1417,19 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
                 </div>
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.category} *</label>
-                  <input
-                    type="text"
+                  <select
                     value={newProduct.category}
                     onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })}
                     style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
                     required
-                  />
+                  >
+                    <option value="">{locale === 'ko' ? '선택하세요' : '请选择'}</option>
+                    {categories.map(cat => (
+                      <option key={cat.id} value={locale === 'ko' ? cat.name_ko : cat.name_zh}>
+                        {locale === 'ko' ? cat.name_ko : cat.name_zh}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.model} *</label>
@@ -1332,13 +1451,12 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.brand} *</label>
+                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.brand}</label>
                   <input
                     type="text"
                     value={newProduct.brand}
                     onChange={(e) => setNewProduct({ ...newProduct, brand: e.target.value })}
                     style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
-                    required
                   />
                 </div>
               </div>
@@ -1373,8 +1491,20 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
                   <input
                     type="number"
                     value={newProduct.lowStockThreshold}
-                    onChange={(e) => setNewProduct({ ...newProduct, lowStockThreshold: parseInt(e.target.value) || 5 })}
+                    onChange={(e) => setNewProduct({ ...newProduct, lowStockThreshold: parseInt(e.target.value) || defaultLowStockThreshold })}
                     style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.initialStock} *</label>
+                  <input
+                    type="number"
+                    value={newProduct.onHand}
+                    onChange={(e) => setNewProduct({ ...newProduct, onHand: parseInt(e.target.value) || 1 })}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
+                    placeholder="1"
+                    min="0"
+                    required
                   />
                 </div>
               </div>
@@ -1412,7 +1542,8 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
                     brand: '',
                     costCny: 0,
                     salePriceKrw: 0,
-                    lowStockThreshold: 5,
+                    onHand: 0,
+                    lowStockThreshold: defaultLowStockThreshold,
                     description: '',
                     imageUrl: '',
                   });
@@ -1428,51 +1559,29 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
                 {texts.cancel}
               </button>
               <button
-                onClick={() => {
-                  // 상품 등록 로직
-                  const newId = Date.now().toString();
-                  const sku = `${newProduct.category.toUpperCase().slice(0, 3)}-${newProduct.model.toUpperCase().replace(/\s+/g, '')}-${newProduct.color?.toUpperCase().slice(0, 3) || 'NA'}-${newProduct.brand.toUpperCase().slice(0, 3)}-${newId.slice(-5)}`;
-                  
-                  const product: Product = {
-                    id: newId,
-                    sku,
-                    name: newProduct.name,
-                    category: newProduct.category,
-                    model: newProduct.model,
-                    color: newProduct.color,
-                    brand: newProduct.brand,
-                    costCny: newProduct.costCny,
-                    salePriceKrw: newProduct.salePriceKrw,
-                    onHand: 0,
-                    lowStockThreshold: newProduct.lowStockThreshold,
-                    imageUrl: newProduct.imageUrl,
-                    description: newProduct.description,
-                    active: true,
-                  };
-                  
-                  setProducts([...products, product]);
-                  setShowProductModal(false);
-                  setNewProduct({
-                    name: '',
-                    category: '',
-                    model: '',
-                    color: '',
-                    brand: '',
-                    costCny: 0,
-                    salePriceKrw: 0,
-                    lowStockThreshold: 5,
-                    description: '',
-                    imageUrl: '',
-                  });
+                onClick={(e) => {
+                  console.log('🔥 버튼 클릭 이벤트 발생!', e);
+                  document.title = '버튼 클릭됨! - ' + new Date().toLocaleTimeString();
+                  handleProductSave();
                 }}
-                disabled={!newProduct.name || !newProduct.category || !newProduct.model || !newProduct.brand}
+                onMouseDown={() => console.log('🔥 버튼 마우스 다운!')}
                 style={{
-                  padding: '0.5rem 1rem',
-                  backgroundColor: newProduct.name && newProduct.category && newProduct.model && newProduct.brand ? '#2563eb' : '#9ca3af',
-                  color: 'white',
+                  padding: '12px 24px !important',
+                  backgroundColor: '#2563eb !important',
+                  color: 'white !important',
                   borderRadius: '0.375rem',
-                  border: 'none',
-                  cursor: newProduct.name && newProduct.category && newProduct.model && newProduct.brand ? 'pointer' : 'not-allowed'
+                  border: 'none !important',
+                  cursor: 'pointer !important',
+                  minWidth: '80px',
+                  minHeight: '44px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  boxSizing: 'border-box',
+                  display: 'inline-block',
+                  textAlign: 'center',
+                  verticalAlign: 'middle',
+                  userSelect: 'none',
+                  outline: 'none'
                 }}
               >
                 {texts.save}

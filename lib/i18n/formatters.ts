@@ -134,7 +134,7 @@ export function formatPhoneNumber(phone: string, locale: Locale): string {
   return phone
 }
 
-// 주문번호 포맷팅 (예: ORD-240315-001)
+// 주문번호 포맷팅 (예: 240315-001)
 export function formatOrderNumber(orderNo: string, locale: Locale): string {
   // 언어별로 동일한 포맷 사용
   return orderNo

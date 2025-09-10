@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase/server';
+import { getLowStockThresholdServer } from '@/lib/utils/system-settings';
 
 export async function GET(request: NextRequest) {
   try {
@@ -89,8 +90,10 @@ export async function GET(request: NextRequest) {
     
     // 재고 통계 계산
     const totalProducts = inventory?.length || 0;
+    // 데이터베이스에서 기본 재고 부족 임계값 가져오기
+    const defaultThreshold = await getLowStockThresholdServer();
     const lowStockProducts = inventory?.filter(item => 
-      item.on_hand <= (item.products?.low_stock_threshold || 5)
+      item.on_hand <= (item.products?.low_stock_threshold || defaultThreshold)
     ).length || 0;
     const outOfStockProducts = inventory?.filter(item => 
       item.on_hand <= 0

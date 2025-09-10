@@ -237,7 +237,7 @@ export const ValidationSchemas = {
   
   // Order schemas
   orderNumber: z.string()
-    .regex(/^ORD-\d{6}-\d{3}$/, 'Invalid order number format'),
+    .regex(/^\d{6}-\d{3}$/, 'Invalid order number format'),
   
   productSKU: z.string()
     .regex(/^[A-Z]{3}-[A-Z]{4}-[A-Z]{2}-[A-Z]{3}-[A-Z0-9]{5}$/, 'Invalid SKU format'),

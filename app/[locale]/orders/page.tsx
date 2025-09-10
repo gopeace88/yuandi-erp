@@ -66,12 +66,13 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
     customerPhone: '',
     customerEmail: '',
     kakaoId: '',  // 아이디 (카카오톡 등)
-    pcccCode: '',
+    pcccCode: 'P',
     shippingAddress: '',
     shippingAddressDetail: '',
     zipCode: '',
     productId: '',
     quantity: 1,
+    customPrice: 0,  // 커스텀 가격 (수동 입력용)
     customerMemo: '',
   });
 
@@ -82,22 +83,25 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
       createOrder: '새 주문',
       orderNo: '주문번호',
       orderDate: '주문일',
-      customerName: '고객명',
-      customerPhone: '전화번호',
+      customer: '고객',
+      phone: '전화번호',
+      address: '배송지',
+      items: '상품',
       status: '상태',
-      totalAmount: '금액',
       actions: '작업',
       search: '검색',
       filter: '필터',
       all: '전체',
       paid: '결제완료',
       shipped: '배송중',
-      done: '완료',
+      done: '배송완료',
       cancelled: '취소',
       refunded: '환불',
       noOrders: '주문이 없습니다',
       createNewOrder: '새 주문 생성',
       customerInfo: '고객 정보',
+      customerName: '이름',
+      customerPhone: '전화번호',
       shippingInfo: '배송 정보',
       productInfo: '상품 정보',
       email: '이메일',
@@ -130,22 +134,25 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
       createOrder: '新订单',
       orderNo: '订单号',
       orderDate: '订单日期',
-      customerName: '客户姓名',
-      customerPhone: '电话',
+      customer: '客户',
+      phone: '电话',
+      address: '配送地址',
+      items: '商品',
       status: '状态',
-      totalAmount: '金额',
       actions: '操作',
       search: '搜索',
       filter: '筛选',
       all: '全部',
       paid: '已付款',
       shipped: '配送中',
-      done: '完成',
+      done: '配送完成',
       cancelled: '已取消',
       refunded: '已退款',
       noOrders: '没有订单',
       createNewOrder: '创建新订单',
       customerInfo: '客户信息',
+      customerName: '姓名',
+      customerPhone: '电话号码',
       shippingInfo: '配送信息',
       productInfo: '产品信息',
       email: '电子邮件',
@@ -272,8 +279,8 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
               zipCode: order.shipping_postal_code || '',
               status: (order.status?.toLowerCase() || 'paid') as Order['status'],
               totalAmount: order.total_krw || 0,
-              productName: order.order_items?.[0]?.products?.name || '',
-              productSku: order.order_items?.[0]?.products?.sku || '',
+              productName: order.order_items?.[0]?.product_name || order.order_items?.[0]?.products?.name || '',
+              productSku: order.order_items?.[0]?.sku || order.order_items?.[0]?.products?.sku || '',
               quantity: order.order_items?.[0]?.quantity || 0,
             });
           } catch (itemError) {
@@ -307,11 +314,11 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
         .from('products')
         .select(`
           *,
-          inventory (
+          inventory!left (
             on_hand,
             allocated
           ),
-          product_categories (
+          categories (
             name
           )
         `)
@@ -382,13 +389,13 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
             id: product.id || '',
             sku: product.sku || '',
             name: product.name || '',
-            category: product.product_categories?.name || '',
+            category: product.category || '',  // products 테이블의 category 컬럼 직접 사용
             model: product.model || '',
             color: product.color || '',
             brand: product.brand || '',
-            onHand: product.inventory?.[0]?.on_hand || 0,
+            onHand: product.inventory?.on_hand || 0,  // inventory!left는 단일 객체로 반환됨
             salePrice: product.price_krw || (product.cost_cny ? product.cost_cny * 180 : 0),
-            image_url: product.image_urls?.[0] || ''
+            image_url: product.image_url || ''
           });
         } catch (itemError) {
           console.error('❌ 개별 제품 변환 오류:', itemError, product);
@@ -416,89 +423,42 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
     if (!selectedProduct) return;
 
     try {
-      // Supabase 직접 호출
-      const { createClient } = await import('@/lib/supabase/client');
-      const supabase = createClient();
-      
-      // 주문 번호 생성
-      const today = new Date();
-      const dateStr = today.toISOString().slice(2, 10).replace(/-/g, '');
-      
-      // 오늘 날짜의 마지막 주문 번호 조회
-      const { data: lastOrder } = await supabase
-        .from('orders')
-        .select('order_number')
-        .like('order_number', `ORD-${dateStr}-%`)
-        .order('order_number', { ascending: false })
-        .limit(1)
-        .single();
-      
-      let orderNumber;
-      if (lastOrder) {
-        const lastNum = parseInt((lastOrder as any).order_number.split('-')[2]);
-        orderNumber = `ORD-${dateStr}-${String(lastNum + 1).padStart(3, '0')}`;
-      } else {
-        orderNumber = `ORD-${dateStr}-001`;
-      }
-      
-      // 주문 생성
-      const { data: order, error: orderError } = await supabase
-        .from('orders')
-        .insert({
-          order_number: orderNumber,
-          customer_name: newOrder.customerName,
-          customer_phone: newOrder.customerPhone,
-          customer_email: newOrder.customerEmail || null,
-          customer_kakao_id: newOrder.kakaoId,
-          pccc: newOrder.pcccCode,
-          shipping_address_line1: newOrder.shippingAddress,
-          shipping_address_line2: newOrder.shippingAddressDetail || null,
-          shipping_postal_code: newOrder.zipCode,
-          shipping_city: '',
-          shipping_state: '',
-          status: 'paid',
-          subtotal_krw: selectedProduct.salePrice * newOrder.quantity,
-          shipping_fee_krw: 0,
-          total_krw: selectedProduct.salePrice * newOrder.quantity,
-          payment_method: 'card',
-          paid_at: new Date().toISOString(),
-          notes: newOrder.customerMemo || null
-        } as any)
-        .select()
-        .single();
-      
-      if (orderError) {
-        console.error('주문 생성 에러:', orderError);
-        alert(locale === 'ko' ? '주문 생성에 실패했습니다.' : '订单创建失败');
-        return;
-      }
-      
-      // 주문 아이템 생성
-      const { error: itemError } = await supabase
-        .from('order_items')
-        .insert({
-          order_id: order.id,
-          product_id: selectedProduct.id,
-          quantity: newOrder.quantity,
-          unit_price_krw: selectedProduct.salePrice,
-          total_price_krw: selectedProduct.salePrice * newOrder.quantity
-        });
-      
-      if (itemError) {
-        console.error('주문 아이템 생성 에러:', itemError);
-      }
-      
-      // 재고 업데이트
-      const { error: inventoryError } = await supabase.rpc('allocate_inventory', {
-        p_product_id: selectedProduct.id,
-        p_quantity: newOrder.quantity
+      // API를 통해 주문 생성 (출납장부 기록 포함)
+      const orderData = {
+        customerName: newOrder.customerName,
+        customerPhone: newOrder.customerPhone,
+        customerEmail: newOrder.customerEmail || null,
+        customerMessengerId: newOrder.kakaoId || null,
+        pcccCode: newOrder.pcccCode,
+        shippingAddress: newOrder.shippingAddress,
+        shippingAddressDetail: newOrder.shippingAddressDetail || null,
+        zipCode: newOrder.zipCode,
+        productId: selectedProduct.id,
+        quantity: newOrder.quantity,
+        customPrice: newOrder.customPrice,  // 커스텀 가격 전달
+        totalAmount: newOrder.customPrice * newOrder.quantity,  // 커스텀 가격 사용
+        shippingFee: 0,
+        customerMemo: newOrder.customerMemo || null,
+        paymentMethod: 'card'
+      };
+
+      const response = await fetch('/api/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(orderData),
       });
-      
-      if (inventoryError) {
-        console.error('재고 할당 에러:', inventoryError);
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || '주문 생성 실패');
       }
-      
-      alert(locale === 'ko' ? '주문이 생성되었습니다.' : '订单已创建');
+
+      alert(locale === 'ko' 
+        ? `주문이 생성되었습니다. (주문번호: ${result.order.orderNo})` 
+        : `订单已创建 (订单号: ${result.order.orderNo})`);
       
       // 주문 목록 새로고침
       await loadOrders();
@@ -506,7 +466,14 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
       resetNewOrderForm();
     } catch (error) {
       console.error('주문 생성 실패:', error);
-      alert(locale === 'ko' ? '주문 생성에 실패했습니다.' : '订单创建失败');
+      
+      let errorMessage = locale === 'ko' ? '주문 생성에 실패했습니다.' : '订单创建失败';
+      
+      if (error instanceof Error) {
+        errorMessage += `\n\n상세: ${error.message}`;
+      }
+      
+      alert(errorMessage);
     }
   };
 
@@ -516,12 +483,13 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
       customerPhone: '',
       customerEmail: '',
       kakaoId: '',
-      pcccCode: '',
+      pcccCode: 'P',
       shippingAddress: '',
       shippingAddressDetail: '',
       zipCode: '',
       productId: '',
       quantity: 1,
+      customPrice: 0,
       customerMemo: '',
     });
   };
@@ -753,12 +721,12 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
           <button
             onClick={() => {
               const columns = [
-                { header: texts.orderNo, key: 'orderNo', width: 20 },
-                { header: texts.orderDate, key: 'orderDate', width: 15 },
-                { header: texts.customerName, key: 'customerName', width: 20 },
-                { header: texts.customerPhone, key: 'customerPhone', width: 20 },
-                { header: texts.status, key: 'status', width: 15 },
-                { header: texts.totalAmount, key: 'totalAmount', width: 20 }
+                { header: texts.orderNo, key: 'orderNo', width: 15 },
+                { header: texts.customer, key: 'customerName', width: 20 },
+                { header: texts.phone, key: 'customerPhone', width: 20 },
+                { header: texts.address, key: 'shippingAddress', width: 30 },
+                { header: texts.items, key: 'productName', width: 25 },
+                { header: texts.status, key: 'status', width: 15 }
               ];
               
               exportToExcel({
@@ -788,12 +756,23 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
                   <div 
                     key={order.id}
                     onClick={() => handleOrderClick(order)}
-                    className="p-4 border-b border-gray-200 hover:bg-gray-50 cursor-pointer"
+                    style={{
+                      padding: '1rem',
+                      borderBottom: '1px solid #e5e7eb',
+                      cursor: 'pointer',
+                      transition: 'background-color 0.2s'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#f9fafb';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
                   >
                     <div className="flex justify-between items-start mb-2">
                       <div>
                         <div className="font-semibold text-sm">{order.orderNo}</div>
-                        <div className="text-xs text-gray-500">{order.orderDate}</div>
+                        <div className="text-xs text-gray-500">{order.customerName}</div>
                       </div>
                       <span className={`px-2 py-1 text-xs font-semibold rounded-full`}
                         style={{
@@ -820,11 +799,11 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{texts.orderNo}</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{texts.orderDate}</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{texts.customerName}</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{texts.customerPhone}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{texts.customer}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{texts.phone}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{texts.address}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{texts.items}</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{texts.status}</th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">{texts.totalAmount}</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
@@ -832,12 +811,28 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
                       <tr 
                         key={order.id} 
                         onClick={() => handleOrderClick(order)}
-                        className="hover:bg-gray-50 cursor-pointer"
+                        style={{
+                          cursor: 'pointer',
+                          transition: 'background-color 0.2s'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = '#f9fafb';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                        }}
                       >
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">{order.orderNo}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">{order.orderDate}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          {order.orderNo}
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">{order.customerName}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">{order.customerPhone}</td>
+                        <td className="px-6 py-4 text-sm">
+                          {order.shippingAddress} {order.shippingAddressDetail || ''}
+                        </td>
+                        <td className="px-6 py-4 text-sm">
+                          {order.productName} {order.quantity > 1 ? `×${order.quantity}` : ''}
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
                             style={{
@@ -846,9 +841,6 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
                             }}>
                             {getStatusText(order.status)}
                           </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
-                          ₩{order.totalAmount.toLocaleString()}
                         </td>
                       </tr>
                     ))}
@@ -924,14 +916,13 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.kakaoId} *</label>
+                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.kakaoId}</label>
                   <input
                     type="text"
                     value={newOrder.kakaoId}
                     onChange={(e) => setNewOrder({ ...newOrder, kakaoId: e.target.value })}
                     style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
                     placeholder={locale === 'ko' ? '카카오톡 등' : 'KakaoTalk etc'}
-                    required
                   />
                 </div>
                 <div>
@@ -948,9 +939,21 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
                   <input
                     type="text"
                     value={newOrder.pcccCode}
-                    onChange={(e) => setNewOrder({ ...newOrder, pcccCode: e.target.value })}
+                    onChange={(e) => {
+                      const value = e.target.value.toUpperCase();
+                      // P로 시작하지 않으면 P를 앞에 추가
+                      if (!value.startsWith('P')) {
+                        return;
+                      }
+                      // P 뒤에 숫자만 허용 (최대 11자리)
+                      const numbers = value.slice(1);
+                      if (numbers === '' || (/^\d{0,11}$/.test(numbers))) {
+                        setNewOrder({ ...newOrder, pcccCode: value });
+                      }
+                    }}
+                    maxLength={12}
                     style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
-                    placeholder="P123456789012"
+                    placeholder="P + 11자리 숫자"
                     required
                   />
                 </div>
@@ -1029,28 +1032,51 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
                 <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.selectProduct} *</label>
                 <select
                   value={newOrder.productId}
-                  onChange={(e) => setNewOrder({ ...newOrder, productId: e.target.value })}
+                  onChange={(e) => {
+                    const selectedProduct = products.find(p => p.id === e.target.value);
+                    setNewOrder({ 
+                      ...newOrder, 
+                      productId: e.target.value,
+                      customPrice: selectedProduct ? selectedProduct.salePrice : 0
+                    });
+                  }}
                   style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
                   required
                 >
                   <option value="">-- {texts.selectProduct} --</option>
-                  {Array.isArray(products) && products.map((product) => (
-                    <option key={product.id} value={product.id}>
-                      {product.name} ({product.sku}) - {texts.stock}: {product.onHand} - ₩{product.salePrice.toLocaleString()}
-                    </option>
-                  ))}
+                  {Array.isArray(products) && products
+                    .sort((a, b) => (a.model || '').localeCompare(b.model || ''))
+                    .map((product) => (
+                      <option key={product.id} value={product.id}>
+                        {product.model}, {product.name}, {product.category}, {texts.stock}: {product.onHand}, ₩{product.salePrice.toLocaleString()}
+                      </option>
+                    ))}
                 </select>
               </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.quantity} *</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={newOrder.quantity}
-                  onChange={(e) => setNewOrder({ ...newOrder, quantity: parseInt(e.target.value) || 1 })}
-                  style={{ width: '100px', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
-                  required
-                />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.quantity} *</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={newOrder.quantity}
+                    onChange={(e) => setNewOrder({ ...newOrder, quantity: parseInt(e.target.value) || 1 })}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
+                    required
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.price} *</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={newOrder.customPrice}
+                    onChange={(e) => setNewOrder({ ...newOrder, customPrice: parseInt(e.target.value) || 0 })}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
+                    placeholder="₩"
+                    required
+                  />
+                </div>
               </div>
             </div>
 

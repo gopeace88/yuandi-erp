@@ -45,7 +45,6 @@ export const koMessages = {
     "passwordLabel": "비밀번호",
     "signInButton": "로그인",
     "signingIn": "로그인 중...",
-    "adminCredentials": "관리자 계정: yuandi1020@gmail.com / yuandi123!",
     "initialSetup": "초기 설정이 필요한 경우",
     "clickHere": "여기를 클릭",
     "setupPrompt": "하세요.",
@@ -102,7 +101,7 @@ export const koMessages = {
     "internalMemo": "내부 메모",
     "statusPaid": "결제완료",
     "statusShipped": "배송중",
-    "statusDone": "완료",
+    "statusDone": "배송완료",
     "statusRefunded": "환불",
     "searchPlaceholder": "주문번호 또는 고객명으로 검색...",
     "allStatus": "모든 상태",
@@ -119,7 +118,6 @@ export const koMessages = {
     "stats": {
       "total": "전체 주문",
       "processing": "처리 중",
-      "delivered": "배송 완료",
       "refunded": "환불"
     },
     "list": {
@@ -132,8 +130,7 @@ export const koMessages = {
       "paid": "결제완료",
       "shipped": "배송중",
       "shipping": "배송중",
-      "done": "완료",
-      "delivered": "배송완료",
+      "done": "배송완료",
       "cancelled": "취소됨",
       "refunded": "환불"
     },

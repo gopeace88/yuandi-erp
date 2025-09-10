@@ -64,15 +64,7 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
   const router = useRouter();
   
   // 거래유형 설정 불러오기
-  const [transactionTypes, setTransactionTypes] = useState<TransactionType[]>([
-    { id: 'shipping', name: { ko: '배송', 'zh-CN': '配送' }, color: '#f59e0b', active: true },
-    { id: 'sale', name: { ko: '판매', 'zh-CN': '销售' }, color: '#10b981', active: true },
-    { id: 'inbound', name: { ko: '입고', 'zh-CN': '入库' }, color: '#3b82f6', active: true },
-    { id: 'order', name: { ko: '주문', 'zh-CN': '订单' }, color: '#8b5cf6', active: true },
-    { id: 'adjustment', name: { ko: '조정', 'zh-CN': '调整' }, color: '#f59e0b', active: true },
-    { id: 'refund', name: { ko: '환불', 'zh-CN': '退款' }, color: '#ef4444', active: true },
-    { id: 'cancel', name: { ko: '취소', 'zh-CN': '取消' }, color: '#6b7280', active: true },
-  ]);
+  const [transactionTypes, setTransactionTypes] = useState<TransactionType[]>([]);
 
   // 거래 추가 폼 상태
   const [addForm, setAddForm] = useState({
@@ -230,6 +222,29 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
     return t[type as keyof typeof t] || type;
   };
 
+  // 출납유형 로드 함수
+  const loadCashbookTypes = async () => {
+    try {
+      const response = await fetch('/api/cashbook-types');
+      if (response.ok) {
+        const data = await response.json();
+        // API 데이터를 TransactionType 형태로 변환
+        const types = data.map((type: any) => ({
+          id: type.code,
+          name: { ko: type.name_ko, 'zh-CN': type.name_zh },
+          color: type.color,
+          active: type.active
+        }));
+        setTransactionTypes(types);
+        console.log('✅ 출납유형 로드 완료:', types);
+      } else {
+        console.error('❌ 출납유형 로드 실패');
+      }
+    } catch (error) {
+      console.error('❌ 출납유형 API 호출 오류:', error);
+    }
+  };
+
   // 거래 내역 로드 함수
   const loadTransactions = async () => {
     console.log('💰 출납장부 데이터 로드 시작...');
@@ -295,18 +310,11 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
     }
     setUserRole(role);
     
+    // 출납유형 로드 (API에서)
+    loadCashbookTypes();
+    
     // 거래 내역 로드
     loadTransactions();
-    
-    // Load transaction types from localStorage
-    const savedTypes = localStorage.getItem('transactionTypes');
-    if (savedTypes) {
-      try {
-        setTransactionTypes(JSON.parse(savedTypes));
-      } catch (e) {
-        console.error('Failed to parse saved transaction types:', e);
-      }
-    }
   }, [locale, router]);
 
   useEffect(() => {
@@ -689,7 +697,6 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
                 <th style={{ padding: '0.75rem', textAlign: 'right', fontWeight: '600' }}>{t.amountIn}</th>
                 <th style={{ padding: '0.75rem', textAlign: 'right', fontWeight: '600' }}>{t.amountOut}</th>
                 <th style={{ padding: '0.75rem', textAlign: 'right', fontWeight: '600' }}>{t.balance}</th>
-                <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: '600' }}>{t.action}</th>
               </tr>
             </thead>
             <tbody>
@@ -700,7 +707,23 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
                 const balance = calculateBalance(actualIndex);
                 
                 return (
-                  <tr key={transaction.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                  <tr 
+                    key={transaction.id} 
+                    style={{ 
+                      borderBottom: '1px solid #e5e7eb',
+                      transition: 'background-color 0.2s',
+                      cursor: 'pointer'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#f9fafb';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
+                    onClick={() => {
+                      setSelectedTransaction(transaction);
+                      setShowDetailModal(true);
+                    }}>
                     <td style={{ padding: '0.75rem' }}>{transaction.transactionDate}</td>
                     <td style={{ padding: '0.75rem' }}>
                       <span style={{
@@ -738,25 +761,6 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
                       color: balance >= 0 ? '#166534' : '#dc2626'
                     }}>
                       ₩{balance.toLocaleString()}
-                    </td>
-                    <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                      <button
-                        onClick={() => {
-                          setSelectedTransaction(transaction);
-                          setShowDetailModal(true);
-                        }}
-                        style={{
-                          padding: '0.25rem 0.75rem',
-                          backgroundColor: '#6b7280',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '0.375rem',
-                          fontSize: '0.75rem',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        {t.viewDetail}
-                      </button>
                     </td>
                   </tr>
                 );

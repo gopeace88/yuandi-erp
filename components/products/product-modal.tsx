@@ -8,15 +8,24 @@ import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { X } from 'lucide-react';
 
+interface Category {
+  id: string;
+  code: string;
+  name_ko: string;
+  name_zh: string;
+  display_order: number;
+}
+
 interface ProductModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: any) => void;
   product?: any;
   mode?: 'create' | 'edit' | 'view';
+  locale?: string;
 }
 
-export function ProductModal({ isOpen, onClose, onSubmit, product, mode = 'create' }: ProductModalProps) {
+export function ProductModal({ isOpen, onClose, onSubmit, product, mode = 'create', locale = 'ko' }: ProductModalProps) {
   const [formData, setFormData] = useState({
     name: '',
     category: '',
@@ -30,12 +39,31 @@ export function ProductModal({ isOpen, onClose, onSubmit, product, mode = 'creat
     minStock: 5,
     ...product,
   });
+  
+  const [categories, setCategories] = useState<Category[]>([]);
 
   useEffect(() => {
     if (product) {
       setFormData({ ...product });
     }
   }, [product]);
+  
+  // 카테고리 목록 로드
+  useEffect(() => {
+    loadCategories();
+  }, []);
+  
+  const loadCategories = async () => {
+    try {
+      const response = await fetch('/api/categories');
+      if (response.ok) {
+        const data = await response.json();
+        setCategories(data);
+      }
+    } catch (error) {
+      console.error('Error loading categories:', error);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,7 +83,11 @@ export function ProductModal({ isOpen, onClose, onSubmit, product, mode = 'creat
       <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold">
-            {mode === 'create' ? '새 상품 등록' : mode === 'edit' ? '상품 수정' : '상품 상세'}
+            {mode === 'create' 
+              ? (locale === 'ko' ? '새 상품 등록' : '新产品注册')
+              : mode === 'edit' 
+              ? (locale === 'ko' ? '상품 수정' : '修改产品')
+              : (locale === 'ko' ? '상품 상세' : '产品详情')}
           </h2>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
             <X className="h-6 w-6" />
@@ -75,7 +107,7 @@ export function ProductModal({ isOpen, onClose, onSubmit, product, mode = 'creat
           </div>
 
           <div>
-            <Label htmlFor="category">카테고리</Label>
+            <Label htmlFor="category">{locale === 'ko' ? '카테고리' : '分类'}</Label>
             <Select
               id="category"
               value={formData.category}
@@ -83,14 +115,12 @@ export function ProductModal({ isOpen, onClose, onSubmit, product, mode = 'creat
               disabled={isViewMode}
               required
             >
-              <option value="">선택하세요</option>
-              <option value="의류">의류</option>
-              <option value="가방">가방</option>
-              <option value="신발">신발</option>
-              <option value="액세서리">액세서리</option>
-              <option value="화장품">화장품</option>
-              <option value="전자제품">전자제품</option>
-              <option value="기타">기타</option>
+              <option value="">{locale === 'ko' ? '선택하세요' : '请选择'}</option>
+              {categories.map(category => (
+                <option key={category.id} value={category.code}>
+                  {locale === 'ko' ? category.name_ko : category.name_zh}
+                </option>
+              ))}
             </Select>
           </div>
 

@@ -63,21 +63,34 @@ node scripts/generate-business-flow-data.js
 
 ```
 yuandi-erp/
-├── app/                    # Next.js App Router
-│   ├── [locale]/          # 다국어 라우팅
-│   ├── api/               # API 엔드포인트
-│   └── components/        # React 컴포넌트
-├── lib/                   # 유틸리티 및 비즈니스 로직
-│   ├── supabase/         # Supabase 클라이언트
-│   └── domain/           # 도메인 모델
-├── scripts/              # 유틸리티 스크립트
+├── app/                   # Next.js App Router
+│   ├── [locale]/         # 다국어 라우팅 (ko, zh-CN)
+│   ├── api/              # API 엔드포인트
+│   └── components/       # 페이지별 컴포넌트
+├── components/           # 전역 공유 컴포넌트
+│   ├── layout/          # 레이아웃 컴포넌트
+│   └── ui/              # UI 기본 컴포넌트
+├── lib/                  # 유틸리티 및 비즈니스 로직
+│   ├── supabase/        # Supabase 클라이언트
+│   ├── domain/          # 도메인 모델
+│   ├── core/            # 핵심 비즈니스 로직
+│   ├── i18n/            # 다국어 처리
+│   └── security/        # 보안 관련 유틸리티
+├── messages/            # 다국어 메시지 파일
+├── types/               # TypeScript 타입 정의
+├── styles/              # 전역 스타일
+├── public/              # 정적 파일
+├── scripts/             # 유틸리티 스크립트
 │   ├── generate-business-flow-data.js  # 테스트 데이터 생성
-│   └── add-cashbook-only.js           # 출납장부 데이터 추가
-├── docs/                 # 프로젝트 문서
-│   ├── (250907-v2.0)PRD.md           # 제품 요구사항
-│   ├── (250907-v1.1)DATABASE_ERD.md  # DB 스키마
-│   └── TEST_DATA_GUIDE.md            # 테스트 데이터 가이드
-└── supabase/            # Supabase 마이그레이션
+│   └── 01.working_schema_reset.sql     # DB 스키마 초기화
+├── docs/                # 프로젝트 문서
+│   ├── (250907-v2.0)PRD.md            # 제품 요구사항
+│   ├── (250907-v1.1)DATABASE_ERD.md   # DB 스키마
+│   └── SCHEMA_CHANGE_PROCESS.md       # 스키마 변경 프로세스
+├── supabase/            # Supabase 마이그레이션
+│   └── migrations/      # SQL 마이그레이션 파일
+├── __tests__/           # 단위 테스트
+└── e2e/                 # E2E 테스트 (Playwright)
 ```
 
 ## 주요 명령어

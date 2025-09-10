@@ -3,6 +3,16 @@ const nextConfig = {
   experimental: {
     optimizePackageImports: ['lucide-react'],
   },
+  // WSL과 Windows 브라우저 간 개발 지원
+  webpackDevMiddleware: config => {
+    // WSL에서 파일 변경 감지를 위한 polling 설정
+    config.watchOptions = {
+      poll: 1000, // 1초마다 체크
+      aggregateTimeout: 300, // 300ms 동안 변경사항 수집
+      ignored: /node_modules/,
+    }
+    return config
+  },
   images: {
     formats: ['image/webp', 'image/avif'],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],

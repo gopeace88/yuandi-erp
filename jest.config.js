@@ -2,22 +2,31 @@
 const config = {
   // Test environment
   testEnvironment: 'jsdom',
-  
+
   // Module paths
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
     '^.+\\.(css|scss|sass)$': 'identity-obj-proxy',
   },
-  
+
   // Setup files
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
-  
+
   // Test patterns
   testMatch: [
     '**/__tests__/**/*.[jt]s?(x)',
     '**/?(*.)+(spec|test).[jt]s?(x)',
   ],
-  
+
+  // Test directories
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '/.next/',
+    '/dist/',
+    '/coverage/',
+    '/e2e/',
+  ],
+
   // Coverage configuration
   collectCoverageFrom: [
     'app/**/*.{js,jsx,ts,tsx}',
@@ -30,7 +39,7 @@ const config = {
     '!**/coverage/**',
     '!**/dist/**',
   ],
-  
+
   // Coverage thresholds
   coverageThreshold: {
     global: {
@@ -40,26 +49,18 @@ const config = {
       statements: 80,
     },
   },
-  
+
   // Transform files
   transform: {
     '^.+\\.(js|jsx|ts|tsx)$': ['babel-jest', { presets: ['next/babel'] }],
   },
-  
-  // Ignore patterns
-  testPathIgnorePatterns: [
-    '/node_modules/',
-    '/.next/',
-    '/dist/',
-    '/coverage/',
-  ],
-  
+
   // Module file extensions
   moduleFileExtensions: ['js', 'jsx', 'ts', 'tsx', 'json'],
-  
+
   // Verbose output
   verbose: true,
-  
+
   // Test timeout
   testTimeout: 10000,
 };

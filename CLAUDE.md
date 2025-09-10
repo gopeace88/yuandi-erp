@@ -10,10 +10,8 @@
 | Document | Purpose | Priority |
 |----------|---------|----------|
 | 📘 **[PRD.md](./docs/(250907-v2.0)PRD.md)** | Product Requirements (중심 문서) | ⭐⭐⭐ |
-| 🗄️ **[DATABASE_ERD.md](./docs/(250907-v1.1)DATABASE_ERD.md)** | Database Schema | ⭐⭐⭐ |
 | 🔄 **[SCHEMA_CHANGE_PROCESS.md](./docs/SCHEMA_CHANGE_PROCESS.md)** | DB 스키마 변경 프로세스 | ⭐⭐⭐ |
-| 🔄 **[ITERATIVE_DEVELOPMENT.md](./docs/(250907-v1.0)ITERATIVE_DEVELOPMENT.md)** | Development Process | ⭐⭐ |
-| 🚀 **[DEPLOYMENT_GUIDE.md](./docs/(250907-v1.0)DEPLOYMENT_GUIDE.md)** | Deployment Steps | ⭐ |
+| 🚀 **[DEPLOYMENT_GUIDE.md](./docs/(250907-v1.0)DEPLOYMENT_GUIDE.md)** | Deployment Steps | ⭐⭐ |
 | 🛠️ **[SETUP_GUIDE.md](./docs/(250907-v1.0)SETUP_GUIDE.md)** | Local Setup | ⭐ |
 
 ## ⚠️ Critical Rules (MUST FOLLOW)
@@ -42,10 +40,12 @@ role: 'admin'              // Database uses: admin, order_manager, ship_manager
 
 ### 📌 Development Process
 1. **Check PRD.md first** → Requirements source of truth
-2. **Use shipments table** → NOT orders table shipping fields
-3. **Test before complete** → Run pnpm test, pnpm typecheck
-4. **Get user approval** → BEFORE git commit
-5. **Batch commits** → Multiple features in one commit
+2. **Keep PRD & SQL in sync** → When schema changes, update both PRD.md and SQL files
+3. **Use shipments table** → NOT orders table shipping fields
+4. **Test before complete** → Run pnpm test, pnpm typecheck
+5. **E2E Testing** → Use **Playwright** (preferred) or Puppeteer
+6. **Get user approval** → BEFORE git commit
+7. **Batch commits** → Multiple features in one commit
 
 ## 🏗️ Tech Stack & Commands
 
@@ -58,6 +58,14 @@ pnpm build      # Production build
 pnpm test       # Run tests
 pnpm typecheck  # Type checking
 pnpm lint       # Linting
+
+# E2E Testing Options
+# Option 1: Playwright (권장)
+pnpm test:e2e        # Run all E2E tests
+npx playwright test  # Or run directly
+
+# Option 2: Puppeteer (간단한 테스트용)
+node simple-test.js  # Run standalone Puppeteer script
 ```
 
 ### WSL + Windows 개발 환경 설정
@@ -67,10 +75,10 @@ pnpm lint       # Linting
 PORT=8081 pnpm dev
 
 # 2. Windows 브라우저에서 접속:
-# http://172.25.186.113:8081 (WSL IP 주소는 변경될 수 있음)
+# http://localhost:8081
 # 
 # 3. .env.local 설정 확인:
-# NEXT_PUBLIC_APP_URL=http://172.25.186.113:8081
+# NEXT_PUBLIC_APP_URL=http://localhost:8081
 ```
 
 ### Latest Migration
@@ -126,7 +134,7 @@ graph LR
 ```
 
 ### Key Patterns
-- **Order Number**: `ORD-YYMMDD-###` (Daily reset, Asia/Seoul)
+- **Order Number**: `YYMMDD-###` (Daily reset, Asia/Seoul)
 - **SKU Pattern**: `[Category]-[Model]-[Color]-[Brand]-[HASH5]`
 - **Stock**: Single `onHand` field, real-time validation
 - **Dual Shipping**: Korea + China tracking in shipments table
@@ -152,7 +160,7 @@ psql $DATABASE_URL -f scripts/generate-test-data.sql
 |----------|-----------|------|
 | **Dashboard** | `/api/dashboard/*` | Role-based |
 | **Orders** | `/api/orders/*` | admin, order_manager |
-| **Products** | `/api/products/*` | admin, order_manager |
+| **Inventory** | `/api/inventory/*` | admin, order_manager |
 | **Shipping** | `/api/shipments/*` | admin, ship_manager |
 | **Customer** | `/api/track` | Public (name+phone) |
 | **Export** | `/api/export/*.xlsx` | admin only |
@@ -194,7 +202,7 @@ psql $DATABASE_URL -f scripts/generate-test-data.sql
 → Check **[PRD.md](./docs/(250907-v2.0)PRD.md)** Section 4-9
 
 ### Database Schema?
-→ Check **[DATABASE_ERD.md](./docs/(250907-v1.1)DATABASE_ERD.md)**
+→ Check **[PRD.md Section 12.5](./docs/(250907-v2.0)PRD.md#125-데이터베이스-스키마)**
 
 ### Generate Test Data?
 → Follow **[TEST_DATA_GUIDE.md](./docs/TEST_DATA_GUIDE.md)**

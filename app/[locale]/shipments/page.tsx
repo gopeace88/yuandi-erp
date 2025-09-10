@@ -27,7 +27,9 @@ interface Order {
   totalAmount: number;
   items: Array<{
     productName: string;
+    productModel?: string;
     quantity: number;
+    unitPrice?: number;
   }>;
 }
 
@@ -90,7 +92,7 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
   const [shipments, setShipments] = useState<Shipment[]>(MOCK_SHIPMENTS);
   const [selectedTab, setSelectedTab] = useState<'pending' | 'shipping' | 'delivered' | 'refunded'>('pending');
   const [showShipModal, setShowShipModal] = useState(false);
-  const [showDetailModal, setShowDetailModal] = useState(false);
+  // const [showDetailModal, setShowShipModal] = useState(false); // 더 이상 사용하지 않음 - 모든 상세보기는 배송입력 모달 사용
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -115,12 +117,12 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
 
   // 배송 등록 폼 상태
   const [shipForm, setShipForm] = useState({
-    // Korean Shipping
-    courier: '',
+    // Korean Shipping - CJ대한통운 기본값
+    courier: 'cj_logistics',
     trackingNo: '',
     trackingBarcode: '',
-    // Chinese Shipping  
-    courierCn: '',
+    // Chinese Shipping - YUANSUN 고정
+    courierCn: 'yuansun',
     trackingNoCn: '',
     // Details
     shippingFee: '',
@@ -153,7 +155,7 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
       // Shipped Orders
       trackingNo: '운송장번호',
       courier: '택배사',
-      shippingFee: '배송비',
+      shippingFee: '배송비 (¥)',
       weight: '무게',
       shippedAt: '발송일시',
       status: '상태',
@@ -208,7 +210,7 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
       // Shipped Orders
       trackingNo: '运单号',
       courier: '快递公司',
-      shippingFee: '运费',
+      shippingFee: '运费 (¥)',
       weight: '重量',
       shippedAt: '发货时间',
       status: '状态',
@@ -267,7 +269,9 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
             products (
               id,
               name,
-              sku
+              sku,
+              model,
+              price_krw
             )
           )
         `)
@@ -295,7 +299,11 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
       
       if (ordersError) {
         console.error('❌ 주문 데이터 로드 실패:', ordersError);
-        alert(`주문 데이터 로드 실패: ${ordersError.message}`);
+        alert(
+          locale === 'ko'
+            ? `주문 데이터 로드 실패: ${ordersError.message}`
+            : `订单数据加载失败: ${ordersError.message}`
+        );
         return;
       }
       
@@ -310,10 +318,20 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
         const formattedOrders: Order[] = ordersData.map(order => {
           // order_items가 배열인지 확인
           const items = Array.isArray(order.order_items) 
-            ? order.order_items.map((item: any) => ({
-                productName: item.products?.name || item.product_name || '',
-                quantity: item.quantity || 0
-              }))
+            ? order.order_items.map((item: any) => {
+                console.log('🔍 Order Item 상세:', {
+                  product_name: item.product_name,
+                  product_model: item.product_model,
+                  unit_price_krw: item.unit_price_krw,
+                  products: item.products
+                });
+                return {
+                  productName: item.product_name || item.products?.name || '',
+                  productModel: item.product_model || item.products?.model || '',
+                  quantity: item.quantity || 0,
+                  unitPrice: item.unit_price_krw || item.products?.price_krw || 0
+                };
+              })
             : [];
           
           return {
@@ -368,7 +386,10 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
       
       if (shipmentsError) {
         console.error('❌ 배송 데이터 로드 실패:', shipmentsError);
-        alert(`배송 데이터 로드 실패: ${shipmentsError.message}`);
+        const errorMsg = locale === 'ko'
+          ? `배송 데이터 로드 실패: ${shipmentsError.message}`
+          : `配送数据加载失败: ${shipmentsError.message}`;
+        alert(errorMsg);
         return;
       }
       
@@ -398,7 +419,7 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
           courierCn: '', // 중국 택배사 (향후 확장용)
           trackingNoCn: '', // 중국 운송장 (향후 확장용) 
           trackingUrlCn: '', // 중국 추적 URL (향후 확장용)
-          shippingFee: shipment.shipping_cost_krw || 0,
+          shippingFee: shipment.shipping_cost_cny || (shipment.shipping_cost_krw ? shipment.shipping_cost_krw / 180 : 0),
           actualWeight: shipment.weight_g ? shipment.weight_g / 1000 : undefined, // g를 kg로 변환
           volumeWeight: undefined, // 부피중량 (향후 추가)
           shipmentPhotoUrl: Array.isArray(shipment.package_images) && shipment.package_images.length > 0 
@@ -460,18 +481,40 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
 
   // URL 파라미터로 전달받은 주문 확인 (대시보드에서 왔을 때)
   useEffect(() => {
+    const tab = searchParams.get('tab');
     const orderId = searchParams.get('orderId');
     const action = searchParams.get('action');
     
-    if (orderId && action === 'register' && orders.length > 0) {
-      console.log('🔍 대시보드에서 전달받은 파라미터:', { orderId, action });
+    if (tab && orderId && orders.length > 0) {
+      console.log('🔍 대시보드에서 전달받은 파라미터:', { tab, orderId, action });
+      
+      // 탭 설정
+      if (tab === 'pending') setSelectedTab('pending');
+      else if (tab === 'shipping') setSelectedTab('shipping');
+      else if (tab === 'delivered') setSelectedTab('delivered');
+      else if (tab === 'refunded') setSelectedTab('refunded');
       
       // 해당 주문 찾기
       const order = orders.find(o => o.id === orderId);
-      if (order && order.status === 'paid') {
-        console.log('✅ 주문 찾음, 배송 등록 모달 열기:', order);
+      if (order) {
+        console.log('✅ 주문 찾음:', order);
         setSelectedOrder(order);
-        setShowShipModal(true);
+        
+        // action에 따라 모달 표시
+        if (action === 'register' && order.status === 'paid') {
+          // 배송 등록 모달 표시 (paid 상태일 때만)
+          setShowShipModal(true);
+        } else if (action === 'detail') {
+          // 배송중/배송완료 상태일 때는 shipment 정보도 찾기
+          if (order.status === 'shipped' || order.status === 'delivered') {
+            const shipment = shipments.find(s => s.orderId === orderId);
+            if (shipment) {
+              setSelectedShipment(shipment);
+            }
+          }
+          // 상세보기 모달 표시 - 배송입력 모달 사용
+          setShowShipModal(true);
+        }
         
         // URL 파라미터 제거 (모달 닫을 때 다시 열리지 않도록)
         const newUrl = window.location.pathname;
@@ -526,58 +569,62 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
 
   // 배송 등록
   const handleShipRegister = async () => {
-    if (!selectedOrder || !shipForm.courier || !shipForm.trackingNo) return;
+    // 중국 운송장 번호와 배송비는 필수, 한국 배송 정보는 옵션
+    if (!selectedOrder || !shipForm.trackingNoCn || !shipForm.shippingFee) {
+      const requiredMsg = locale === 'ko'
+        ? '중국 운송장 번호, 배송비는 필수 입력 항목입니다.'
+        : '中国运单号、运费是必填项。';
+      alert(requiredMsg);
+      return;
+    }
 
     try {
-      // Supabase 클라이언트 가져오기
-      const { createClient } = await import('@/lib/supabase/client');
-      const supabase = createClient();
-      
-      // 1. 배송 정보를 데이터베이스에 저장
-      const { data: shipmentData, error: shipmentError } = await supabase
-        .from('shipments')
-        .insert({
-          order_id: selectedOrder.id,
-          courier: shipForm.courier,
-          tracking_number: shipForm.trackingNo,
-          tracking_url: generateTrackingUrl(shipForm.courier, shipForm.trackingNo),
-          shipping_cost_krw: shipForm.shippingFee ? parseFloat(shipForm.shippingFee) : null,
-          weight_g: shipForm.actualWeight ? parseFloat(shipForm.actualWeight) * 1000 : null, // kg를 g로 변환
-          package_images: shipForm.shipmentPhotoUrl ? [shipForm.shipmentPhotoUrl] : [],
-          status: 'in_transit',
-          delivery_notes: `${selectedOrder.orderNo} 배송`
-        })
-        .select()
-        .single();
-      
-      if (shipmentError) {
-        console.error('배송 정보 저장 실패:', shipmentError);
-        alert('배송 정보 저장 중 오류가 발생했습니다.');
+      // API를 통해 배송 정보 등록 (출납장부 기록 포함)
+      const response = await fetch('/api/shipments', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          orderId: selectedOrder.id,
+          // 한국 배송 (옵션)
+          courier: shipForm.courier || null,
+          trackingNumber: shipForm.trackingNo || null,
+          trackingUrl: shipForm.courier && shipForm.trackingNo ? generateTrackingUrl(shipForm.courier, shipForm.trackingNo) : null,
+          // 중국 배송 (필수) - YUANSUN 고정
+          courierCn: 'yuansun',
+          trackingNumberCn: shipForm.trackingNoCn,
+          trackingUrlCn: generateTrackingUrl('yuansun', shipForm.trackingNoCn),
+          // 배송 상세
+          shippingCost: shipForm.shippingFee ? parseFloat(shipForm.shippingFee) : null,
+          weight: shipForm.actualWeight ? parseFloat(shipForm.actualWeight) * 1000 : null, // kg를 g로 변환
+          packageImages: shipForm.shipmentPhotoUrl ? [shipForm.shipmentPhotoUrl] : [],
+          notes: `${selectedOrder.orderNo} 배송`
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('배송 정보 저장 실패:', errorData);
+        const saveErrorMsg = locale === 'ko'
+          ? `배송 정보 저장 중 오류가 발생했습니다.\n\n오류 내용: ${errorData.error || errorData.message || '알 수 없는 오류'}`
+          : `保存配送信息时发生错误。\n\n错误内容: ${errorData.error || errorData.message || '未知错误'}`;
+        alert(saveErrorMsg);
         return;
       }
-      
-      // 2. 주문 상태를 shipped로 업데이트
-      const { error: orderError } = await supabase
-        .from('orders')
-        .update({ status: 'shipped' })
-        .eq('id', selectedOrder.id);
-      
-      if (orderError) {
-        console.error('주문 상태 업데이트 실패:', orderError);
-        alert('주문 상태 업데이트 중 오류가 발생했습니다.');
-        return;
-      }
+
+      const result = await response.json();
       
       // 3. UI 상태 업데이트
       const newShipment: Shipment = {
-        id: shipmentData.id,
+        id: result.shipment.id,
         orderId: selectedOrder.id,
         orderNo: selectedOrder.orderNo,
         customerName: selectedOrder.customerName,
         courier: KOREAN_COURIERS.find(c => c.code === shipForm.courier)?.name,
         courierCode: shipForm.courier,
         trackingNo: shipForm.trackingNo,
-        trackingBarcode: shipForm.trackingBarcode,
+        trackingBarcode: shipForm.trackingNo,
         trackingUrl: generateTrackingUrl(shipForm.courier, shipForm.trackingNo),
         shippingFee: shipForm.shippingFee ? parseFloat(shipForm.shippingFee) : undefined,
         actualWeight: shipForm.actualWeight ? parseFloat(shipForm.actualWeight) : undefined,
@@ -600,7 +647,7 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
         courier: '',
         trackingNo: '',
         trackingBarcode: '',
-        courierCn: '',
+        courierCn: 'yuansun',
         trackingNoCn: '',
         shippingFee: '',
         actualWeight: '',
@@ -609,10 +656,14 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
         receiptPhotoUrl: '',
       });
       
-      alert('배송 정보가 등록되었습니다.');
-    } catch (error) {
+      alert(locale === 'ko' ? '배송 정보가 등록되었습니다.' : '已登记运输信息');
+    } catch (error: any) {
       console.error('배송 등록 중 오류:', error);
-      alert('배송 등록 중 오류가 발생했습니다.');
+      alert(
+        locale === 'ko' 
+          ? `배송 등록 중 오류가 발생했습니다.\n\n오류 내용: ${error.message || error}`
+          : `运输登记时发生错误\n\n错误内容: ${error.message || error}`
+      );
     }
   };
 
@@ -694,7 +745,11 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
       
       if (orderError) {
         console.error('주문 상태 업데이트 실패:', orderError);
-        alert('배송완료 처리 중 오류가 발생했습니다.');
+        alert(
+          locale === 'ko'
+            ? `배송완료 처리 중 오류가 발생했습니다.\n\n오류 내용: ${orderError.message}`
+            : `处理配送完成时发生错误\n\n错误内容: ${orderError.message}`
+        );
         return;
       }
       
@@ -716,7 +771,7 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
       
       // UI 상태 업데이트
       setOrders(orders.map(o =>
-        o.id === orderId ? { ...o, status: 'delivered' } : o
+        o.id === orderId ? { ...o, status: 'done' } : o
       ));
       
       if (shipment) {
@@ -725,10 +780,74 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
         ));
       }
       
-      alert('배송완료 처리되었습니다.');
-    } catch (error) {
+      // 모달 닫기
+      setShowShipModal(false);
+      setSelectedShipment(null);
+      setSelectedOrder(null);
+      
+      alert(locale === 'ko' ? '배송완료 처리되었습니다.' : '配送已完成');
+    } catch (error: any) {
       console.error('배송완료 처리 중 오류:', error);
-      alert('배송완료 처리 중 오류가 발생했습니다.');
+      alert(
+        locale === 'ko'
+          ? `배송완료 처리 중 오류가 발생했습니다.\n\n오류 내용: ${error.message || error}`
+          : `处理配送完成时发生错误\n\n错误内容: ${error.message || error}`
+      );
+    }
+  };
+
+  // 환불 처리
+  const handleRefund = async (orderId: string) => {
+    const confirmMessage = locale === 'ko' 
+      ? '정말로 이 주문을 환불 처리하시겠습니까?' 
+      : '确定要退款处理此订单吗？';
+    if (!confirm(confirmMessage)) {
+      return;
+    }
+
+    try {
+      // API를 통해 환불 처리
+      const response = await fetch('/api/orders', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: orderId,
+          status: 'refunded'
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('환불 처리 실패:', errorData);
+        const errorMessage = locale === 'ko'
+          ? `환불 처리 중 오류가 발생했습니다.\n\n오류 내용: ${errorData.error || errorData.message || '알 수 없는 오류'}`
+          : `退款处理时发生错误。\n\n错误内容: ${errorData.error || errorData.message || '未知错误'}`;
+        alert(errorMessage);
+        return;
+      }
+
+      // UI 상태 업데이트
+      setOrders(orders.map(o =>
+        o.id === orderId ? { ...o, status: 'refunded' } : o
+      ));
+
+      // 모달 닫기
+      setShowShipModal(false);
+      setSelectedShipment(null);
+      setSelectedOrder(null);
+
+      const successMessage = locale === 'ko' 
+        ? '환불 처리가 완료되었습니다.' 
+        : '退款处理已完成。';
+      alert(successMessage);
+    } catch (error: any) {
+      console.error('환불 처리 중 오류:', error);
+      const errorMessage = locale === 'ko'
+        ? `환불 처리 중 오류가 발생했습니다.\n\n오류 내용: ${error.message || error}`
+        : `退款处理时发生错误。\n\n错误内容: ${error.message || error}`;
+      alert(errorMessage);
     }
   };
 
@@ -764,10 +883,12 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
             onClick={() => setSelectedTab('pending')}
             style={{
               padding: '0.75rem 0',
+              borderTop: 'none',
+              borderLeft: 'none',
+              borderRight: 'none',
               borderBottom: selectedTab === 'pending' ? '2px solid #2563eb' : 'none',
               color: selectedTab === 'pending' ? '#2563eb' : '#6b7280',
               background: 'none',
-              border: 'none',
               cursor: 'pointer',
               fontWeight: selectedTab === 'pending' ? '600' : '400'
             }}
@@ -778,10 +899,12 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
             onClick={() => setSelectedTab('shipping')}
             style={{
               padding: '0.75rem 0',
+              borderTop: 'none',
+              borderLeft: 'none',
+              borderRight: 'none',
               borderBottom: selectedTab === 'shipping' ? '2px solid #2563eb' : 'none',
               color: selectedTab === 'shipping' ? '#2563eb' : '#6b7280',
               background: 'none',
-              border: 'none',
               cursor: 'pointer',
               fontWeight: selectedTab === 'shipping' ? '600' : '400'
             }}
@@ -792,10 +915,12 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
             onClick={() => setSelectedTab('delivered')}
             style={{
               padding: '0.75rem 0',
+              borderTop: 'none',
+              borderLeft: 'none',
+              borderRight: 'none',
               borderBottom: selectedTab === 'delivered' ? '2px solid #2563eb' : 'none',
               color: selectedTab === 'delivered' ? '#2563eb' : '#6b7280',
               background: 'none',
-              border: 'none',
               cursor: 'pointer',
               fontWeight: selectedTab === 'delivered' ? '600' : '400'
             }}
@@ -806,10 +931,12 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
             onClick={() => setSelectedTab('refunded')}
             style={{
               padding: '0.75rem 0',
+              borderTop: 'none',
+              borderLeft: 'none',
+              borderRight: 'none',
               borderBottom: selectedTab === 'refunded' ? '2px solid #2563eb' : 'none',
               color: selectedTab === 'refunded' ? '#2563eb' : '#6b7280',
               background: 'none',
-              border: 'none',
               cursor: 'pointer',
               fontWeight: selectedTab === 'refunded' ? '600' : '400'
             }}
@@ -826,7 +953,7 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
             <button
               onClick={() => {
                 const columns = [
-                  { header: t.orderDate, key: 'orderDate', width: 15 },
+                  { header: t.orderNo, key: 'orderNo', width: 15 },
                   { header: t.customer, key: 'customerName', width: 20 },
                   { header: locale === 'ko' ? '전화번호' : '电话号码', key: 'customerPhone', width: 20 },
                   { header: t.address, key: 'shippingAddress', width: 35 },
@@ -871,7 +998,7 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
               <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
                 <thead>
                   <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>{t.orderDate}</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>{t.orderNo}</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>{t.customer}</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>{
                       locale === 'ko' ? '전화번호' : locale === 'zh-CN' ? '电话号码' : 'Phone'
@@ -879,7 +1006,6 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
                     <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>{t.address}</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>{t.items}</th>
                     <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: '600' }}>{t.status}</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: '600' }}>{t.action}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -891,6 +1017,8 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
                         cursor: 'pointer'
                       }}
                       onClick={() => {
+                        console.log('📋 선택된 주문:', order);
+                        console.log('📦 주문 아이템:', order.items);
                         setSelectedOrder(order);
                         setShowShipModal(true);
                       }}
@@ -901,7 +1029,7 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
                         e.currentTarget.style.backgroundColor = 'transparent';
                       }}
                     >
-                      <td style={{ padding: '0.75rem', color: '#6b7280' }}>{order.orderDate}</td>
+                      <td style={{ padding: '0.75rem', color: '#2563eb', fontWeight: '500' }}>{order.orderNo}</td>
                       <td style={{ padding: '0.75rem' }}>
                         <div style={{ fontWeight: '500' }}>{order.customerName}</div>
                       </td>
@@ -927,26 +1055,6 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
                         }}>
                           {t.pending}
                         </span>
-                      </td>
-                      <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedOrder(order);
-                            setShowShipModal(true);
-                          }}
-                          style={{
-                            padding: '0.5rem 1rem',
-                            backgroundColor: '#2563eb',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '0.375rem',
-                            fontSize: '0.875rem',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          {t.registerShipping}
-                        </button>
                       </td>
                     </tr>
                   ))}
@@ -976,15 +1084,21 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
             <button
               onClick={() => {
                 const columns = [
-                  { header: t.orderNo, key: 'orderNo', width: 20 },
+                  { header: t.orderNo, key: 'orderNo', width: 15 },
                   { header: t.customer, key: 'customerName', width: 20 },
-                  { header: t.trackingNo, key: 'trackingNo', width: 20 },
-                  { header: t.courier, key: 'courier', width: 20 },
-                  { header: t.shippingFee, key: 'shippingFee', width: 15 }
+                  { header: locale === 'ko' ? '전화번호' : '电话号码', key: 'customerPhone', width: 20 },
+                  { header: t.address, key: 'shippingAddress', width: 35 },
+                  { header: t.items, key: 'productName', width: 25 },
+                  { header: t.status, key: 'status', width: 15 }
                 ];
                 
+                const dataToExport = shippingOrders.map(order => ({
+                  ...order,
+                  productName: order.items.map(item => `${item.productName} x ${item.quantity}`).join(', ')
+                }));
+                
                 exportToExcel({
-                  data: shippingOrders,
+                  data: dataToExport,
                   columns,
                   fileName: locale === 'ko' ? '배송중' : 'shipping_orders',
                   sheetName: locale === 'ko' ? '배송중' : 'Shipping'
@@ -1017,40 +1131,70 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
                   <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
                     <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>{t.orderNo}</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>{t.customer}</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>{t.trackingNo}</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>{t.courier}</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right', fontWeight: '600' }}>{t.shippingFee}</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>{
+                      locale === 'ko' ? '전화번호' : locale === 'zh-CN' ? '电话号码' : 'Phone'
+                    }</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>{t.address}</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>{t.items}</th>
                     <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: '600' }}>{t.status}</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: '600' }}>{t.action}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {paginatedShippingOrders.map(order => {
-                    // 해당 주문의 배송 정보 찾기
-                    const shipment = shipments.find(s => s.orderId === order.id);
-                    
                     return (
-                      <tr key={order.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                        <td style={{ padding: '0.75rem', fontWeight: '500' }}>{order.orderNo}</td>
-                        <td style={{ padding: '0.75rem' }}>{order.customerName}</td>
+                      <tr 
+                        key={order.id} 
+                        style={{ 
+                          borderBottom: '1px solid #e5e7eb',
+                          cursor: 'pointer'
+                        }}
+                        onClick={async () => {
+                          setSelectedOrder(order);
+                          // 배송 정보를 폼에 로드
+                          const { createClient } = await import('@/lib/supabase/client');
+                          const supabase = createClient();
+                          const { data: shipmentData } = await supabase
+                            .from('shipments')
+                            .select('*')
+                            .eq('order_id', order.id)
+                            .single();
+                          
+                          if (shipmentData) {
+                            setShipForm({
+                              trackingNoCn: shipmentData.tracking_number_cn || '',
+                              trackingNo: shipmentData.tracking_number_kr || '',
+                              courier: shipmentData.courier_kr || 'EMS',
+                              trackingBarcode: shipmentData.tracking_barcode || '',
+                              shipmentPhotoUrl: shipmentData.shipment_photo_url || '',
+                              receiptPhotoUrl: shipmentData.receipt_photo_url || '',
+                              shippingFee: shipmentData.shipping_fee_cny || 0,
+                              actualWeight: shipmentData.actual_weight || 0,
+                              volumeWeight: shipmentData.volume_weight || 0
+                            });
+                          }
+                          setShowShipModal(true);
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = '#f9fafb';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                        }}
+                      >
+                        <td style={{ padding: '0.75rem', color: '#2563eb', fontWeight: '500' }}>{order.orderNo}</td>
                         <td style={{ padding: '0.75rem' }}>
-                          <div>{shipment?.trackingNo || '배송정보 미등록'}</div>
-                          {shipment?.trackingNoCn && (
-                            <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                              CN: {shipment.trackingNoCn}
-                            </div>
-                          )}
+                          <div style={{ fontWeight: '500' }}>{order.customerName}</div>
                         </td>
+                        <td style={{ padding: '0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                          {order.customerPhone}
+                        </td>
+                        <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>{order.shippingAddress}</td>
                         <td style={{ padding: '0.75rem' }}>
-                          <div>{shipment?.courier || '미등록'}</div>
-                          {shipment?.courierCn && (
-                            <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                              {shipment.courierCn}
+                          {order.items.map((item, idx) => (
+                            <div key={idx} style={{ fontSize: '0.875rem' }}>
+                              {item.productName} x {item.quantity}
                             </div>
-                          )}
-                        </td>
-                        <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                          {shipment?.shippingFee ? `₩${shipment.shippingFee.toLocaleString()}` : '-'}
+                          ))}
                         </td>
                         <td style={{ padding: '0.75rem', textAlign: 'center' }}>
                           <span style={{
@@ -1058,50 +1202,11 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
                             borderRadius: '9999px',
                             fontSize: '0.75rem',
                             fontWeight: '500',
-                            backgroundColor: order.status === 'delivered' ? '#dcfce7' : '#fef3c7',
-                            color: order.status === 'delivered' ? '#166534' : '#92400e'
+                            backgroundColor: '#fef3c7',
+                            color: '#92400e'
                           }}>
                             {order.status === 'delivered' ? t.delivered : t.shipped}
                           </span>
-                        </td>
-                        <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
-                            {shipment && (
-                              <button
-                                onClick={() => {
-                                  setSelectedShipment(shipment);
-                                  setShowDetailModal(true);
-                                }}
-                                style={{
-                                  padding: '0.25rem 0.75rem',
-                                  backgroundColor: '#6b7280',
-                                  color: 'white',
-                                  border: 'none',
-                              borderRadius: '0.375rem',
-                              fontSize: '0.875rem',
-                              cursor: 'pointer'
-                            }}
-                              >
-                                {t.viewDetail}
-                              </button>
-                            )}
-                            {order.status === 'shipped' && (
-                              <button
-                                onClick={() => handleMarkDelivered(order.id)}
-                                style={{
-                                  padding: '0.25rem 0.75rem',
-                                  backgroundColor: '#10b981',
-                                  color: 'white',
-                                  border: 'none',
-                                  borderRadius: '0.375rem',
-                                  fontSize: '0.875rem',
-                                  cursor: 'pointer'
-                                }}
-                              >
-                                {t.markDelivered}
-                              </button>
-                            )}
-                          </div>
                         </td>
                       </tr>
                     );
@@ -1132,15 +1237,21 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
             <button
               onClick={() => {
                 const columns = [
-                  { header: t.orderNo, key: 'orderNo', width: 20 },
+                  { header: t.orderNo, key: 'orderNo', width: 15 },
                   { header: t.customer, key: 'customerName', width: 20 },
-                  { header: t.trackingNo, key: 'trackingNo', width: 20 },
-                  { header: t.courier, key: 'courier', width: 20 },
-                  { header: t.shippingFee, key: 'shippingFee', width: 15 }
+                  { header: locale === 'ko' ? '전화번호' : '电话号码', key: 'customerPhone', width: 20 },
+                  { header: t.address, key: 'shippingAddress', width: 35 },
+                  { header: t.items, key: 'productName', width: 25 },
+                  { header: t.status, key: 'status', width: 15 }
                 ];
                 
+                const dataToExport = deliveredOrders.map(order => ({
+                  ...order,
+                  productName: order.items.map(item => `${item.productName} x ${item.quantity}`).join(', ')
+                }));
+                
                 exportToExcel({
-                  data: deliveredOrders,
+                  data: dataToExport,
                   columns,
                   fileName: locale === 'ko' ? '배송완료' : 'delivered_orders',
                   sheetName: locale === 'ko' ? '배송완료' : 'Delivered'
@@ -1173,40 +1284,70 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
                   <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
                     <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>{t.orderNo}</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>{t.customer}</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>{t.trackingNo}</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>{t.courier}</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right', fontWeight: '600' }}>{t.shippingFee}</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>{
+                      locale === 'ko' ? '전화번호' : locale === 'zh-CN' ? '电话号码' : 'Phone'
+                    }</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>{t.address}</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>{t.items}</th>
                     <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: '600' }}>{t.status}</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: '600' }}>{t.action}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {paginatedDeliveredOrders.map(order => {
-                    // 해당 주문의 배송 정보 찾기
-                    const shipment = shipments.find(s => s.orderId === order.id);
-                    
                     return (
-                      <tr key={order.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                        <td style={{ padding: '0.75rem', fontWeight: '500' }}>{order.orderNo}</td>
-                        <td style={{ padding: '0.75rem' }}>{order.customerName}</td>
+                      <tr 
+                        key={order.id} 
+                        style={{ 
+                          borderBottom: '1px solid #e5e7eb',
+                          cursor: 'pointer'
+                        }}
+                        onClick={async () => {
+                          setSelectedOrder(order);
+                          // 배송 정보를 폼에 로드
+                          const { createClient } = await import('@/lib/supabase/client');
+                          const supabase = createClient();
+                          const { data: shipmentData } = await supabase
+                            .from('shipments')
+                            .select('*')
+                            .eq('order_id', order.id)
+                            .single();
+                          
+                          if (shipmentData) {
+                            setShipForm({
+                              trackingNoCn: shipmentData.tracking_number_cn || '',
+                              trackingNo: shipmentData.tracking_number_kr || '',
+                              courier: shipmentData.courier_kr || 'EMS',
+                              trackingBarcode: shipmentData.tracking_barcode || '',
+                              shipmentPhotoUrl: shipmentData.shipment_photo_url || '',
+                              receiptPhotoUrl: shipmentData.receipt_photo_url || '',
+                              shippingFee: shipmentData.shipping_fee_cny || 0,
+                              actualWeight: shipmentData.actual_weight || 0,
+                              volumeWeight: shipmentData.volume_weight || 0
+                            });
+                          }
+                          setShowShipModal(true);
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = '#f9fafb';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                        }}
+                      >
+                        <td style={{ padding: '0.75rem', color: '#2563eb', fontWeight: '500' }}>{order.orderNo}</td>
                         <td style={{ padding: '0.75rem' }}>
-                          <div>{shipment?.trackingNo || '배송정보 미등록'}</div>
-                          {shipment?.trackingNoCn && (
-                            <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                              CN: {shipment.trackingNoCn}
-                            </div>
-                          )}
+                          <div style={{ fontWeight: '500' }}>{order.customerName}</div>
                         </td>
+                        <td style={{ padding: '0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                          {order.customerPhone}
+                        </td>
+                        <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>{order.shippingAddress}</td>
                         <td style={{ padding: '0.75rem' }}>
-                          <div>{shipment?.courier || '미등록'}</div>
-                          {shipment?.courierCn && (
-                            <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                              {shipment.courierCn}
+                          {order.items.map((item, idx) => (
+                            <div key={idx} style={{ fontSize: '0.875rem' }}>
+                              {item.productName} x {item.quantity}
                             </div>
-                          )}
-                        </td>
-                        <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                          {shipment?.shippingFee ? `₩${shipment.shippingFee.toLocaleString()}` : '-'}
+                          ))}
                         </td>
                         <td style={{ padding: '0.75rem', textAlign: 'center' }}>
                           <span style={{
@@ -1219,29 +1360,6 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
                           }}>
                             {t.delivered}
                           </span>
-                        </td>
-                        <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
-                            {shipment && (
-                              <button
-                                onClick={() => {
-                                  setSelectedShipment(shipment);
-                                  setShowDetailModal(true);
-                                }}
-                                style={{
-                                  padding: '0.25rem 0.75rem',
-                                  backgroundColor: '#6b7280',
-                                  color: 'white',
-                                  border: 'none',
-                                  borderRadius: '0.375rem',
-                                  fontSize: '0.875rem',
-                                  cursor: 'pointer'
-                                }}
-                              >
-                                {t.viewDetail}
-                              </button>
-                            )}
-                          </div>
                         </td>
                       </tr>
                     );
@@ -1272,21 +1390,21 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
             <button
               onClick={() => {
                 const columns = [
-                  { header: t.orderDate, key: 'orderDate', width: 15 },
+                  { header: t.orderNo, key: 'orderNo', width: 15 },
                   { header: t.customer, key: 'customerName', width: 20 },
                   { header: locale === 'ko' ? '전화번호' : '电话号码', key: 'customerPhone', width: 20 },
                   { header: t.address, key: 'shippingAddress', width: 35 },
                   { header: t.items, key: 'productName', width: 25 },
-                  { header: locale === 'ko' ? '환불일' : '退款日期', key: 'refundDate', width: 15 }
+                  { header: t.status, key: 'status', width: 15 }
                 ];
                 
                 const data = refundedOrders.map(order => ({
-                  orderDate: order.orderDate,
+                  orderNo: order.orderNo,
                   customerName: order.customerName,
                   customerPhone: order.customerPhone,
                   shippingAddress: order.shippingAddress,
                   productName: order.items.map(item => `${item.productName}(${item.quantity})`).join(', '),
-                  refundDate: order.orderDate
+                  status: locale === 'ko' ? '환불' : '退款'
                 }));
                 
                 exportToExcel(data, columns, `refunded_orders_${new Date().toISOString().split('T')[0]}`);
@@ -1315,30 +1433,76 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
             </div>
           ) : (
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
                 <thead>
-                  <tr style={{ backgroundColor: '#f3f4f6' }}>
-                    <th style={{ padding: '0.75rem', textAlign: 'left' }}>{t.orderNo}</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left' }}>{t.orderDate}</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left' }}>{t.customer}</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left' }}>{t.address}</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left' }}>{t.items}</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'center' }}>{locale === 'ko' ? '상태' : '状态'}</th>
+                  <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>{t.orderNo}</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>{t.customer}</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>{
+                      locale === 'ko' ? '전화번호' : locale === 'zh-CN' ? '电话号码' : 'Phone'
+                    }</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>{t.address}</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>{t.items}</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: '600' }}>{t.status}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {refundedOrders.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map(order => (
-                    <tr key={order.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                      <td style={{ padding: '0.75rem' }}>{order.orderNo}</td>
-                      <td style={{ padding: '0.75rem' }}>{order.orderDate}</td>
+                    <tr 
+                      key={order.id} 
+                      style={{ 
+                        borderBottom: '1px solid #e5e7eb',
+                        cursor: 'pointer',
+                        transition: 'background-color 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#f9fafb';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                      }}
+                      onClick={async () => {
+                        setSelectedOrder(order);
+                        // 환불된 주문의 배송 정보 조회
+                        if (order.id) {
+                          const { createClient } = await import('@/lib/supabase/client');
+                          const supabase = createClient();
+                          const { data: shipmentData } = await supabase
+                            .from('shipments')
+                            .select('*')
+                            .eq('order_id', order.id)
+                            .single();
+                          
+                          if (shipmentData) {
+                            setShipForm({
+                              trackingNoCn: shipmentData.tracking_number_cn || '',
+                              trackingNo: shipmentData.tracking_number_kr || '',
+                              courier: shipmentData.courier_kr || 'EMS',
+                              trackingBarcode: shipmentData.tracking_barcode || '',
+                              shipmentPhotoUrl: shipmentData.shipment_photo_url || '',
+                              receiptPhotoUrl: shipmentData.receipt_photo_url || '',
+                              shippingFee: shipmentData.shipping_fee_cny || 0,
+                              actualWeight: shipmentData.actual_weight || 0,
+                              volumeWeight: shipmentData.volume_weight || 0
+                            });
+                          }
+                        }
+                        setShowShipModal(true);
+                      }}
+                    >
+                      <td style={{ padding: '0.75rem', color: '#2563eb', fontWeight: '500' }}>{order.orderNo}</td>
                       <td style={{ padding: '0.75rem' }}>
-                        <div>{order.customerName}</div>
-                        <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{order.customerPhone}</div>
+                        <div style={{ fontWeight: '500' }}>{order.customerName}</div>
+                      </td>
+                      <td style={{ padding: '0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                        {order.customerPhone}
                       </td>
                       <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>{order.shippingAddress}</td>
-                      <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>
+                      <td style={{ padding: '0.75rem' }}>
                         {order.items.map((item, idx) => (
-                          <div key={idx}>{item.productName} x {item.quantity}</div>
+                          <div key={idx} style={{ fontSize: '0.875rem' }}>
+                            {item.productName} x {item.quantity}
+                          </div>
                         ))}
                       </td>
                       <td style={{ padding: '0.75rem', textAlign: 'center' }}>
@@ -1397,7 +1561,7 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
             overflowY: 'auto'
           }}>
             <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem' }}>
-              {t.shipModalTitle}
+              {selectedOrder?.status === 'refunded' ? t.shipmentDetail : t.shipModalTitle}
             </h2>
 
             {/* 주문 정보 */}
@@ -1407,129 +1571,108 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
               borderRadius: '0.375rem',
               marginBottom: '1.5rem'
             }}>
-              <div style={{ marginBottom: '0.5rem' }}>
-                <strong>{t.orderNo}:</strong> {selectedOrder.orderNo}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                <div>
+                  <strong>{t.orderNo}:</strong> {selectedOrder.orderNo}
+                </div>
+                <div>
+                  <strong>{t.customer}:</strong> {selectedOrder.customerName} ({selectedOrder.customerPhone})
+                </div>
+                <div style={{ gridColumn: 'span 2' }}>
+                  <strong>{t.address}:</strong> {selectedOrder.shippingAddress}
+                </div>
+                {selectedOrder.items && selectedOrder.items.length > 0 && (
+                  <>
+                    <div>
+                      <strong>{locale === 'ko' ? '상품명' : '产品名'}:</strong> {selectedOrder.items[0].productName}
+                    </div>
+                    <div>
+                      <strong>{locale === 'ko' ? '모델명' : '型号'}:</strong> {selectedOrder.items[0].productModel || '-'}
+                    </div>
+                    <div style={{ gridColumn: 'span 2' }}>
+                      <strong>{locale === 'ko' ? '판매가' : '售价'}:</strong> ₩{(selectedOrder.items[0].unitPrice || 0).toLocaleString()}
+                    </div>
+                  </>
+                )}
               </div>
-              <div style={{ marginBottom: '0.5rem' }}>
-                <strong>{t.customer}:</strong> {selectedOrder.customerName} ({selectedOrder.customerPhone})
+            </div>
+
+            {/* 택배사 정보 */}
+            <div style={{ marginBottom: '1.5rem' }}>
+              <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '1rem' }}>
+                {locale === 'ko' ? '택배사 정보' : '快递公司信息'}
+              </h3>
+              
+              {/* 중국 택배사 */}
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.75rem', color: '#6b7280' }}>
+                  {locale === 'ko' ? '중국 택배사' : '中国快递'}
+                </label>
+                <input
+                  type="text"
+                  value="YUANSUN"
+                  readOnly
+                  style={{
+                    width: '100%',
+                    padding: '0.5rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '0.375rem',
+                    fontSize: '0.875rem',
+                    backgroundColor: '#f3f4f6',
+                    cursor: 'not-allowed'
+                  }}
+                />
               </div>
+
+              {/* 한국 택배사 */}
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.75rem', color: '#6b7280' }}>
+                  {locale === 'ko' ? '한국 택배사' : '韩国快递'}
+                </label>
+                <select
+                  value={shipForm.courier || 'cj_logistics'}
+                  onChange={(e) => selectedOrder?.status === 'paid' && setShipForm({ ...shipForm, courier: e.target.value })}
+                  disabled={selectedOrder?.status !== 'paid'}
+                  style={{
+                    width: '100%',
+                    padding: '0.5rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '0.375rem',
+                    fontSize: '0.875rem',
+                    backgroundColor: selectedOrder?.status !== 'paid' ? '#f3f4f6' : 'white',
+                    cursor: selectedOrder?.status !== 'paid' ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  <option value="cj_logistics">CJ대한통운</option>
+                  {KOREAN_COURIERS.filter(c => c.code !== 'cj_logistics').map(courier => (
+                    <option key={courier.code} value={courier.code}>
+                      {courier.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* 송장번호 */}
               <div>
-                <strong>{t.address}:</strong> {selectedOrder.shippingAddress}
-              </div>
-            </div>
-
-            {/* 한국 배송 정보 */}
-            <div style={{ marginBottom: '1.5rem' }}>
-              <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '1rem' }}>
-                {t.koreanShipping}
-              </h3>
-              <div style={{ display: 'grid', gap: '1rem' }}>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: '500' }}>
-                    {t.selectCourier} *
-                  </label>
-                  <select
-                    value={shipForm.courier}
-                    onChange={(e) => setShipForm({ ...shipForm, courier: e.target.value })}
-                    style={{
-                      width: '100%',
-                      padding: '0.5rem',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '0.375rem',
-                      fontSize: '0.875rem'
-                    }}
-                  >
-                    <option value="">{t.selectCourier}</option>
-                    {KOREAN_COURIERS.map(courier => (
-                      <option key={courier.code} value={courier.code}>
-                        {courier.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: '500' }}>
-                    {t.trackingNo} *
-                  </label>
-                  <input
-                    type="text"
-                    value={shipForm.trackingNo}
-                    onChange={(e) => setShipForm({ ...shipForm, trackingNo: e.target.value })}
-                    style={{
-                      width: '100%',
-                      padding: '0.5rem',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '0.375rem',
-                      fontSize: '0.875rem'
-                    }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: '500' }}>
-                    {t.trackingBarcode}
-                  </label>
-                  <input
-                    type="text"
-                    value={shipForm.trackingBarcode}
-                    onChange={(e) => setShipForm({ ...shipForm, trackingBarcode: e.target.value })}
-                    style={{
-                      width: '100%',
-                      padding: '0.5rem',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '0.375rem',
-                      fontSize: '0.875rem'
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* 중국 배송 정보 */}
-            <div style={{ marginBottom: '1.5rem' }}>
-              <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '1rem' }}>
-                {t.chineseShipping}
-              </h3>
-              <div style={{ display: 'grid', gap: '1rem' }}>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: '500' }}>
-                    {t.selectCourier}
-                  </label>
-                  <select
-                    value={shipForm.courierCn}
-                    onChange={(e) => setShipForm({ ...shipForm, courierCn: e.target.value })}
-                    style={{
-                      width: '100%',
-                      padding: '0.5rem',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '0.375rem',
-                      fontSize: '0.875rem'
-                    }}
-                  >
-                    <option value="">{t.selectCourier}</option>
-                    {CHINESE_COURIERS.map(courier => (
-                      <option key={courier.code} value={courier.code}>
-                        {courier.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: '500' }}>
-                    {t.trackingNo}
-                  </label>
-                  <input
-                    type="text"
-                    value={shipForm.trackingNoCn}
-                    onChange={(e) => setShipForm({ ...shipForm, trackingNoCn: e.target.value })}
-                    style={{
-                      width: '100%',
-                      padding: '0.5rem',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '0.375rem',
-                      fontSize: '0.875rem'
-                    }}
-                  />
-                </div>
+                <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: '500' }}>
+                  {t.trackingNo} *
+                </label>
+                <input
+                  type="text"
+                  value={shipForm.trackingNoCn}
+                  onChange={(e) => selectedOrder?.status !== 'refunded' && setShipForm({ ...shipForm, trackingNoCn: e.target.value, trackingNo: e.target.value })}
+                  readOnly={selectedOrder?.status === 'refunded'}
+                  placeholder={locale === 'ko' ? '송장번호를 입력하세요' : '请输入运单号'}
+                  style={{
+                    width: '100%',
+                    padding: '0.5rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '0.375rem',
+                    fontSize: '0.875rem',
+                    backgroundColor: selectedOrder?.status === 'refunded' ? '#f3f4f6' : 'white',
+                    cursor: selectedOrder?.status === 'refunded' ? 'not-allowed' : 'text'
+                  }}
+                />
               </div>
             </div>
 
@@ -1541,19 +1684,24 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: '500' }}>
-                    {t.shippingFee} (₩)
+                    {t.shippingFee} *
                   </label>
                   <input
                     type="number"
                     value={shipForm.shippingFee}
-                    onChange={(e) => setShipForm({ ...shipForm, shippingFee: e.target.value })}
+                    onChange={(e) => selectedOrder?.status === 'paid' && setShipForm({ ...shipForm, shippingFee: e.target.value })}
+                    readOnly={selectedOrder?.status !== 'paid'}
                     style={{
                       width: '100%',
                       padding: '0.5rem',
                       border: '1px solid #d1d5db',
                       borderRadius: '0.375rem',
-                      fontSize: '0.875rem'
+                      fontSize: '0.875rem',
+                      backgroundColor: selectedOrder?.status !== 'paid' ? '#f3f4f6' : 'white',
+                      cursor: selectedOrder?.status !== 'paid' ? 'not-allowed' : 'text'
                     }}
+                    placeholder={selectedOrder?.status === 'paid' ? "필수 입력 (CNY)" : ""}
+                    required={selectedOrder?.status === 'paid'}
                   />
                 </div>
                 <div>
@@ -1564,13 +1712,16 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
                     type="number"
                     step="0.1"
                     value={shipForm.actualWeight}
-                    onChange={(e) => setShipForm({ ...shipForm, actualWeight: e.target.value })}
+                    onChange={(e) => selectedOrder?.status === 'paid' && setShipForm({ ...shipForm, actualWeight: e.target.value })}
+                    readOnly={selectedOrder?.status !== 'paid'}
                     style={{
                       width: '100%',
                       padding: '0.5rem',
                       border: '1px solid #d1d5db',
                       borderRadius: '0.375rem',
-                      fontSize: '0.875rem'
+                      fontSize: '0.875rem',
+                      backgroundColor: selectedOrder?.status !== 'paid' ? '#f3f4f6' : 'white',
+                      cursor: selectedOrder?.status !== 'paid' ? 'not-allowed' : 'text'
                     }}
                   />
                 </div>
@@ -1582,13 +1733,16 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
                     type="number"
                     step="0.1"
                     value={shipForm.volumeWeight}
-                    onChange={(e) => setShipForm({ ...shipForm, volumeWeight: e.target.value })}
+                    onChange={(e) => selectedOrder?.status === 'paid' && setShipForm({ ...shipForm, volumeWeight: e.target.value })}
+                    readOnly={selectedOrder?.status !== 'paid'}
                     style={{
                       width: '100%',
                       padding: '0.5rem',
                       border: '1px solid #d1d5db',
                       borderRadius: '0.375rem',
-                      fontSize: '0.875rem'
+                      fontSize: '0.875rem',
+                      backgroundColor: selectedOrder?.status !== 'paid' ? '#f3f4f6' : 'white',
+                      cursor: selectedOrder?.status !== 'paid' ? 'not-allowed' : 'text'
                     }}
                   />
                 </div>
@@ -1615,6 +1769,41 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
 
             {/* 버튼 */}
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+              {/* 환불 처리 버튼 - 배송대기/배송중/배송완료 상태일 때 (환불 상태가 아닐 때) */}
+              {selectedOrder?.status !== 'refunded' && selectedOrder?.status !== 'cancelled' && (
+                <button
+                  onClick={() => handleRefund(selectedOrder.id)}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    backgroundColor: '#dc2626',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '0.375rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {locale === 'ko' ? '환불 처리' : '退款处理'}
+                </button>
+              )}
+              
+              {/* 배송완료 버튼 - 배송중 상태일 때만 */}
+              {selectedOrder?.status === 'shipped' && (
+                <button
+                  onClick={() => handleMarkDelivered(selectedOrder.id)}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    backgroundColor: '#10b981',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '0.375rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {locale === 'ko' ? '배송 완료' : '配送完成'}
+                </button>
+              )}
+              
+              {/* 닫기 버튼 */}
               <button
                 onClick={() => {
                   setShowShipModal(false);
@@ -1641,251 +1830,31 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
                   cursor: 'pointer'
                 }}
               >
-                {t.cancel}
+                {selectedOrder?.status === 'paid' ? t.cancel : t.close}
               </button>
-              <button
-                onClick={handleShipRegister}
-                disabled={!shipForm.courier || !shipForm.trackingNo}
-                style={{
-                  padding: '0.5rem 1rem',
-                  backgroundColor: shipForm.courier && shipForm.trackingNo ? '#2563eb' : '#9ca3af',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '0.375rem',
-                  cursor: shipForm.courier && shipForm.trackingNo ? 'pointer' : 'not-allowed'
-                }}
-              >
-                {t.register}
-              </button>
+              
+              {/* 배송 등록 버튼 - paid 상태일 때만 */}
+              {selectedOrder?.status === 'paid' && (
+                <button
+                  onClick={handleShipRegister}
+                  disabled={!shipForm.courierCn || !shipForm.trackingNoCn}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    backgroundColor: shipForm.courierCn && shipForm.trackingNoCn ? '#2563eb' : '#9ca3af',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '0.375rem',
+                    cursor: shipForm.courierCn && shipForm.trackingNoCn ? 'pointer' : 'not-allowed'
+                  }}
+                >
+                  {t.register}
+                </button>
+              )}
             </div>
           </div>
         </div>
       )}
 
-      {/* 배송 상세 모달 */}
-      {showDetailModal && selectedShipment && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 50
-        }}>
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '0.5rem',
-            padding: '2rem',
-            maxWidth: '600px',
-            width: '90%',
-            maxHeight: '90vh',
-            overflowY: 'auto'
-          }}>
-            <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem' }}>
-              {t.detailModalTitle}
-            </h2>
-
-            {/* 주문 정보 */}
-            <div style={{ marginBottom: '1.5rem' }}>
-              <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem' }}>
-                {t.orderInfo}
-              </h3>
-              <div style={{
-                padding: '1rem',
-                backgroundColor: '#f9fafb',
-                borderRadius: '0.375rem'
-              }}>
-                <div style={{ marginBottom: '0.5rem' }}>
-                  <strong>{t.orderNo}:</strong> {selectedShipment.orderNo}
-                </div>
-                <div>
-                  <strong>{t.customer}:</strong> {selectedShipment.customerName}
-                </div>
-              </div>
-            </div>
-
-            {/* 한국 배송 추적 */}
-            <div style={{ marginBottom: '1.5rem' }}>
-              <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem' }}>
-                {t.koreanTracking}
-              </h3>
-              <div style={{
-                padding: '1rem',
-                backgroundColor: '#f9fafb',
-                borderRadius: '0.375rem'
-              }}>
-                <div style={{ marginBottom: '0.5rem' }}>
-                  <strong>{t.courier}:</strong> {selectedShipment.courier}
-                </div>
-                <div style={{ marginBottom: '0.5rem' }}>
-                  <strong>{t.trackingNo}:</strong> {selectedShipment.trackingNo}
-                </div>
-                {selectedShipment.trackingBarcode && (
-                  <div style={{ marginBottom: '0.5rem' }}>
-                    <strong>{t.trackingBarcode}:</strong> {selectedShipment.trackingBarcode}
-                  </div>
-                )}
-                {selectedShipment.trackingUrl && (
-                  <div>
-                    <a
-                      href={selectedShipment.trackingUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{
-                        color: '#2563eb',
-                        textDecoration: 'underline',
-                        fontSize: '0.875rem'
-                      }}
-                    >
-                      {t.openTracking} →
-                    </a>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* 중국 배송 추적 */}
-            {selectedShipment.courierCn && (
-              <div style={{ marginBottom: '1.5rem' }}>
-                <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem' }}>
-                  {t.chineseTracking}
-                </h3>
-                <div style={{
-                  padding: '1rem',
-                  backgroundColor: '#f9fafb',
-                  borderRadius: '0.375rem'
-                }}>
-                  <div style={{ marginBottom: '0.5rem' }}>
-                    <strong>{t.courier}:</strong> {selectedShipment.courierCn}
-                  </div>
-                  <div style={{ marginBottom: '0.5rem' }}>
-                    <strong>{t.trackingNo}:</strong> {selectedShipment.trackingNoCn}
-                  </div>
-                  {selectedShipment.trackingUrlCn && (
-                    <div>
-                      <a
-                        href={selectedShipment.trackingUrlCn}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{
-                          color: '#2563eb',
-                          textDecoration: 'underline',
-                          fontSize: '0.875rem'
-                        }}
-                      >
-                        {t.openTracking} →
-                      </a>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* 배송 상세 */}
-            <div style={{ marginBottom: '1.5rem' }}>
-              <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem' }}>
-                {t.shippingDetails}
-              </h3>
-              <div style={{
-                padding: '1rem',
-                backgroundColor: '#f9fafb',
-                borderRadius: '0.375rem'
-              }}>
-                {selectedShipment.shippingFee && (
-                  <div style={{ marginBottom: '0.5rem' }}>
-                    <strong>{t.shippingFee}:</strong> ₩{selectedShipment.shippingFee.toLocaleString()}
-                  </div>
-                )}
-                {selectedShipment.actualWeight && (
-                  <div style={{ marginBottom: '0.5rem' }}>
-                    <strong>{t.actualWeight}:</strong> {selectedShipment.actualWeight}kg
-                  </div>
-                )}
-                {selectedShipment.volumeWeight && (
-                  <div style={{ marginBottom: '0.5rem' }}>
-                    <strong>{t.volumeWeight}:</strong> {selectedShipment.volumeWeight}kg
-                  </div>
-                )}
-                <div style={{ marginBottom: '0.5rem' }}>
-                  <strong>{t.shippedAt}:</strong> {new Date(selectedShipment.shippedAt!).toLocaleString()}
-                </div>
-                {selectedShipment.deliveredAt && (
-                  <div>
-                    <strong>{t.delivered}:</strong> {new Date(selectedShipment.deliveredAt).toLocaleString()}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* 사진 */}
-            {(selectedShipment.shipmentPhotoUrl || selectedShipment.receiptPhotoUrl) && (
-              <div style={{ marginBottom: '1.5rem' }}>
-                <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem' }}>
-                  {t.photos}
-                </h3>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  {selectedShipment.shipmentPhotoUrl && (
-                    <div>
-                      <p style={{ fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem' }}>
-                        {t.shipmentPhotoLabel}
-                      </p>
-                      <img
-                        src={selectedShipment.shipmentPhotoUrl}
-                        alt={t.shipmentPhotoLabel}
-                        style={{
-                          width: '100%',
-                          borderRadius: '0.375rem',
-                          border: '1px solid #e5e7eb'
-                        }}
-                      />
-                    </div>
-                  )}
-                  {selectedShipment.receiptPhotoUrl && (
-                    <div>
-                      <p style={{ fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem' }}>
-                        {t.receiptPhotoLabel}
-                      </p>
-                      <img
-                        src={selectedShipment.receiptPhotoUrl}
-                        alt={t.receiptPhotoLabel}
-                        style={{
-                          width: '100%',
-                          borderRadius: '0.375rem',
-                          border: '1px solid #e5e7eb'
-                        }}
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* 닫기 버튼 */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button
-                onClick={() => {
-                  setShowDetailModal(false);
-                  setSelectedShipment(null);
-                }}
-                style={{
-                  padding: '0.5rem 1rem',
-                  backgroundColor: '#f3f4f6',
-                  color: '#374151',
-                  border: 'none',
-                  borderRadius: '0.375rem',
-                  cursor: 'pointer'
-                }}
-              >
-                {t.close}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* 모바일에서만 하단 네비게이션 표시 */}
       {isMobile && <MobileBottomNav locale={locale} />}

@@ -317,7 +317,7 @@ export class EnvSecurityManager {
       'password123',
       'secret123',
       'test123',
-      'admin123',
+      'yuandi123!',
       'demo123',
       '12345678',
       'changeme',

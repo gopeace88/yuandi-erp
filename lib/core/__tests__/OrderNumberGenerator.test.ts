@@ -10,14 +10,14 @@ describe('OrderNumberGenerator', () => {
     it('should generate order number with correct pattern', async () => {
       const orderNo = await OrderNumberGenerator.generate();
       
-      // 패턴 검증: ORD-YYMMDD-###
-      expect(orderNo).toMatch(/^ORD-\d{6}-\d{3}$/);
+      // 패턴 검증: YYMMDD-###
+      expect(orderNo).toMatch(/^\d{6}-\d{3}$/);
     });
     
     it('should start with 001 for first order of the day', async () => {
       const orderNo = await OrderNumberGenerator.generate();
       
-      expect(orderNo).toMatch(/^ORD-\d{6}-001$/);
+      expect(orderNo).toMatch(/^\d{6}-001$/);
     });
     
     it('should increment sequence for same day', async () => {
@@ -41,14 +41,14 @@ describe('OrderNumberGenerator', () => {
       const dateKey = `${year}${month}${day}`;
       
       const existingNumbers = [
-        `ORD-${dateKey}-001`,
-        `ORD-${dateKey}-002`,
-        `ORD-${dateKey}-005`,
+        `${dateKey}-001`,
+        `${dateKey}-002`,
+        `${dateKey}-005`,
       ];
       
       const orderNo = await OrderNumberGenerator.generate(existingNumbers);
       
-      expect(orderNo).toBe(`ORD-${dateKey}-006`);
+      expect(orderNo).toBe(`${dateKey}-006`);
     });
     
     it('should handle concurrent generation', async () => {
@@ -85,7 +85,7 @@ describe('OrderNumberGenerator', () => {
       const expectedDay = kstDate.getUTCDate().toString().padStart(2, '0');
       const expectedDateKey = `${expectedYear}${expectedMonth}${expectedDay}`;
       
-      expect(orderNo).toContain(`ORD-${expectedDateKey}-`);
+      expect(orderNo).toContain(`${expectedDateKey}-`);
     });
   });
   
@@ -93,7 +93,7 @@ describe('OrderNumberGenerator', () => {
     it('should generate order number synchronously', () => {
       const orderNo = OrderNumberGenerator.generateSync();
       
-      expect(orderNo).toMatch(/^ORD-\d{6}-\d{3}$/);
+      expect(orderNo).toMatch(/^\d{6}-\d{3}$/);
     });
     
     it('should increment sequence correctly', () => {
@@ -107,23 +107,23 @@ describe('OrderNumberGenerator', () => {
   
   describe('validate', () => {
     it('should validate correct order number format', () => {
-      expect(OrderNumberGenerator.validate('ORD-241225-001')).toBe(true);
-      expect(OrderNumberGenerator.validate('ORD-240101-999')).toBe(true);
+      expect(OrderNumberGenerator.validate('241225-001')).toBe(true);
+      expect(OrderNumberGenerator.validate('240101-999')).toBe(true);
     });
     
     it('should reject invalid order number format', () => {
       expect(OrderNumberGenerator.validate('INVALID')).toBe(false);
-      expect(OrderNumberGenerator.validate('ORD-241225')).toBe(false); // Missing sequence
-      expect(OrderNumberGenerator.validate('ORD-241225-1')).toBe(false); // Short sequence
-      expect(OrderNumberGenerator.validate('ord-241225-001')).toBe(false); // Lowercase
-      expect(OrderNumberGenerator.validate('ORD-241325-001')).toBe(false); // Invalid month
-      expect(OrderNumberGenerator.validate('ORD-240230-001')).toBe(false); // Invalid day
+      expect(OrderNumberGenerator.validate('241225')).toBe(false); // Missing sequence
+      expect(OrderNumberGenerator.validate('241225-1')).toBe(false); // Short sequence
+      expect(OrderNumberGenerator.validate('ORD-241225-001')).toBe(false); // Old format
+      expect(OrderNumberGenerator.validate('241325-001')).toBe(false); // Invalid month
+      expect(OrderNumberGenerator.validate('240230-001')).toBe(false); // Invalid day
     });
   });
   
   describe('parse', () => {
     it('should parse valid order number correctly', () => {
-      const orderNo = 'ORD-241225-001';
+      const orderNo = '241225-001';
       const parsed = OrderNumberGenerator.parse(orderNo);
       
       expect(parsed).not.toBeNull();
@@ -136,7 +136,7 @@ describe('OrderNumberGenerator', () => {
     it('should return null for invalid order number', () => {
       expect(OrderNumberGenerator.parse('INVALID')).toBeNull();
       expect(OrderNumberGenerator.parse('')).toBeNull();
-      expect(OrderNumberGenerator.parse('ORD-999999-001')).toBeNull();
+      expect(OrderNumberGenerator.parse('999999-001')).toBeNull();
     });
   });
   

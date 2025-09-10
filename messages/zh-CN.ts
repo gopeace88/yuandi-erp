@@ -45,7 +45,6 @@ export const zhCNMessages = {
     "passwordLabel": "密码",
     "signInButton": "登录",
     "signingIn": "登录中...",
-    "adminCredentials": "管理员账户: yuandi1020@gmail.com / yuandi123!",
     "initialSetup": "如需初始设置",
     "clickHere": "点击这里",
     "setupPrompt": "。",
@@ -101,12 +100,11 @@ export const zhCNMessages = {
     "internalMemo": "内部备注",
     "statusPaid": "已付款",
     "statusShipped": "配送中",
-    "statusDone": "已完成",
+    "statusDone": "配送完成",
     "statusRefunded": "已退款",
     "stats": {
       "total": "全部订单",
       "processing": "处理中",
-      "delivered": "配送完成",
       "refunded": "已退款"
     },
     "list": {
@@ -118,8 +116,7 @@ export const zhCNMessages = {
       "paid": "已付款",
       "shipped": "配送中",
       "shipping": "配送中",
-      "done": "已完成",
-      "delivered": "配送完成",
+      "done": "配送完成",
       "refunded": "已退款",
       "cancelled": "已取消"
     },

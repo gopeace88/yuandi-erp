@@ -72,7 +72,7 @@
     "status": "상태",
     "statusPaid": "결제완료",
     "statusShipped": "배송중",
-    "statusDone": "완료",
+    "statusDone": "배송완료",
     "statusRefunded": "환불",
     "createOrder": "주문 생성",
     "editOrder": "주문 수정",

@@ -109,3 +109,8 @@ nul
 /yuandi-erp
 # GitHub CLI binary
 gh
+
+# Test screenshots
+*.png
+/test-screenshots/
+/my-puppeteer/*.png

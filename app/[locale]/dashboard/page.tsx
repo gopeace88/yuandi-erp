@@ -61,10 +61,16 @@ export default function DashboardPage({ params: { locale } }: DashboardPageProps
       const { createClient } = await import('@/lib/supabase/client');
       const supabase = createClient();
       
-      // 주문 데이터 가져오기
+      // 주문 데이터 가져오기 (order_items 포함)
       const { data: orders, error: ordersError } = await supabase
         .from('orders')
-        .select('*')
+        .select(`
+          *,
+          order_items (
+            product_name,
+            quantity
+          )
+        `)
         .order('created_at', { ascending: false });
       
       // 재고 데이터 가져오기
@@ -88,17 +94,28 @@ export default function DashboardPage({ params: { locale } }: DashboardPageProps
       // 최근 주문 20건 설정
       const sortedOrders = (orders || [])
         .slice(0, 20)
-        .map((order: any) => ({
-          id: order.id,
-          order_number: order.order_number,
-          date: order.created_at.split('T')[0],
-          name: order.customer_name,
-          status: order.status || 'paid',
-          amount: locale === 'ko' 
-            ? `₩${(order.total_krw || 0).toLocaleString()}` 
-            : `¥${Math.floor((order.total_krw || 0) / 180).toLocaleString()}`,
-          total_krw: order.total_krw || 0
-        }));
+        .map((order: any) => {
+          // order_items 데이터를 상품 문자열로 변환
+          const productText = order.order_items && order.order_items.length > 0
+            ? order.order_items.map((item: any) => 
+                `${item.product_name}(${item.quantity})`
+              ).join(', ')
+            : '-';
+          
+          return {
+            id: order.id,
+            order_number: order.order_number,
+            date: order.created_at.split('T')[0],
+            name: order.customer_name,
+            phone: order.customer_phone || '',
+            product: productText,
+            status: order.status || 'paid',
+            amount: locale === 'ko' 
+              ? `₩${(order.total_krw || 0).toLocaleString()}` 
+              : `¥${Math.floor((order.total_krw || 0) / 180).toLocaleString()}`,
+            total_krw: order.total_krw || 0
+          };
+        });
       
       setRecentOrders(sortedOrders);
       
@@ -326,10 +343,12 @@ export default function DashboardPage({ params: { locale } }: DashboardPageProps
                 ];
                 
                 const columns = [
-                  { header: locale === 'ko' ? '날짜' : locale === 'zh-CN' ? '日期' : 'Date', key: 'date', width: 15 },
-                  { header: locale === 'ko' ? '고객명' : locale === 'zh-CN' ? '客户' : 'customer', key: 'name', width: 20 },
-                  { header: locale === 'ko' ? '상태' : locale === 'zh-CN' ? '状态' : 'Status', key: 'status', width: 15 },
-                  { header: locale === 'ko' ? '금액' : locale === 'zh-CN' ? '金额' : 'Amount', key: 'amount', width: 20 }
+                  { header: locale === 'ko' ? '주문번호' : locale === 'zh-CN' ? '订单号' : 'Order No', key: 'order_number', width: 15 },
+                  { header: locale === 'ko' ? '이름' : locale === 'zh-CN' ? '姓名' : 'Name', key: 'name', width: 15 },
+                  { header: locale === 'ko' ? '전화번호' : locale === 'zh-CN' ? '电话' : 'Phone', key: 'phone', width: 15 },
+                  { header: locale === 'ko' ? '상품' : locale === 'zh-CN' ? '商品' : 'Product', key: 'product', width: 30 },
+                  { header: locale === 'ko' ? '상태' : locale === 'zh-CN' ? '状态' : 'Status', key: 'status', width: 10 },
+                  { header: locale === 'ko' ? '금액' : locale === 'zh-CN' ? '金额' : 'Amount', key: 'amount', width: 15 }
                 ];
                 
                 exportToExcel({
@@ -360,10 +379,16 @@ export default function DashboardPage({ params: { locale } }: DashboardPageProps
               <thead>
                 <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
                   <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#374151' }}>
-                    {locale === 'ko' ? '날짜' : locale === 'zh-CN' ? '日期' : 'Date'}
+                    {locale === 'ko' ? '주문번호' : locale === 'zh-CN' ? '订单号' : 'Order No'}
                   </th>
                   <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#374151' }}>
-                    {locale === 'ko' ? '고객명' : locale === 'zh-CN' ? '客户' : 'customer'}
+                    {locale === 'ko' ? '이름' : locale === 'zh-CN' ? '姓名' : 'Name'}
+                  </th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#374151' }}>
+                    {locale === 'ko' ? '전화번호' : locale === 'zh-CN' ? '电话' : 'Phone'}
+                  </th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#374151' }}>
+                    {locale === 'ko' ? '상품' : locale === 'zh-CN' ? '商品' : 'Product'}
                   </th>
                   <th style={{ padding: '0.75rem', textAlign: 'center', fontSize: '0.875rem', fontWeight: '600', color: '#374151' }}>
                     {locale === 'ko' ? '상태' : locale === 'zh-CN' ? '状态' : 'Status'}
@@ -379,7 +404,8 @@ export default function DashboardPage({ params: { locale } }: DashboardPageProps
                   const statusColors = {
                     'paid': { bg: '#dbeafe', color: '#1e40af', text: locale === 'ko' ? '결제완료' : locale === 'zh-CN' ? '已付款' : 'Paid' },
                     'shipped': { bg: '#fef3c7', color: '#92400e', text: locale === 'ko' ? '배송중' : locale === 'zh-CN' ? '配送中' : 'Shipping' },
-                    'delivered': { bg: '#d1fae5', color: '#065f46', text: locale === 'ko' ? '완료' : locale === 'zh-CN' ? '完成' : 'Completed' },
+                    'done': { bg: '#d1fae5', color: '#065f46', text: locale === 'ko' ? '배송완료' : locale === 'zh-CN' ? '配送完成' : 'Completed' },
+                    'delivered': { bg: '#d1fae5', color: '#065f46', text: locale === 'ko' ? '배송완료' : locale === 'zh-CN' ? '配送完成' : 'Completed' },
                     'refunded': { bg: '#fee2e2', color: '#991b1b', text: locale === 'ko' ? '환불' : locale === 'zh-CN' ? '已退款' : 'Refunded' }
                   };
                   
@@ -408,8 +434,10 @@ export default function DashboardPage({ params: { locale } }: DashboardPageProps
                         e.currentTarget.style.backgroundColor = 'transparent';
                       }}
                     >
-                      <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>{order.date}</td>
+                      <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>{order.order_number}</td>
                       <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>{order.name}</td>
+                      <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>{order.phone}</td>
+                      <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>{order.product}</td>
                       <td style={{ padding: '0.75rem', textAlign: 'center' }}>
                         <span style={{
                           padding: '0.25rem 0.5rem',

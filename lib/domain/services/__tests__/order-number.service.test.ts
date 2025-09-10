@@ -66,7 +66,7 @@ describe('Order Number Service', () => {
             order: jest.fn().mockReturnValue({
               limit: jest.fn().mockReturnValue({
                 single: jest.fn().mockResolvedValue({ 
-                  data: { order_no: 'ORD-240823-005' }, 
+                  data: { order_no: '240823-005' }, 
                   error: null 
                 })
               })
@@ -107,7 +107,7 @@ describe('Order Number Service', () => {
             order: jest.fn().mockReturnValue({
               limit: jest.fn().mockReturnValue({
                 single: jest.fn().mockResolvedValue({ 
-                  data: { order_no: 'ORD-240823-999' }, 
+                  data: { order_no: '240823-999' }, 
                   error: null 
                 })
               })
@@ -137,7 +137,7 @@ describe('Order Number Service', () => {
       });
 
       const orderNo = await generateOrderNumber(mockSupabaseClient as any);
-      expect(orderNo).toBe('ORD-240823-001');
+      expect(orderNo).toBe('240823-001');
     });
 
     it('should use custom date if provided', async () => {
@@ -155,7 +155,7 @@ describe('Order Number Service', () => {
 
       const customDate = new Date('2024-12-25');
       const orderNo = await generateOrderNumber(mockSupabaseClient as any, customDate);
-      expect(orderNo).toBe('ORD-241225-001');
+      expect(orderNo).toBe('241225-001');
     });
 
     it('should handle concurrent requests with retry logic', async () => {
@@ -179,7 +179,7 @@ describe('Order Number Service', () => {
               limit: jest.fn().mockReturnValue({
                 single: jest.fn()
                   .mockResolvedValueOnce({ data: null, error: null })
-                  .mockResolvedValueOnce({ data: { order_no: 'ORD-240823-001' }, error: null })
+                  .mockResolvedValueOnce({ data: { order_no: '240823-001' }, error: null })
               })
             })
           })
@@ -187,14 +187,14 @@ describe('Order Number Service', () => {
       }));
 
       const orderNo = await generateOrderNumber(mockSupabaseClient as any, undefined, true);
-      expect(orderNo).toBe('ORD-240823-002');
+      expect(orderNo).toBe('240823-002');
       expect(callCount).toBe(1); // Only check, no insert in this test
     });
   });
 
   describe('parseOrderNumber', () => {
     it('should parse valid order number correctly', () => {
-      const parsed = parseOrderNumber('ORD-240823-001');
+      const parsed = parseOrderNumber('240823-001');
       expect(parsed).toEqual({
         year: 24,
         month: 8,
@@ -207,12 +207,12 @@ describe('Order Number Service', () => {
 
     it('should return null for invalid format', () => {
       expect(parseOrderNumber('INVALID')).toBeNull();
-      expect(parseOrderNumber('ORD-24-08-23-001')).toBeNull();
-      expect(parseOrderNumber('ORD-240823-ABCD')).toBeNull();
+      expect(parseOrderNumber('24-08-23-001')).toBeNull();
+      expect(parseOrderNumber('240823-ABCD')).toBeNull();
     });
 
     it('should handle edge cases', () => {
-      const parsed = parseOrderNumber('ORD-991231-999');
+      const parsed = parseOrderNumber('991231-999');
       expect(parsed).toEqual({
         year: 99,
         month: 12,
@@ -226,29 +226,29 @@ describe('Order Number Service', () => {
 
   describe('isValidOrderNumber', () => {
     it('should validate correct order numbers', () => {
-      expect(isValidOrderNumber('ORD-240823-001')).toBe(true);
-      expect(isValidOrderNumber('ORD-991231-999')).toBe(true);
-      expect(isValidOrderNumber('ORD-000101-001')).toBe(true);
+      expect(isValidOrderNumber('240823-001')).toBe(true);
+      expect(isValidOrderNumber('991231-999')).toBe(true);
+      expect(isValidOrderNumber('000101-001')).toBe(true);
     });
 
     it('should reject invalid formats', () => {
-      expect(isValidOrderNumber('240823-001')).toBe(false);
-      expect(isValidOrderNumber('ORD-24823-001')).toBe(false);
-      expect(isValidOrderNumber('ORD-240823-0001')).toBe(false);
-      expect(isValidOrderNumber('ORD-240823-ABC')).toBe(false);
+      expect(isValidOrderNumber('ORD-240823-001')).toBe(false); // Old format
+      expect(isValidOrderNumber('24823-001')).toBe(false);
+      expect(isValidOrderNumber('240823-0001')).toBe(false);
+      expect(isValidOrderNumber('240823-ABC')).toBe(false);
       expect(isValidOrderNumber('')).toBe(false);
       expect(isValidOrderNumber(null as any)).toBe(false);
     });
 
     it('should reject invalid dates', () => {
-      expect(isValidOrderNumber('ORD-241301-001')).toBe(false); // Month 13
-      expect(isValidOrderNumber('ORD-240232-001')).toBe(false); // Day 32
-      expect(isValidOrderNumber('ORD-240000-001')).toBe(false); // Day 00
+      expect(isValidOrderNumber('241301-001')).toBe(false); // Month 13
+      expect(isValidOrderNumber('240232-001')).toBe(false); // Day 32
+      expect(isValidOrderNumber('240000-001')).toBe(false); // Day 00
     });
 
     it('should reject invalid sequence numbers', () => {
-      expect(isValidOrderNumber('ORD-240823-000')).toBe(false);
-      expect(isValidOrderNumber('ORD-240823-1000')).toBe(false);
+      expect(isValidOrderNumber('240823-000')).toBe(false);
+      expect(isValidOrderNumber('240823-1000')).toBe(false);
     });
   });
 });
