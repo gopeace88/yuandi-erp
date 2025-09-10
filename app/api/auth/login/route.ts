@@ -1,5 +1,6 @@
 import { createServerSupabase } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,7 +15,47 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const supabase = await createServerSupabase()
+    // Create a response object to mutate
+    let response = NextResponse.json({ success: false })
+
+    // Create Supabase client for SSR with cookie handling
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_API_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value
+          },
+          set(name: string, value: string, options: CookieOptions) {
+            request.cookies.set({
+              name,
+              value,
+              ...options,
+            })
+            response = NextResponse.json({ success: false })
+            response.cookies.set({
+              name,
+              value,
+              ...options,
+            })
+          },
+          remove(name: string, options: CookieOptions) {
+            request.cookies.set({
+              name,
+              value: '',
+              ...options,
+            })
+            response = NextResponse.json({ success: false })
+            response.cookies.set({
+              name,
+              value: '',
+              ...options,
+            })
+          },
+        },
+      }
+    )
 
     // Supabase 인증
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
@@ -80,14 +121,14 @@ export async function POST(request: NextRequest) {
       expires_in: authData.session?.expires_in
     }
 
-    // 응답 생성
-    const response = NextResponse.json({
+    // 최종 응답 생성 (Supabase 쿠키는 이미 설정됨)
+    response = NextResponse.json({
       success: true,
       user: userData,
       session: sessionData
     })
 
-    // 쿠키 설정
+    // 추가 커스텀 쿠키 설정 (기존 호환성 유지)
     const maxAge = authData.session?.expires_in || 3600 // 기본 1시간
     
     // Base64 인코딩으로 한글 처리
@@ -110,6 +151,7 @@ export async function POST(request: NextRequest) {
       secure: process.env.NODE_ENV === 'production'
     })
 
+    console.log('✅ Login successful, Supabase auth cookies set')
     return response
 
   } catch (error) {

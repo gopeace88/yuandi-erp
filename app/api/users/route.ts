@@ -1,5 +1,50 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSupabaseClient, getSupabaseadmin } from '@/lib/supabase/api'
+import { createClient } from '@/lib/supabase/server'
+import { getSupabaseadmin } from '@/lib/supabase/api'
+
+export async function GET(request: NextRequest) {
+  try {
+    const supabase = await createClient()
+    
+    // Get the current session
+    const { data: { session } } = await supabase.auth.getSession()
+    
+    // Check if user is authenticated
+    if (!session) {
+      console.log('❌ No session found')
+      return NextResponse.json({ error: 'Unauthorized - Please login first' }, { status: 401 })
+    }
+    
+    console.log('✅ Session found:', { userId: session.user.id, email: session.user.email })
+    
+    // Get user role from profiles
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('role')
+      .eq('id', session.user.id)
+      .single()
+    
+    // Only admin can view all users
+    if (profile?.role !== 'admin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+    
+    // Get all users
+    const { data: users, error } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .order('created_at', { ascending: true })
+    
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 400 })
+    }
+    
+    return NextResponse.json(users || [], { status: 200 })
+  } catch (error) {
+    console.error('Error fetching users:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
 
 export async function POST(request: NextRequest) {
   console.log('POST /api/users - Start')
@@ -8,18 +53,8 @@ export async function POST(request: NextRequest) {
     // Step 1: Check authentication
     console.log('Step 1: Checking authentication')
     
-    let supabase, session
-    try {
-      const result = await getSupabaseClient()
-      supabase = result.supabase
-      session = result.session
-    } catch (error) {
-      console.error('Failed to create Supabase client:', error)
-      return NextResponse.json({ 
-        error: 'Database connection failed',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      }, { status: 500 })
-    }
+    const supabase = await createClient()
+    const { data: { session } } = await supabase.auth.getSession()
     
     if (!session) {
       console.log('No session found - user needs to login')
@@ -124,7 +159,8 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const { supabase, session } = await getSupabaseClient()
+    const supabase = await createClient()
+    const { data: { session } } = await supabase.auth.getSession()
     
     // Check if user is admin
     if (!session) {
@@ -171,7 +207,8 @@ export async function PATCH(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const { supabase, session } = await getSupabaseClient()
+    const supabase = await createClient()
+    const { data: { session } } = await supabase.auth.getSession()
     
     // Check if user is admin
     if (!session) {
