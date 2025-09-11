@@ -11,8 +11,7 @@ interface Category {
   name_zh: string;
   description?: string;
   display_order: number;
-  is_system: boolean;
-  active: boolean;
+  is_active: boolean;
 }
 
 interface CashbookType {
@@ -24,8 +23,31 @@ interface CashbookType {
   color: string;
   description?: string;
   display_order: number;
-  is_system: boolean;
-  active: boolean;
+  is_active: boolean;
+}
+
+interface Product {
+  id: string;
+  sku: string;
+  name: string;
+  name_ko: string;
+  name_zh: string;
+  category: string;
+  category_id?: string;
+  model?: string;
+  color?: string;
+  color_ko?: string;
+  color_zh?: string;
+  brand?: string;
+  brand_ko?: string;
+  brand_zh?: string;
+  cost_cny: number;
+  price_krw: number;
+  low_stock_threshold?: number;
+  on_hand?: number;
+  image_url?: string;
+  description?: string;
+  is_active: boolean;
 }
 
 interface User {
@@ -33,7 +55,8 @@ interface User {
   email: string;
   name: string;
   role: 'admin' | 'order_manager' | 'ship_manager';
-  active: boolean;
+  language: 'ko' | 'zh' | 'en';
+  is_active: boolean;
 }
 
 interface SystemSetting {
@@ -60,12 +83,15 @@ interface SettingsPageProps {
 
 export default function SettingsPage({ params: { locale } }: SettingsPageProps) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'users' | 'categories' | 'cashbook_types' | 'system'>('users');
+  const [activeTab, setActiveTab] = useState<'products' | 'users' | 'categories' | 'cashbook_types' | 'system'>('products');
+  const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [cashbookTypes, setCashbookTypes] = useState<CashbookType[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editProduct, setEditProduct] = useState<Product | null>(null);
+  const [showProductModal, setShowProductModal] = useState(false);
   const [editCategory, setEditCategory] = useState<Category | null>(null);
   const [editCashbookType, setEditCashbookType] = useState<CashbookType | null>(null);
   const [systemSettings, setSystemSettings] = useState<SystemSetting[]>([]);
@@ -75,10 +101,14 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
   const [editUser, setEditUser] = useState<User | null>(null);
   const [showUserModal, setShowUserModal] = useState(false);
   const [userRole, setUserRole] = useState<string>('');
+  const [showBulkImportModal, setShowBulkImportModal] = useState(false);
+  const [bulkImportFile, setBulkImportFile] = useState<File | null>(null);
+  const [bulkImportLoading, setBulkImportLoading] = useState(false);
 
   // 번역
   const t = locale === 'ko' ? {
     title: '설정',
+    products: '상품 관리',
     users: '사용자 관리',
     categories: '카테고리 관리',
     cashbookTypes: '출납유형 관리',
@@ -97,6 +127,19 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
     actions: '작업',
     addCategory: '카테고리 추가',
     addUser: '사용자 추가',
+    addProduct: '상품 추가',
+    productName: '상품명',
+    productNameKo: '상품명 (한국어)',
+    productNameZh: '상품명 (중국어)',
+    sku: 'SKU',
+    model: '모델',
+    color: '색상',
+    brand: '브랜드',
+    costCny: '원가 (CNY)',
+    priceKrw: '판매가 (KRW)',
+    onHand: '재고수량',
+    lowStockThreshold: '재고부족 임계값',
+    imageUrl: '이미지 URL',
     save: '저장',
     cancel: '취소',
     edit: '수정',
@@ -114,7 +157,7 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
     admin: '시스템 관리자',
     orderManager: '주문 관리자',
     shipManager: '배송 관리자',
-    system: '기타',
+    system: '시스템설정',
     systemSettings: '시스템 설정',
     inventory: '재고',
     order: '주문',
@@ -124,9 +167,21 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
     accounting: '회계',
     allCategories: '전체',
     applyChanges: '변경사항 적용',
-    resetToDefault: '기본값으로 재설정'
+    resetToDefault: '기본값으로 재설정',
+    bulkImport: '대량입력',
+    selectFile: '파일 선택',
+    downloadTemplate: '현재 설정 다운로드',
+    upload: '업로드',
+    importType: '입력 유형',
+    importSuccess: '성공적으로 입력되었습니다',
+    importFailed: '입력 실패',
+    selectExcelFile: '엑셀 파일을 선택하세요',
+    importing: '입력 중...',
+    downloadExplanation: '현재 설정된 모든 데이터를 엑셀로 다운로드 받습니다.',
+    uploadExplanation: '수정한 엑셀 파일을 업로드하면 일괄 업데이트됩니다.'
   } : {
     title: '设置',
+    products: '产品管理',
     users: '用户管理',
     categories: '分类管理',
     cashbookTypes: '出纳类型管理',
@@ -145,6 +200,19 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
     actions: '操作',
     addCategory: '添加分类',
     addUser: '添加用户',
+    addProduct: '添加产品',
+    productName: '产品名称',
+    productNameKo: '产品名称 (韩文)',
+    productNameZh: '产品名称 (中文)',
+    sku: 'SKU',
+    model: '型号',
+    color: '颜色',
+    brand: '品牌',
+    costCny: '成本 (CNY)',
+    priceKrw: '售价 (KRW)',
+    onHand: '库存数量',
+    lowStockThreshold: '缺货阈值',
+    imageUrl: '图片 URL',
     save: '保存',
     cancel: '取消',
     edit: '编辑',
@@ -162,7 +230,7 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
     admin: '系统管理员',
     orderManager: '订单管理员',
     shipManager: '配送管理员',
-    system: '其他',
+    system: '系统设置',
     systemSettings: '系统设置',
     inventory: '库存',
     order: '订单',
@@ -172,7 +240,18 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
     accounting: '会计',
     allCategories: '全部',
     applyChanges: '应用更改',
-    resetToDefault: '重置为默认值'
+    resetToDefault: '重置为默认值',
+    bulkImport: '批量导入',
+    selectFile: '选择文件',
+    downloadTemplate: '下载当前设置',
+    upload: '上传',
+    importType: '导入类型',
+    importSuccess: '导入成功',
+    importFailed: '导入失败',
+    selectExcelFile: '请选择Excel文件',
+    importing: '导入中...',
+    downloadExplanation: '下载所有当前设置数据为Excel文件。',
+    uploadExplanation: '上传修改后的Excel文件进行批量更新。'
   };
   
   // 역할 표시 함수
@@ -196,7 +275,10 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
 
   // 탭별 데이터 로드
   useEffect(() => {
-    if (activeTab === 'categories') {
+    if (activeTab === 'products') {
+      loadProducts();
+      loadCategories(); // 상품 탭에서도 카테고리 로드
+    } else if (activeTab === 'categories') {
       loadCategories();
     } else if (activeTab === 'users') {
       loadUsers();
@@ -324,6 +406,29 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
     }
   };
 
+  const loadProducts = async () => {
+    setLoading(true);
+    try {
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
+      
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      
+      if (data) {
+        setProducts(data);
+      }
+    } catch (error) {
+      console.error('Error loading products:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const loadCategories = async () => {
     setLoading(true);
     try {
@@ -334,6 +439,93 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
       }
     } catch (error) {
       console.error('Error loading categories:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // SKU 자동 생성 함수
+  const generateSKU = (category: string, model: string, color: string, brand: string) => {
+    const timestamp = Date.now().toString(36).toUpperCase(); // 타임스탬프를 36진수로 변환
+    const categoryCode = category ? category.substring(0, 3).toUpperCase() : 'XXX';
+    const modelCode = model ? model.substring(0, 3).toUpperCase() : '';
+    const colorCode = color ? color.substring(0, 2).toUpperCase() : '';
+    const brandCode = brand ? brand.substring(0, 2).toUpperCase() : '';
+    
+    // SKU 형식: [카테고리3자]-[모델3자]-[색상2자]-[브랜드2자]-[타임스탬프]
+    const skuParts = [categoryCode];
+    if (modelCode) skuParts.push(modelCode);
+    if (colorCode) skuParts.push(colorCode);
+    if (brandCode) skuParts.push(brandCode);
+    skuParts.push(timestamp.substring(timestamp.length - 5)); // 마지막 5자리만 사용
+    
+    return skuParts.join('-');
+  };
+
+  const handleSaveProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editProduct) return;
+    
+    try {
+      setLoading(true);
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
+      
+      // SKU 자동 생성 (신규 등록시만)
+      let sku = editProduct.sku;
+      if (!editProduct.id) {
+        sku = generateSKU(
+          editProduct.category,
+          editProduct.model || '',
+          editProduct.color_ko || editProduct.color || '',
+          editProduct.brand_ko || editProduct.brand || ''
+        );
+      }
+      
+      // 데이터 준비
+      const productData: any = {
+        sku: sku,
+        name: editProduct.name || '',
+        name_ko: editProduct.name_ko || editProduct.name,
+        name_zh: editProduct.name_zh || editProduct.name,
+        category: editProduct.category,
+        model: editProduct.model || null,
+        color: editProduct.color || null,
+        color_ko: editProduct.color_ko || editProduct.color,
+        color_zh: editProduct.color_zh || editProduct.color,
+        brand: editProduct.brand || null,
+        brand_ko: editProduct.brand_ko || editProduct.brand,
+        brand_zh: editProduct.brand_zh || editProduct.brand,
+        cost_cny: editProduct.cost_cny || 0,
+        price_krw: editProduct.price_krw || 0,
+        is_active: editProduct.is_active !== false
+      };
+      
+      if (editProduct.id) {
+        // 수정
+        const { error } = await supabase
+          .from('products')
+          .update(productData)
+          .eq('id', editProduct.id);
+        
+        if (error) throw error;
+        alert(locale === 'ko' ? '상품이 수정되었습니다.' : '产品已更新。');
+      } else {
+        // 신규 등록
+        const { error } = await supabase
+          .from('products')
+          .insert(productData);
+        
+        if (error) throw error;
+        alert(locale === 'ko' ? '상품이 등록되었습니다.' : '产品已注册。');
+      }
+      
+      setShowProductModal(false);
+      setEditProduct(null);
+      loadProducts();
+    } catch (error) {
+      console.error('Error saving product:', error);
+      alert(locale === 'ko' ? '상품 저장 중 오류가 발생했습니다.' : '保存产品时出错。');
     } finally {
       setLoading(false);
     }
@@ -543,12 +735,7 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
     }
   };
 
-  const handleDeleteCashbookType = async (id: string, isSystem: boolean) => {
-    if (isSystem) {
-      alert(locale === 'ko' ? '시스템 출납유형은 삭제할 수 없습니다.' : '系统出纳类型无法删除。');
-      return;
-    }
-    
+  const handleDeleteCashbookType = async (id: string) => {
     if (!confirm(t.confirmDelete)) return;
     
     try {
@@ -568,12 +755,7 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
     }
   };
 
-  const handleDeleteCategory = async (id: string, isSystem: boolean) => {
-    if (isSystem) {
-      alert(t.systemCategoryWarning);
-      return;
-    }
-    
+  const handleDeleteCategory = async (id: string) => {
     if (!confirm(t.confirmDelete)) return;
     
     try {
@@ -593,6 +775,74 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
     }
   };
 
+  const handleBulkImport = async () => {
+    if (!bulkImportFile) {
+      alert(t.selectExcelFile);
+      return;
+    }
+
+    setBulkImportLoading(true);
+    const formData = new FormData();
+    formData.append('file', bulkImportFile);
+
+    try {
+      const response = await fetch('/api/bulk-import-v2', {
+        method: 'POST',
+        body: formData
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        let message = t.importSuccess + '\n\n';
+        if (result.details) {
+          message += Object.values(result.details).join('\n');
+        }
+        if (result.total) {
+          message += `\n\n전체: 성공 ${result.total.success}건, 실패 ${result.total.failed}건`;
+        }
+        alert(message);
+        
+        // 모든 데이터 다시 로드
+        loadProducts();
+        loadCategories();
+        loadCashbookTypes();
+        
+        setShowBulkImportModal(false);
+        setBulkImportFile(null);
+      } else {
+        alert(`${t.importFailed}: ${result.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Bulk import error:', error);
+      alert(t.importFailed);
+    } finally {
+      setBulkImportLoading(false);
+    }
+  };
+
+  const downloadCurrentSettings = async () => {
+    try {
+      const response = await fetch('/api/bulk-import-v2');
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `yuandi_settings_${new Date().toISOString().split('T')[0]}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      } else {
+        alert(locale === 'ko' ? '현재 설정 다운로드 실패' : '下载当前设置失败');
+      }
+    } catch (error) {
+      console.error('Download error:', error);
+      alert(locale === 'ko' ? '다운로드 중 오류가 발생했습니다' : '下载过程中出现错误');
+    }
+  };
+
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f3f4f6', padding: '2rem' }}>
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
@@ -604,12 +854,52 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
           marginBottom: '2rem',
           boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
         }}>
-          <h1 style={{ fontSize: '1.875rem', fontWeight: 'bold', marginBottom: '1rem' }}>
-            {t.title}
-          </h1>
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center',
+            marginBottom: '1rem'
+          }}>
+            <h1 style={{ fontSize: '1.875rem', fontWeight: 'bold' }}>
+              {t.title}
+            </h1>
+            {activeTab !== 'users' && activeTab !== 'system' && (
+              <button
+                onClick={() => setShowBulkImportModal(true)}
+                style={{
+                  padding: '0.5rem 1rem',
+                  backgroundColor: '#10b981',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '0.375rem',
+                  fontSize: '0.875rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}
+              >
+                📤 {t.bulkImport}
+              </button>
+            )}
+          </div>
           
           {/* 탭 */}
           <div style={{ display: 'flex', gap: '1rem', borderBottom: '1px solid #e5e7eb' }}>
+            <button
+              onClick={() => setActiveTab('products')}
+              style={{
+                padding: '0.75rem 1rem',
+                background: 'none',
+                border: 'none',
+                borderBottom: activeTab === 'products' ? '2px solid #2563eb' : 'none',
+                color: activeTab === 'products' ? '#2563eb' : '#6b7280',
+                fontWeight: activeTab === 'products' ? '600' : '400',
+                cursor: 'pointer'
+              }}
+            >
+              {t.products}
+            </button>
             <button
               onClick={() => setActiveTab('users')}
               style={{
@@ -669,6 +959,162 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
           </div>
         </div>
 
+        {/* 상품 관리 탭 */}
+        {activeTab === 'products' && (
+          <div style={{ 
+            backgroundColor: 'white', 
+            padding: '1.5rem', 
+            borderRadius: '0.5rem',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+          }}>
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center',
+              marginBottom: '1.5rem'
+            }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: '600' }}>{t.products}</h2>
+              <button
+                onClick={() => {
+                  setEditProduct({
+                    id: '',
+                    sku: '',
+                    name: '',
+                    name_ko: '',
+                    name_zh: '',
+                    category: '',
+                    model: '',
+                    color: '',
+                    color_ko: '',
+                    color_zh: '',
+                    brand: '',
+                    brand_ko: '',
+                    brand_zh: '',
+                    cost_cny: 0,
+                    price_krw: 0,
+                    on_hand: 0,
+                    is_active: true
+                  });
+                  setShowProductModal(true);
+                }}
+                style={{
+                  padding: '0.5rem 1rem',
+                  backgroundColor: '#2563eb',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '0.375rem',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                  fontWeight: '500'
+                }}
+              >
+                + {t.addProduct}
+              </button>
+            </div>
+
+            {loading ? (
+              <div style={{ textAlign: 'center', padding: '2rem' }}>로딩중...</div>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600' }}>{t.productName}</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600' }}>{t.category}</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600' }}>{locale === 'ko' ? '색상' : '颜色'}</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600' }}>{t.brand}</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600' }}>{t.model}</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'right', fontSize: '0.875rem', fontWeight: '600' }}>{t.costCny}</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'right', fontSize: '0.875rem', fontWeight: '600' }}>{t.priceKrw}</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'center', fontSize: '0.875rem', fontWeight: '600' }}>{t.status}</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'center', fontSize: '0.875rem', fontWeight: '600' }}>{t.actions}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {products.map(product => (
+                      <tr key={product.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                        <td style={{ padding: '0.75rem' }}>
+                          <div style={{ fontSize: '0.875rem', fontWeight: '500' }}>
+                            {product.name_ko || product.name || '-'}
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.125rem' }}>
+                            {product.name_zh || product.name || '-'}
+                          </div>
+                        </td>
+                        <td style={{ padding: '0.75rem' }}>
+                          {(() => {
+                            const cat = categories.find(c => c.category === product.category);
+                            return (
+                              <div>
+                                <div style={{ fontSize: '0.875rem' }}>
+                                  {cat?.name_ko || product.category || '-'}
+                                </div>
+                                <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.125rem' }}>
+                                  {cat?.name_zh || product.category || '-'}
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </td>
+                        <td style={{ padding: '0.75rem' }}>
+                          <div style={{ fontSize: '0.875rem' }}>
+                            {product.color_ko || product.color || '-'}
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.125rem' }}>
+                            {product.color_zh || product.color || '-'}
+                          </div>
+                        </td>
+                        <td style={{ padding: '0.75rem' }}>
+                          <div style={{ fontSize: '0.875rem' }}>
+                            {product.brand_ko || product.brand || '-'}
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.125rem' }}>
+                            {product.brand_zh || product.brand || '-'}
+                          </div>
+                        </td>
+                        <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>{product.model || '-'}</td>
+                        <td style={{ padding: '0.75rem', fontSize: '0.875rem', textAlign: 'right' }}>¥{product.cost_cny}</td>
+                        <td style={{ padding: '0.75rem', fontSize: '0.875rem', textAlign: 'right' }}>₩{product.price_krw?.toLocaleString()}</td>
+                        <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                          <span style={{
+                            padding: '0.25rem 0.5rem',
+                            borderRadius: '0.25rem',
+                            fontSize: '0.75rem',
+                            backgroundColor: product.is_active ? '#dcfce7' : '#fee2e2',
+                            color: product.is_active ? '#166534' : '#991b1b'
+                          }}>
+                            {product.is_active ? t.active : t.inactive}
+                          </span>
+                        </td>
+                        <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                          <button
+                            onClick={() => {
+                              setEditProduct(product);
+                              setShowProductModal(true);
+                            }}
+                            style={{
+                              padding: '0.25rem 0.5rem',
+                              backgroundColor: '#3b82f6',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '0.25rem',
+                              cursor: 'pointer',
+                              fontSize: '0.75rem',
+                              marginRight: '0.5rem'
+                            }}
+                          >
+                            {t.edit}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* 사용자 관리 탭 */}
         {activeTab === 'users' && (
           <div style={{ 
@@ -692,7 +1138,7 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
                     name: '',
                     password: '',
                     role: 'order_manager' as const,
-                    active: true
+                    is_active: true
                   });
                   setShowUserModal(true);
                 }}
@@ -744,12 +1190,12 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
                         <td style={{ padding: '0.75rem', textAlign: 'center' }}>
                           <span style={{
                             padding: '0.25rem 0.5rem',
-                            backgroundColor: user.active ? '#dcfce7' : '#fee2e2',
-                            color: user.active ? '#166534' : '#dc2626',
+                            backgroundColor: user.is_active ? '#dcfce7' : '#fee2e2',
+                            color: user.is_active ? '#166534' : '#dc2626',
                             borderRadius: '0.25rem',
                             fontSize: '0.75rem'
                           }}>
-                            {user.active ? t.active : t.inactive}
+                            {user.is_active ? t.active : t.inactive}
                           </span>
                         </td>
                         <td style={{ padding: '0.75rem', textAlign: 'center' }}>
@@ -870,7 +1316,7 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
                         <td style={{ padding: '0.75rem' }}>{category.name_ko}</td>
                         <td style={{ padding: '0.75rem' }}>{category.name_zh}</td>
                         <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                          {category.is_system && (
+                          {false && (
                             <span style={{
                               padding: '0.25rem 0.5rem',
                               backgroundColor: '#dbeafe',
@@ -900,22 +1346,20 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
                           >
                             {t.edit}
                           </button>
-                          {!category.is_system && (
-                            <button
-                              onClick={() => handleDeleteCategory(category.id, category.is_system)}
-                              style={{
-                                padding: '0.25rem 0.5rem',
-                                backgroundColor: '#fee2e2',
-                                color: '#dc2626',
-                                border: '1px solid #fecaca',
-                                borderRadius: '0.25rem',
-                                fontSize: '0.875rem',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              {t.delete}
-                            </button>
-                          )}
+                          <button
+                            onClick={() => handleDeleteCategory(category.id)}
+                            style={{
+                              padding: '0.25rem 0.5rem',
+                              backgroundColor: '#fee2e2',
+                              color: '#dc2626',
+                              border: '1px solid #fecaca',
+                              borderRadius: '0.25rem',
+                              fontSize: '0.875rem',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            {t.delete}
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -1012,7 +1456,7 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
                           }} />
                         </td>
                         <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                          {type.is_system && (
+                          {false && (
                             <span style={{
                               padding: '0.25rem 0.5rem',
                               backgroundColor: '#dbeafe',
@@ -1042,22 +1486,20 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
                           >
                             {t.edit}
                           </button>
-                          {!type.is_system && (
-                            <button
-                              onClick={() => handleDeleteCashbookType(type.id, type.is_system)}
-                              style={{
-                                padding: '0.25rem 0.5rem',
-                                backgroundColor: '#fee2e2',
-                                color: '#dc2626',
-                                border: '1px solid #fecaca',
-                                borderRadius: '0.25rem',
-                                fontSize: '0.875rem',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              {t.delete}
-                            </button>
-                          )}
+                          <button
+                            onClick={() => handleDeleteCashbookType(type.id)}
+                            style={{
+                              padding: '0.25rem 0.5rem',
+                              backgroundColor: '#fee2e2',
+                              color: '#dc2626',
+                              border: '1px solid #fecaca',
+                              borderRadius: '0.25rem',
+                              fontSize: '0.875rem',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            {t.delete}
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -1602,6 +2044,351 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
         </div>
       )}
 
+      {/* 상품 추가/편집 모달 */}
+      {showProductModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            padding: '2rem',
+            borderRadius: '0.5rem',
+            width: '90%',
+            maxWidth: '500px',
+            maxHeight: '80vh',
+            overflowY: 'auto'
+          }}>
+            <h3 style={{ 
+              fontSize: '1.25rem', 
+              fontWeight: '600',
+              marginBottom: '1.5rem'
+            }}>
+              {editProduct?.id 
+                ? (locale === 'ko' ? '상품 수정' : '编辑产品')
+                : (locale === 'ko' ? '상품 등록' : '添加产品')
+              }
+            </h3>
+
+            <form onSubmit={handleSaveProduct}>
+              {/* 한글 상품명 */}
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: '0.5rem',
+                  color: '#374151',
+                  fontWeight: '500'
+                }}>
+                  {locale === 'ko' ? '상품명 (한글)' : '产品名称 (韩文)'} *
+                </label>
+                <input
+                  type="text"
+                  value={editProduct?.name_ko || ''}
+                  onChange={(e) => setEditProduct(prev => ({ ...prev!, name_ko: e.target.value }))}
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '0.5rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '0.375rem'
+                  }}
+                />
+              </div>
+
+              {/* 중문 상품명 */}
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: '0.5rem',
+                  color: '#374151',
+                  fontWeight: '500'
+                }}>
+                  {locale === 'ko' ? '상품명 (중문)' : '产品名称 (中文)'} *
+                </label>
+                <input
+                  type="text"
+                  value={editProduct?.name_zh || ''}
+                  onChange={(e) => setEditProduct(prev => ({ ...prev!, name_zh: e.target.value }))}
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '0.5rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '0.375rem'
+                  }}
+                />
+              </div>
+
+              {/* 카테고리 */}
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: '0.5rem',
+                  color: '#374151',
+                  fontWeight: '500'
+                }}>
+                  {locale === 'ko' ? '카테고리' : '分类'} *
+                </label>
+                <select
+                  value={editProduct?.category || ''}
+                  onChange={(e) => setEditProduct(prev => ({ ...prev!, category: e.target.value }))}
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '0.5rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '0.375rem',
+                    backgroundColor: 'white'
+                  }}
+                >
+                  <option value="">{locale === 'ko' ? '선택하세요' : '请选择'}</option>
+                  {categories.map(cat => (
+                    <option key={cat.id} value={cat.category}>
+                      {locale === 'ko' ? cat.name_ko : cat.name_zh}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* 모델 */}
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: '0.5rem',
+                  color: '#374151',
+                  fontWeight: '500'
+                }}>
+                  {locale === 'ko' ? '모델 (한글/중문 공통)' : '型号 (韩中共同)'}
+                </label>
+                <input
+                  type="text"
+                  value={editProduct?.model || ''}
+                  onChange={(e) => setEditProduct(prev => ({ ...prev!, model: e.target.value }))}
+                  style={{
+                    width: '100%',
+                    padding: '0.5rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '0.375rem'
+                  }}
+                />
+              </div>
+
+              {/* 색상 (한글) */}
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: '0.5rem',
+                  color: '#374151',
+                  fontWeight: '500'
+                }}>
+                  {locale === 'ko' ? '색상 (한글)' : '颜色 (韩文)'}
+                </label>
+                <input
+                  type="text"
+                  value={editProduct?.color_ko || ''}
+                  onChange={(e) => setEditProduct(prev => ({ ...prev!, color_ko: e.target.value }))}
+                  style={{
+                    width: '100%',
+                    padding: '0.5rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '0.375rem'
+                  }}
+                />
+              </div>
+
+              {/* 색상 (중문) */}
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: '0.5rem',
+                  color: '#374151',
+                  fontWeight: '500'
+                }}>
+                  {locale === 'ko' ? '색상 (중문)' : '颜色 (中文)'}
+                </label>
+                <input
+                  type="text"
+                  value={editProduct?.color_zh || ''}
+                  onChange={(e) => setEditProduct(prev => ({ ...prev!, color_zh: e.target.value }))}
+                  style={{
+                    width: '100%',
+                    padding: '0.5rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '0.375rem'
+                  }}
+                />
+              </div>
+
+              {/* 브랜드 (한글) */}
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: '0.5rem',
+                  color: '#374151',
+                  fontWeight: '500'
+                }}>
+                  {locale === 'ko' ? '브랜드 (한글)' : '品牌 (韩文)'}
+                </label>
+                <input
+                  type="text"
+                  value={editProduct?.brand_ko || ''}
+                  onChange={(e) => setEditProduct(prev => ({ ...prev!, brand_ko: e.target.value }))}
+                  style={{
+                    width: '100%',
+                    padding: '0.5rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '0.375rem'
+                  }}
+                />
+              </div>
+
+              {/* 브랜드 (중문) */}
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: '0.5rem',
+                  color: '#374151',
+                  fontWeight: '500'
+                }}>
+                  {locale === 'ko' ? '브랜드 (중문)' : '品牌 (中文)'}
+                </label>
+                <input
+                  type="text"
+                  value={editProduct?.brand_zh || ''}
+                  onChange={(e) => setEditProduct(prev => ({ ...prev!, brand_zh: e.target.value }))}
+                  style={{
+                    width: '100%',
+                    padding: '0.5rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '0.375rem'
+                  }}
+                />
+              </div>
+
+              {/* 원가 CNY */}
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: '0.5rem',
+                  color: '#374151',
+                  fontWeight: '500'
+                }}>
+                  {t.costCny} *
+                </label>
+                <input
+                  type="number"
+                  value={editProduct?.cost_cny || 0}
+                  onChange={(e) => setEditProduct(prev => ({ ...prev!, cost_cny: parseFloat(e.target.value) || 0 }))}
+                  required
+                  min="0"
+                  step="0.01"
+                  style={{
+                    width: '100%',
+                    padding: '0.5rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '0.375rem'
+                  }}
+                />
+              </div>
+
+              {/* 판매가 KRW */}
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: '0.5rem',
+                  color: '#374151',
+                  fontWeight: '500'
+                }}>
+                  {t.priceKrw} *
+                </label>
+                <input
+                  type="number"
+                  value={editProduct?.price_krw || 0}
+                  onChange={(e) => setEditProduct(prev => ({ ...prev!, price_krw: parseInt(e.target.value) || 0 }))}
+                  required
+                  min="0"
+                  step="1000"
+                  style={{
+                    width: '100%',
+                    padding: '0.5rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '0.375rem'
+                  }}
+                />
+              </div>
+
+              {/* 활성 상태 */}
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{ 
+                  display: 'flex',
+                  alignItems: 'center',
+                  cursor: 'pointer'
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={editProduct?.is_active !== false}
+                    onChange={(e) => setEditProduct(prev => ({ ...prev!, is_active: e.target.checked }))}
+                    style={{ marginRight: '0.5rem' }}
+                  />
+                  <span style={{ color: '#374151' }}>
+                    {t.active}
+                  </span>
+                </label>
+              </div>
+
+              {/* 버튼 */}
+              <div style={{ 
+                display: 'flex', 
+                gap: '1rem',
+                justifyContent: 'flex-end'
+              }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowProductModal(false);
+                    setEditProduct(null);
+                  }}
+                  disabled={loading}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    backgroundColor: '#6b7280',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '0.375rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {t.cancel}
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    backgroundColor: '#3b82f6',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '0.375rem',
+                    cursor: 'pointer',
+                    opacity: loading ? 0.7 : 1
+                  }}
+                >
+                  {loading ? (locale === 'ko' ? '처리 중...' : '处理中...') : t.save}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* 사용자 추가/수정 모달 */}
       {showUserModal && (
         <div style={{
@@ -1759,8 +2546,8 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
                 }}>
                   <input
                     type="checkbox"
-                    checked={editUser?.active !== false} // 기본값 true
-                    onChange={(e) => setEditUser(prev => ({ ...prev, active: e.target.checked }))}
+                    checked={editUser?.is_active !== false} // 기본값 true
+                    onChange={(e) => setEditUser(prev => ({ ...prev, is_active: e.target.checked }))}
                     style={{ marginRight: '0.5rem' }}
                   />
                   <span style={{ color: '#374151' }}>
@@ -1810,6 +2597,149 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* 대량입력 모달 */}
+      {showBulkImportModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 50
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '0.5rem',
+            padding: '2rem',
+            width: '90%',
+            maxWidth: '500px',
+            maxHeight: '80vh',
+            overflow: 'auto'
+          }}>
+            <h2 style={{ 
+              fontSize: '1.25rem', 
+              fontWeight: '600',
+              marginBottom: '1.5rem'
+            }}>
+              {t.bulkImport}
+            </h2>
+
+            {/* 현재 설정 다운로드 */}
+            <div style={{ marginBottom: '1.5rem' }}>
+              <p style={{ 
+                fontSize: '0.875rem', 
+                color: '#6b7280',
+                marginBottom: '0.75rem'
+              }}>
+                {t.downloadExplanation}
+              </p>
+              <button
+                onClick={downloadCurrentSettings}
+                style={{
+                  padding: '0.5rem 1rem',
+                  backgroundColor: '#f3f4f6',
+                  color: '#374151',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '0.375rem',
+                  fontSize: '0.875rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  width: '100%',
+                  justifyContent: 'center'
+                }}
+              >
+                📥 {t.downloadTemplate}
+              </button>
+            </div>
+
+            {/* 파일 선택 */}
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ 
+                display: 'block', 
+                marginBottom: '0.5rem',
+                color: '#374151',
+                fontWeight: '500'
+              }}>
+                {t.selectFile}
+              </label>
+              <p style={{ 
+                fontSize: '0.875rem', 
+                color: '#6b7280',
+                marginBottom: '0.75rem'
+              }}>
+                {t.uploadExplanation}
+              </p>
+              <input
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={(e) => setBulkImportFile(e.target.files?.[0] || null)}
+                style={{
+                  width: '100%',
+                  padding: '0.5rem',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '0.375rem'
+                }}
+              />
+              {bulkImportFile && (
+                <div style={{ 
+                  marginTop: '0.5rem',
+                  fontSize: '0.875rem',
+                  color: '#6b7280'
+                }}>
+                  📄 {bulkImportFile.name}
+                </div>
+              )}
+            </div>
+
+            {/* 버튼 */}
+            <div style={{ 
+              display: 'flex', 
+              gap: '1rem',
+              justifyContent: 'flex-end'
+            }}>
+              <button
+                onClick={() => {
+                  setShowBulkImportModal(false);
+                  setBulkImportFile(null);
+                }}
+                disabled={bulkImportLoading}
+                style={{
+                  padding: '0.5rem 1rem',
+                  backgroundColor: '#6b7280',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '0.375rem',
+                  cursor: 'pointer'
+                }}
+              >
+                {t.cancel}
+              </button>
+              <button
+                onClick={handleBulkImport}
+                disabled={bulkImportLoading || !bulkImportFile}
+                style={{
+                  padding: '0.5rem 1rem',
+                  backgroundColor: '#10b981',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '0.375rem',
+                  cursor: 'pointer',
+                  opacity: (bulkImportLoading || !bulkImportFile) ? 0.5 : 1
+                }}
+              >
+                {bulkImportLoading ? t.importing : t.upload}
+              </button>
+            </div>
           </div>
         </div>
       )}

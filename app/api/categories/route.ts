@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     const { data: categories, error } = await supabase
       .from('categories')
       .select('*')
-      .eq('active', true)
+      .eq('is_active', true)
       .order('display_order', { ascending: true });
     
     if (error) {
@@ -77,10 +77,8 @@ export async function POST(request: NextRequest) {
         code: code.toLowerCase().replace(/\s+/g, '_'),
         name_ko,
         name_zh,
-        description,
         display_order: display_order || 999,
-        is_system: false,
-        created_by: user.id
+        is_active: true
       })
       .select()
       .single();
@@ -154,7 +152,7 @@ export async function PATCH(request: NextRequest) {
     if (name_zh !== undefined) updateData.name_zh = name_zh;
     if (description !== undefined) updateData.description = description;
     if (display_order !== undefined) updateData.display_order = display_order;
-    if (active !== undefined) updateData.active = active;
+    if (active !== undefined) updateData.is_active = active;
     
     const { data: category, error } = await supabase
       .from('categories')
@@ -220,24 +218,11 @@ export async function DELETE(request: NextRequest) {
       );
     }
     
-    // 시스템 카테고리 확인
-    const { data: categoryCheck } = await supabase
-      .from('categories')
-      .select('is_system')
-      .eq('id', id)
-      .single();
-    
-    if (categoryCheck?.is_system) {
-      return NextResponse.json(
-        { error: 'System categories cannot be deleted' },
-        { status: 403 }
-      );
-    }
     
     // 카테고리 비활성화 (실제 삭제 대신)
     const { error } = await supabase
       .from('categories')
-      .update({ active: false })
+      .update({ is_active: false })
       .eq('id', id);
     
     if (error) {

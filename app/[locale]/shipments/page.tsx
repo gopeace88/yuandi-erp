@@ -268,10 +268,11 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
             *,
             products (
               id,
-              name,
+              name_ko,
+              name_zh,
               sku,
               model,
-              price_krw
+              unit_price_krw
             )
           )
         `)
@@ -326,7 +327,7 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
                   products: item.products
                 });
                 return {
-                  productName: item.product_name || item.products?.name || '',
+                  productName: item.product_name || item.products?.name_ko || item.products?.name_zh || '',
                   productModel: item.product_model || item.products?.model || '',
                   quantity: item.quantity || 0,
                   unitPrice: item.unit_price_krw || item.products?.price_krw || 0
@@ -488,10 +489,10 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
     if (tab && orderId && orders.length > 0) {
       console.log('🔍 대시보드에서 전달받은 파라미터:', { tab, orderId, action });
       
-      // 탭 설정
-      if (tab === 'pending') setSelectedTab('pending');
+      // 탭 설정 (ready는 pending으로 매핑)
+      if (tab === 'ready' || tab === 'pending') setSelectedTab('pending');
       else if (tab === 'shipping') setSelectedTab('shipping');
-      else if (tab === 'delivered') setSelectedTab('delivered');
+      else if (tab === 'completed' || tab === 'delivered') setSelectedTab('delivered');
       else if (tab === 'refunded') setSelectedTab('refunded');
       
       // 해당 주문 찾기
@@ -501,18 +502,35 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
         setSelectedOrder(order);
         
         // action에 따라 모달 표시
-        if (action === 'register' && order.status === 'paid') {
-          // 배송 등록 모달 표시 (paid 상태일 때만)
+        if (action === 'register') {
+          // 배송 등록 모달 표시 (주로 paid 상태)
           setShowShipModal(true);
-        } else if (action === 'detail') {
-          // 배송중/배송완료 상태일 때는 shipment 정보도 찾기
-          if (order.status === 'shipped' || order.status === 'delivered') {
-            const shipment = shipments.find(s => s.orderId === orderId);
-            if (shipment) {
-              setSelectedShipment(shipment);
-            }
+        } else if (action === 'update') {
+          // 배송 정보 업데이트 모달 (shipped 상태)
+          const shipment = shipments.find(s => s.orderId === orderId);
+          if (shipment) {
+            setSelectedShipment(shipment);
+            // 기존 배송 정보를 폼에 설정
+            setShipForm({
+              courier: shipment.courierCode || 'cj_logistics',
+              trackingNo: shipment.trackingNo || '',
+              trackingBarcode: shipment.trackingBarcode || '',
+              courierCn: shipment.courierCn || 'yuansun',
+              trackingNoCn: shipment.trackingNoCn || '',
+              shippingFee: shipment.shippingFee?.toString() || '',
+              actualWeight: shipment.actualWeight?.toString() || '',
+              volumeWeight: shipment.volumeWeight?.toString() || '',
+              shipmentPhotoUrl: shipment.shipmentPhotoUrl || '',
+              receiptPhotoUrl: shipment.receiptPhotoUrl || '',
+            });
           }
-          // 상세보기 모달 표시 - 배송입력 모달 사용
+          setShowShipModal(true);
+        } else if (action === 'view') {
+          // 상세보기 (delivered, refunded 상태)
+          const shipment = shipments.find(s => s.orderId === orderId);
+          if (shipment) {
+            setSelectedShipment(shipment);
+          }
           setShowShipModal(true);
         }
         
@@ -521,7 +539,7 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
         window.history.replaceState({}, '', newUrl);
       }
     }
-  }, [searchParams, orders]);
+  }, [searchParams, orders, shipments]);
 
   // 배송 대기 주문 필터링 (paid 상태인 주문만)
   const pendingOrders = orders.filter(order => {
@@ -1161,15 +1179,19 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
                           
                           if (shipmentData) {
                             setShipForm({
-                              trackingNoCn: shipmentData.tracking_number_cn || '',
-                              trackingNo: shipmentData.tracking_number_kr || '',
-                              courier: shipmentData.courier_kr || 'EMS',
-                              trackingBarcode: shipmentData.tracking_barcode || '',
-                              shipmentPhotoUrl: shipmentData.shipment_photo_url || '',
-                              receiptPhotoUrl: shipmentData.receipt_photo_url || '',
-                              shippingFee: shipmentData.shipping_fee_cny || 0,
-                              actualWeight: shipmentData.actual_weight || 0,
-                              volumeWeight: shipmentData.volume_weight || 0
+                              trackingNoCn: shipmentData.tracking_number || '',
+                              trackingNo: shipmentData.tracking_number || '',
+                              courier: shipmentData.courier || 'cj',
+                              trackingBarcode: shipmentData.tracking_number || '',
+                              shipmentPhotoUrl: Array.isArray(shipmentData.package_images) && shipmentData.package_images.length > 0 
+                                ? shipmentData.package_images[0] 
+                                : '',
+                              receiptPhotoUrl: Array.isArray(shipmentData.package_images) && shipmentData.package_images.length > 1 
+                                ? shipmentData.package_images[1] 
+                                : '',
+                              shippingFee: shipmentData.shipping_cost_cny || (shipmentData.shipping_cost_krw ? shipmentData.shipping_cost_krw / 180 : 0),
+                              actualWeight: shipmentData.weight_g ? (shipmentData.weight_g / 1000).toString() : '',
+                              volumeWeight: ''
                             });
                           }
                           setShowShipModal(true);
@@ -1314,15 +1336,19 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
                           
                           if (shipmentData) {
                             setShipForm({
-                              trackingNoCn: shipmentData.tracking_number_cn || '',
-                              trackingNo: shipmentData.tracking_number_kr || '',
-                              courier: shipmentData.courier_kr || 'EMS',
-                              trackingBarcode: shipmentData.tracking_barcode || '',
-                              shipmentPhotoUrl: shipmentData.shipment_photo_url || '',
-                              receiptPhotoUrl: shipmentData.receipt_photo_url || '',
-                              shippingFee: shipmentData.shipping_fee_cny || 0,
-                              actualWeight: shipmentData.actual_weight || 0,
-                              volumeWeight: shipmentData.volume_weight || 0
+                              trackingNoCn: shipmentData.tracking_number || '',
+                              trackingNo: shipmentData.tracking_number || '',
+                              courier: shipmentData.courier || 'cj',
+                              trackingBarcode: shipmentData.tracking_number || '',
+                              shipmentPhotoUrl: Array.isArray(shipmentData.package_images) && shipmentData.package_images.length > 0 
+                                ? shipmentData.package_images[0] 
+                                : '',
+                              receiptPhotoUrl: Array.isArray(shipmentData.package_images) && shipmentData.package_images.length > 1 
+                                ? shipmentData.package_images[1] 
+                                : '',
+                              shippingFee: shipmentData.shipping_cost_cny || (shipmentData.shipping_cost_krw ? shipmentData.shipping_cost_krw / 180 : 0),
+                              actualWeight: shipmentData.weight_g ? (shipmentData.weight_g / 1000).toString() : '',
+                              volumeWeight: ''
                             });
                           }
                           setShowShipModal(true);
@@ -1475,15 +1501,19 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
                           
                           if (shipmentData) {
                             setShipForm({
-                              trackingNoCn: shipmentData.tracking_number_cn || '',
-                              trackingNo: shipmentData.tracking_number_kr || '',
-                              courier: shipmentData.courier_kr || 'EMS',
-                              trackingBarcode: shipmentData.tracking_barcode || '',
-                              shipmentPhotoUrl: shipmentData.shipment_photo_url || '',
-                              receiptPhotoUrl: shipmentData.receipt_photo_url || '',
-                              shippingFee: shipmentData.shipping_fee_cny || 0,
-                              actualWeight: shipmentData.actual_weight || 0,
-                              volumeWeight: shipmentData.volume_weight || 0
+                              trackingNoCn: shipmentData.tracking_number || '',
+                              trackingNo: shipmentData.tracking_number || '',
+                              courier: shipmentData.courier || 'cj',
+                              trackingBarcode: shipmentData.tracking_number || '',
+                              shipmentPhotoUrl: Array.isArray(shipmentData.package_images) && shipmentData.package_images.length > 0 
+                                ? shipmentData.package_images[0] 
+                                : '',
+                              receiptPhotoUrl: Array.isArray(shipmentData.package_images) && shipmentData.package_images.length > 1 
+                                ? shipmentData.package_images[1] 
+                                : '',
+                              shippingFee: shipmentData.shipping_cost_cny || (shipmentData.shipping_cost_krw ? shipmentData.shipping_cost_krw / 180 : 0),
+                              actualWeight: shipmentData.weight_g ? (shipmentData.weight_g / 1000).toString() : '',
+                              volumeWeight: ''
                             });
                           }
                         }
@@ -1561,7 +1591,10 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
             overflowY: 'auto'
           }}>
             <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem' }}>
-              {selectedOrder?.status === 'refunded' ? t.shipmentDetail : t.shipModalTitle}
+              {selectedOrder?.status === 'paid' 
+                ? t.shipModalTitle  // 배송 정보 등록 (paid 상태일 때만)
+                : locale === 'ko' ? '배송 정보' : '配送信息'  // 나머지 상태는 배송 정보
+              }
             </h2>
 
             {/* 주문 정보 */}
@@ -1660,8 +1693,8 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
                 <input
                   type="text"
                   value={shipForm.trackingNoCn}
-                  onChange={(e) => selectedOrder?.status !== 'refunded' && setShipForm({ ...shipForm, trackingNoCn: e.target.value, trackingNo: e.target.value })}
-                  readOnly={selectedOrder?.status === 'refunded'}
+                  onChange={(e) => selectedOrder?.status === 'paid' && setShipForm({ ...shipForm, trackingNoCn: e.target.value, trackingNo: e.target.value })}
+                  readOnly={selectedOrder?.status !== 'paid'}
                   placeholder={locale === 'ko' ? '송장번호를 입력하세요' : '请输入运单号'}
                   style={{
                     width: '100%',
@@ -1669,8 +1702,8 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
                     border: '1px solid #d1d5db',
                     borderRadius: '0.375rem',
                     fontSize: '0.875rem',
-                    backgroundColor: selectedOrder?.status === 'refunded' ? '#f3f4f6' : 'white',
-                    cursor: selectedOrder?.status === 'refunded' ? 'not-allowed' : 'text'
+                    backgroundColor: selectedOrder?.status !== 'paid' ? '#f3f4f6' : 'white',
+                    cursor: selectedOrder?.status !== 'paid' ? 'not-allowed' : 'text'
                   }}
                 />
               </div>
@@ -1749,23 +1782,93 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
               </div>
             </div>
 
-            {/* 사진 업로드 */}
-            <div style={{ marginBottom: '1.5rem' }}>
-              <div style={{ display: 'grid', gap: '1rem' }}>
-                <ImageUpload
-                  label={t.shipmentPhoto}
-                  value={shipForm.shipmentPhotoUrl}
-                  onChange={(url) => setShipForm({ ...shipForm, shipmentPhotoUrl: url })}
-                  locale={locale}
-                />
-                <ImageUpload
-                  label={t.receiptPhoto}
-                  value={shipForm.receiptPhotoUrl}
-                  onChange={(url) => setShipForm({ ...shipForm, receiptPhotoUrl: url })}
-                  locale={locale}
-                />
+            {/* 사진 업로드 - paid 상태일 때만 업로드 가능 */}
+            {selectedOrder?.status === 'paid' ? (
+              <div style={{ marginBottom: '1.5rem' }}>
+                <div style={{ display: 'grid', gap: '1rem' }}>
+                  <ImageUpload
+                    label={t.shipmentPhoto}
+                    value={shipForm.shipmentPhotoUrl}
+                    onChange={(url) => setShipForm({ ...shipForm, shipmentPhotoUrl: url })}
+                    locale={locale}
+                  />
+                  <ImageUpload
+                    label={t.receiptPhoto}
+                    value={shipForm.receiptPhotoUrl}
+                    onChange={(url) => setShipForm({ ...shipForm, receiptPhotoUrl: url })}
+                    locale={locale}
+                  />
+                </div>
               </div>
-            </div>
+            ) : (
+              // 다른 상태일 때는 이미지만 표시
+              <div style={{ marginBottom: '1.5rem' }}>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '1rem' }}>
+                  {t.photos}
+                </h3>
+                <div style={{ display: 'grid', gap: '1rem' }}>
+                  {/* 송장 사진 */}
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: '500' }}>
+                      {t.shipmentPhotoLabel}
+                    </label>
+                    {shipForm.shipmentPhotoUrl ? (
+                      <img 
+                        src={shipForm.shipmentPhotoUrl} 
+                        alt="Shipment" 
+                        style={{ 
+                          maxWidth: '100%', 
+                          height: 'auto', 
+                          borderRadius: '0.375rem',
+                          border: '1px solid #d1d5db'
+                        }} 
+                      />
+                    ) : (
+                      <div style={{ 
+                        padding: '1rem', 
+                        backgroundColor: '#f9fafb', 
+                        borderRadius: '0.375rem',
+                        color: '#6b7280', 
+                        fontSize: '0.875rem',
+                        textAlign: 'center'
+                      }}>
+                        {locale === 'ko' ? '사진 없음' : '没有照片'}
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* 영수증 사진 */}
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: '500' }}>
+                      {t.receiptPhotoLabel}
+                    </label>
+                    {shipForm.receiptPhotoUrl ? (
+                      <img 
+                        src={shipForm.receiptPhotoUrl} 
+                        alt="Receipt" 
+                        style={{ 
+                          maxWidth: '100%', 
+                          height: 'auto', 
+                          borderRadius: '0.375rem',
+                          border: '1px solid #d1d5db'
+                        }} 
+                      />
+                    ) : (
+                      <div style={{ 
+                        padding: '1rem', 
+                        backgroundColor: '#f9fafb', 
+                        borderRadius: '0.375rem',
+                        color: '#6b7280', 
+                        fontSize: '0.875rem',
+                        textAlign: 'center'
+                      }}>
+                        {locale === 'ko' ? '사진 없음' : '没有照片'}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* 버튼 */}
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>

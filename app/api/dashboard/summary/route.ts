@@ -65,18 +65,18 @@ export async function GET(request: NextRequest) {
       console.error('All orders error:', allError);
     }
     
-    // 재고 현황 조회
-    const { data: inventory, error: inventoryError } = await supabase
-      .from('inventory')
+    // 재고 현황 조회 (products 테이블에서 직접)
+    const { data: products, error: inventoryError } = await supabase
+      .from('products')
       .select(`
-        *,
-        products!inner (
-          id,
-          name,
-          sku,
-          low_stock_threshold
-        )
-      `);
+        id,
+        sku,
+        name_ko,
+        name_zh,
+        on_hand,
+        low_stock_threshold
+      `)
+      .eq('is_active', true);
     
     if (inventoryError) {
       console.error('Inventory error:', inventoryError);
@@ -89,13 +89,13 @@ export async function GET(request: NextRequest) {
     const allTotal = allOrders?.reduce((sum, order) => sum + (order.total_krw || 0), 0) || 0;
     
     // 재고 통계 계산
-    const totalProducts = inventory?.length || 0;
+    const totalProducts = products?.length || 0;
     // 데이터베이스에서 기본 재고 부족 임계값 가져오기
     const defaultThreshold = await getLowStockThresholdServer();
-    const lowStockProducts = inventory?.filter(item => 
-      item.on_hand <= (item.products?.low_stock_threshold || defaultThreshold)
+    const lowStockProducts = products?.filter(item => 
+      item.on_hand <= (item.low_stock_threshold || defaultThreshold)
     ).length || 0;
-    const outOfStockProducts = inventory?.filter(item => 
+    const outOfStockProducts = products?.filter(item => 
       item.on_hand <= 0
     ).length || 0;
     

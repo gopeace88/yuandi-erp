@@ -74,7 +74,7 @@ DECLARE
     v_size_idx INTEGER;
 BEGIN
     -- 각 카테고리별로 제품 생성
-    FOR v_category_id IN SELECT id FROM categories LOOP
+    FOR v_category_id IN (SELECT id FROM categories) LOOP
         -- 각 카테고리당 13-14개 제품 생성 (총 120개 정도)
         FOR i IN 1..14 LOOP
             v_brand_idx := (v_counter % 8) + 1;
@@ -202,6 +202,10 @@ BEGIN
             order_number, 
             customer_name, 
             customer_phone,
+            customer_email,
+            pccc,
+            shipping_address_line1,
+            shipping_postal_code,
             status, 
             order_date, 
             subtotal_krw, 
@@ -213,6 +217,16 @@ BEGIN
             v_order_number,
             v_customer_name,
             v_customer_phone,
+            LOWER(REPLACE(v_customer_name, ' ', '')) || i || '@example.com',
+            'P' || LPAD(((i * 31) % 100000000 + 10000000)::TEXT, 12, '0'),
+            CASE (i % 5)
+                WHEN 0 THEN '서울시 강남구 청담동 ' || (i % 100 + 1) || '-' || (i % 50 + 1)
+                WHEN 1 THEN '서울시 송파구 잠실동 ' || (i % 100 + 1) || '-' || (i % 50 + 1)
+                WHEN 2 THEN '부산시 해운대구 우동 ' || (i % 100 + 1) || '-' || (i % 50 + 1)
+                WHEN 3 THEN '경기도 성남시 분당구 ' || (i % 100 + 1) || '-' || (i % 50 + 1)
+                ELSE '인천시 연수구 송도동 ' || (i % 100 + 1) || '-' || (i % 50 + 1)
+            END,
+            LPAD(((i * 117) % 90000 + 10000)::TEXT, 5, '0'),
             v_status,
             v_order_date,
             v_subtotal,
@@ -316,13 +330,7 @@ INSERT INTO shipments (
 )
 SELECT 
     o.id,
-    CASE (o.id % 5)
-        WHEN 0 THEN '서울시 강남구 청담동 ' || (o.id % 100 + 1) || '-' || (o.id % 50 + 1)
-        WHEN 1 THEN '서울시 송파구 잠실동 ' || (o.id % 100 + 1) || '-' || (o.id % 50 + 1)
-        WHEN 2 THEN '부산시 해운대구 우동 ' || (o.id % 100 + 1) || '-' || (o.id % 50 + 1)
-        WHEN 3 THEN '경기도 성남시 분당구 ' || (o.id % 100 + 1) || '-' || (o.id % 50 + 1)
-        ELSE '인천시 연수구 송도동 ' || (o.id % 100 + 1) || '-' || (o.id % 50 + 1)
-    END,
+    o.shipping_address_line1,
     CASE 
         WHEN RANDOM() < 0.3 THEN 'express'::shipping_method
         WHEN RANDOM() < 0.6 THEN 'standard'::shipping_method

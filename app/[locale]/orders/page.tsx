@@ -55,6 +55,9 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  const [bulkOrderFile, setBulkOrderFile] = useState<File | null>(null);
+  const [bulkOrderLoading, setBulkOrderLoading] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -81,6 +84,7 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
     ko: {
       title: '주문 관리',
       createOrder: '새 주문',
+      bulkOrder: '대량주문',
       orderNo: '주문번호',
       orderDate: '주문일',
       customer: '고객',
@@ -106,8 +110,8 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
       productInfo: '상품 정보',
       email: '이메일',
       kakaoId: '아이디',
-      pccc: '해외통관부호',
-      address: '주소',
+      pcccLabel: '해외통관부호',
+      addressLabel: '주소',
       searchAddress: '주소 검색',
       addressDetail: '상세주소',
       zipCode: '우편번호',
@@ -132,6 +136,7 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
     'zh-CN': {
       title: '订单管理',
       createOrder: '新订单',
+      bulkOrder: '批量订单',
       orderNo: '订单号',
       orderDate: '订单日期',
       customer: '客户',
@@ -157,8 +162,8 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
       productInfo: '产品信息',
       email: '电子邮件',
       kakaoId: 'ID',
-      pccc: '海外通关号',
-      address: '地址',
+      pcccLabel: '海外通关号',
+      addressLabel: '地址',
       searchAddress: '搜索地址',
       addressDetail: '详细地址',
       zipCode: '邮政编码',
@@ -232,7 +237,8 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
             *,
             products (
               id,
-              name,
+              name_ko,
+              name_zh,
               sku
             )
           )
@@ -279,7 +285,7 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
               zipCode: order.shipping_postal_code || '',
               status: (order.status?.toLowerCase() || 'paid') as Order['status'],
               totalAmount: order.total_krw || 0,
-              productName: order.order_items?.[0]?.product_name || order.order_items?.[0]?.products?.name || '',
+              productName: order.order_items?.[0]?.product_name || order.order_items?.[0]?.products?.name_ko || order.order_items?.[0]?.products?.name_zh || '',
               productSku: order.order_items?.[0]?.sku || order.order_items?.[0]?.products?.sku || '',
               quantity: order.order_items?.[0]?.quantity || 0,
             });
@@ -314,12 +320,9 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
         .from('products')
         .select(`
           *,
-          inventory!left (
-            on_hand,
-            allocated
-          ),
           categories (
-            name
+            name_ko,
+            name_zh
           )
         `)
         .eq('is_active', true);
@@ -393,7 +396,7 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
             model: product.model || '',
             color: product.color || '',
             brand: product.brand || '',
-            onHand: product.inventory?.on_hand || 0,  // inventory!left는 단일 객체로 반환됨
+            onHand: product.on_hand || 0,  // products 테이블에서 직접 가져옴
             salePrice: product.price_krw || (product.cost_cny ? product.cost_cny * 180 : 0),
             image_url: product.image_url || ''
           });
@@ -685,12 +688,20 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
       <div className="bg-white border-b border-gray-200 px-4 py-3 md:px-6 md:py-4">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <h1 className="text-lg md:text-2xl font-bold">{texts.title}</h1>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="px-3 py-1.5 md:px-4 md:py-2 bg-blue-600 text-white rounded-md text-sm md:text-base font-medium hover:bg-blue-700"
-          >
-            + {texts.createOrder}
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="px-3 py-1.5 md:px-4 md:py-2 bg-blue-600 text-white rounded-md text-sm md:text-base font-medium hover:bg-blue-700"
+            >
+              + {texts.createOrder}
+            </button>
+            <button
+              onClick={() => setShowBulkModal(true)}
+              className="px-3 py-1.5 md:px-4 md:py-2 bg-green-600 text-white rounded-md text-sm md:text-base font-medium hover:bg-green-700"
+            >
+              📥 {texts.bulkOrder}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1297,6 +1308,219 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
                 }}
               >
                 {texts.close}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 대량주문 모달 */}
+      {showBulkModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 50
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '0.5rem',
+            width: '90%',
+            maxWidth: '600px',
+            padding: '2rem'
+          }}>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1.5rem' }}>
+              {locale === 'ko' ? '대량 주문 입력' : '批量订单输入'}
+            </h2>
+
+            <div style={{ marginBottom: '1.5rem' }}>
+              <p style={{ marginBottom: '1rem', color: '#6b7280' }}>
+                {locale === 'ko' 
+                  ? '엑셀 파일을 업로드하여 여러 주문을 한번에 등록할 수 있습니다.'
+                  : '上传Excel文件可以一次性注册多个订单。'}
+              </p>
+              
+              {/* 템플릿 다운로드 버튼 */}
+              <button
+                onClick={async () => {
+                  try {
+                    const response = await fetch('/api/bulk-order/template');
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = locale === 'ko' ? '주문_템플릿.xlsx' : '订单模板.xlsx';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+                  } catch (error) {
+                    console.error('템플릿 다운로드 실패:', error);
+                    alert(locale === 'ko' 
+                      ? '템플릿 다운로드에 실패했습니다.' 
+                      : '模板下载失败');
+                  }
+                }}
+                style={{
+                  padding: '0.5rem 1rem',
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  borderRadius: '0.375rem',
+                  border: 'none',
+                  cursor: 'pointer',
+                  marginBottom: '1rem'
+                }}
+              >
+                📋 {locale === 'ko' ? '템플릿 다운로드' : '下载模板'}
+              </button>
+            </div>
+
+            {/* 파일 선택 영역 */}
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ 
+                display: 'block', 
+                marginBottom: '0.5rem',
+                color: '#374151',
+                fontWeight: '500'
+              }}>
+                {locale === 'ko' ? '파일 선택' : '选择文件'}
+              </label>
+              <p style={{ 
+                fontSize: '0.875rem', 
+                color: '#6b7280',
+                marginBottom: '0.75rem'
+              }}>
+                {locale === 'ko' 
+                  ? '엑셀 파일을 선택하여 주문을 일괄 등록하세요.'
+                  : '选择Excel文件批量注册订单。'}
+              </p>
+              <input
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={(e) => setBulkOrderFile(e.target.files?.[0] || null)}
+                style={{
+                  width: '100%',
+                  padding: '0.5rem',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '0.375rem'
+                }}
+              />
+              {bulkOrderFile && (
+                <div style={{ 
+                  marginTop: '0.5rem',
+                  fontSize: '0.875rem',
+                  color: '#059669'
+                }}>
+                  📄 {bulkOrderFile.name} ({locale === 'ko' ? '파일이 로드됨' : '文件已加载'})
+                </div>
+              )}
+            </div>
+
+            {/* 주의사항 */}
+            <div style={{
+              backgroundColor: '#fef3c7',
+              border: '1px solid #fbbf24',
+              borderRadius: '0.375rem',
+              padding: '1rem',
+              marginBottom: '1.5rem'
+            }}>
+              <h4 style={{ fontWeight: '600', marginBottom: '0.5rem' }}>
+                ⚠️ {locale === 'ko' ? '주의사항' : '注意事项'}
+              </h4>
+              <ul style={{ fontSize: '0.875rem', color: '#92400e', paddingLeft: '1.25rem' }}>
+                <li>{locale === 'ko' 
+                  ? '• SKU는 실제 상품 테이블에 존재해야 합니다' 
+                  : '• SKU必须存在于产品表中'}</li>
+                <li>{locale === 'ko' 
+                  ? '• 재고가 충분한지 확인하세요' 
+                  : '• 请确认库存充足'}</li>
+                <li>{locale === 'ko' 
+                  ? '• PCCC 코드는 P로 시작하는 12자리여야 합니다' 
+                  : '• PCCC代码必须是以P开头的12位'}</li>
+              </ul>
+            </div>
+
+            {/* 버튼 */}
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'flex-end',
+              gap: '0.5rem'
+            }}>
+              <button
+                onClick={() => {
+                  setShowBulkModal(false);
+                  setBulkOrderFile(null);
+                  setBulkOrderLoading(false);
+                }}
+                disabled={bulkOrderLoading}
+                style={{
+                  padding: '0.5rem 1rem',
+                  backgroundColor: '#6b7280',
+                  color: 'white',
+                  borderRadius: '0.375rem',
+                  border: 'none',
+                  cursor: bulkOrderLoading ? 'not-allowed' : 'pointer',
+                  opacity: bulkOrderLoading ? 0.5 : 1
+                }}
+              >
+                {locale === 'ko' ? '취소' : '取消'}
+              </button>
+              <button
+                onClick={async () => {
+                  if (!bulkOrderFile) return;
+                  
+                  setBulkOrderLoading(true);
+                  const formData = new FormData();
+                  formData.append('file', bulkOrderFile);
+
+                  try {
+                    const response = await fetch('/api/bulk-order', {
+                      method: 'POST',
+                      body: formData
+                    });
+
+                    const result = await response.json();
+
+                    if (!response.ok) {
+                      throw new Error(result.error || '업로드 실패');
+                    }
+
+                    alert(locale === 'ko' 
+                      ? `✅ ${result.success}개 주문이 성공적으로 등록되었습니다.` 
+                      : `✅ 成功注册了${result.success}个订单`);
+                    
+                    setShowBulkModal(false);
+                    setBulkOrderFile(null);
+                    loadOrders();
+                  } catch (error) {
+                    console.error('대량 주문 업로드 실패:', error);
+                    alert(locale === 'ko' 
+                      ? `❌ 업로드 실패: ${error instanceof Error ? error.message : '알 수 없는 오류'}` 
+                      : `❌ 上传失败: ${error instanceof Error ? error.message : '未知错误'}`);
+                  } finally {
+                    setBulkOrderLoading(false);
+                  }
+                }}
+                disabled={bulkOrderLoading || !bulkOrderFile}
+                style={{
+                  padding: '0.5rem 1rem',
+                  backgroundColor: '#10b981',
+                  color: 'white',
+                  borderRadius: '0.375rem',
+                  border: 'none',
+                  cursor: (bulkOrderLoading || !bulkOrderFile) ? 'not-allowed' : 'pointer',
+                  opacity: (bulkOrderLoading || !bulkOrderFile) ? 0.5 : 1
+                }}
+              >
+                {bulkOrderLoading 
+                  ? (locale === 'ko' ? '업로드 중...' : '上传中...') 
+                  : (locale === 'ko' ? '업로드' : '上传')}
               </button>
             </div>
           </div>

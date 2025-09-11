@@ -36,10 +36,12 @@ export async function GET(request: NextRequest) {
     
     if (search) {
       query = query.or(`
-        name.ilike.%${search}%,
+        name_ko.ilike.%${search}%,
+        name_zh.ilike.%${search}%,
         sku.ilike.%${search}%,
         model.ilike.%${search}%,
-        brand.ilike.%${search}%
+        brand_ko.ilike.%${search}%,
+        brand_zh.ilike.%${search}%
       `);
     }
     
@@ -99,7 +101,7 @@ export async function POST(request: NextRequest) {
       const { data: categoryData, error: categoryError } = await supabase
         .from('categories')
         .select('id')
-        .eq('name', body.category)
+        .or(`name_ko.eq.${body.category},name_zh.eq.${body.category}`)
         .single();
       
       console.log('📊 카테고리 조회 결과:', categoryData, 'error:', categoryError);
@@ -117,16 +119,16 @@ export async function POST(request: NextRequest) {
       const skuParts = [
         body.category || 'MISC',
         body.model || 'NOMODEL',
-        body.color || 'NOCOLOR',
-        body.brand || 'NOBRAND',
+        body.color_ko || body.color_zh || 'NOCOLOR',
+        body.brand_ko || body.brand_zh || 'NOBRAND',
         Math.random().toString(36).substring(2, 7).toUpperCase()
       ];
       body.sku = skuParts.join('-');
     }
     
     // 원가(CNY)와 판매가(KRW) 확인
-    const cost_cny = parseFloat(body.cost_cny) || 0;
-    const price_krw = parseFloat(body.price_krw) || 0;
+    const cost_cny = parseFloat(body.cost_cny || body.unit_price_cny) || 0;
+    const price_krw = parseFloat(body.price_krw || body.unit_price_krw) || 0;
     
     // 자동 환산 계산
     const cost_krw = cost_cny * currentRate;  // CNY -> KRW
@@ -139,17 +141,18 @@ export async function POST(request: NextRequest) {
     const productData = {
       sku: body.sku,
       category_id: category_id,
-      name: body.name,
+      name_ko: body.name_ko,
+      name_zh: body.name_zh,
       model: body.model,
-      color: body.color,
-      brand: body.brand,
-      manufacturer: body.manufacturer,
-      cost_cny: cost_cny,
-      price_krw: price_krw,
-      cost_krw: cost_krw,      // 자동 계산된 원가 원화 환산
-      price_cny: price_cny,    // 자동 계산된 판매가 위안화 환산
-      exchange_rate: currentRate,
+      color_ko: body.color_ko,
+      color_zh: body.color_zh,
+      brand_ko: body.brand_ko,
+      brand_zh: body.brand_zh,
+      size: body.size,
+      unit_price_cny: cost_cny,
+      unit_price_krw: price_krw,
       on_hand: initialStock,   // 초기 재고 설정
+      location: body.location,
       low_stock_threshold: body.low_stock_threshold || await getLowStockThresholdServer(),
       image_url: body.image_url || body.imageUrl || null,
       description: body.description,
@@ -246,7 +249,7 @@ export async function POST(request: NextRequest) {
         balance_krw: newBalance,  // 계산된 잔액 (필수 필드)
         reference_type: 'product_initial_stock',
         reference_id: product.id,
-        description: `${product.name} 초기 재고 입고 (${initialStock}개 × ¥${cost_cny.toFixed(2)})`,
+        description: `${product.name_ko || product.name_zh} 초기 재고 입고 (${initialStock}개 × ¥${cost_cny.toFixed(2)})`,
         category: 'purchase',
         tags: ['initial_stock', 'product_registration', product.sku],
         created_by: userName  // 사용자 이름 사용

@@ -1,43 +1,88 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+
+// 하드코드된 시스템 설정 (system_settings 테이블이 없으므로 임시 해결책)
+const DEFAULT_SYSTEM_SETTINGS = [
+  {
+    id: 'low_stock_threshold',
+    key: 'low_stock_threshold',
+    value: '10',
+    category: 'inventory',
+    data_type: 'number',
+    label_ko: '재고 부족 임계값',
+    label_zh: '库存不足阈值',
+    description: '재고 부족 경고를 표시할 수량',
+    display_order: 1
+  },
+  {
+    id: 'default_currency',
+    key: 'default_currency',
+    value: 'KRW',
+    category: 'general',
+    data_type: 'string',
+    label_ko: '기본 통화',
+    label_zh: '默认货币',
+    description: '시스템 기본 통화',
+    display_order: 2
+  },
+  {
+    id: 'fx_rate_cny_krw',
+    key: 'fx_rate_cny_krw',
+    value: '180',
+    category: 'finance',
+    data_type: 'number',
+    label_ko: 'CNY-KRW 환율',
+    label_zh: 'CNY-KRW 汇率',
+    description: '1 CNY = ? KRW',
+    display_order: 3
+  },
+  {
+    id: 'items_per_page',
+    key: 'items_per_page',
+    value: '30',
+    category: 'ui',
+    data_type: 'number',
+    label_ko: '페이지당 항목 수',
+    label_zh: '每页项目数',
+    description: '목록 페이지에서 표시할 항목 수',
+    display_order: 4
+  }
+];
 
 // GET: 시스템 설정 조회
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    
     // 카테고리 파라미터 확인
     const searchParams = request.nextUrl.searchParams;
     const category = searchParams.get('category');
     
-    let query = supabase
-      .from('system_settings')
-      .select('*')
-      .order('display_order', { ascending: true });
+    let settings = DEFAULT_SYSTEM_SETTINGS;
     
     // 카테고리 필터
     if (category && category !== 'all') {
-      query = query.eq('category', category);
+      settings = settings.filter(s => s.category === category);
     }
     
-    const { data: settings, error } = await query;
-    
-    if (error) {
-      console.error('System settings fetch error:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-    
-    return NextResponse.json(settings || []);
+    // TODO: 향후 system_settings 테이블 생성 시 데이터베이스에서 조회하도록 수정
+    return NextResponse.json(settings);
   } catch (error) {
     console.error('System settings error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
-// PATCH: 시스템 설정 업데이트
+// PATCH: 시스템 설정 업데이트 (system_settings 테이블 없으므로 비활성화)
 export async function PATCH(request: NextRequest) {
+  // TODO: system_settings 테이블 생성 후 구현
+  return NextResponse.json(
+    { error: 'System settings management is not available. Using default settings.' },
+    { status: 501 }
+  );
+}
+
+// 원래 PATCH 구현 (나중에 참고용)
+async function PATCH_DISABLED(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const supabase = null; // await createClient();
     
     // 사용자 권한 확인
     const { data: { user }, error: authError } = await supabase.auth.getUser();

@@ -61,22 +61,26 @@ export default function DashboardPage({ params: { locale } }: DashboardPageProps
       const { createClient } = await import('@/lib/supabase/client');
       const supabase = createClient();
       
-      // 주문 데이터 가져오기 (order_items 포함)
+      // 주문 데이터 가져오기 (order_items와 products 조인)
       const { data: orders, error: ordersError } = await supabase
         .from('orders')
         .select(`
           *,
           order_items (
-            product_name,
-            quantity
+            quantity,
+            products (
+              name_ko,
+              name_zh
+            )
           )
         `)
         .order('created_at', { ascending: false });
       
-      // 재고 데이터 가져오기
-      const { data: inventory, error: inventoryError } = await supabase
-        .from('inventory')
-        .select('*');
+      // 재고 데이터 가져오기 (products 테이블에서)
+      const { data: products, error: inventoryError } = await supabase
+        .from('products')
+        .select('on_hand')
+        .eq('is_active', true);
 
       if (ordersError) console.error('주문 로드 에러:', ordersError);
       if (inventoryError) console.error('재고 로드 에러:', inventoryError);
@@ -85,7 +89,7 @@ export default function DashboardPage({ params: { locale } }: DashboardPageProps
       const todayOrders = orders?.filter((order: any) => 
         order.created_at.split('T')[0] === today) || [];
       
-      const totalInventory = inventory?.reduce((sum: number, item: any) => 
+      const totalInventory = products?.reduce((sum: number, item: any) => 
         sum + (item.on_hand || 0), 0) || 0;
       
       const totalRevenue = orders?.reduce((sum: number, order: any) => 
@@ -97,9 +101,12 @@ export default function DashboardPage({ params: { locale } }: DashboardPageProps
         .map((order: any) => {
           // order_items 데이터를 상품 문자열로 변환
           const productText = order.order_items && order.order_items.length > 0
-            ? order.order_items.map((item: any) => 
-                `${item.product_name}(${item.quantity})`
-              ).join(', ')
+            ? order.order_items.map((item: any) => {
+                const productName = locale === 'ko' 
+                  ? item.products?.name_ko 
+                  : item.products?.name_zh;
+                return `${productName || '상품'}(${item.quantity})`;
+              }).join(', ')
             : '-';
           
           return {
@@ -417,18 +424,42 @@ export default function DashboardPage({ params: { locale } }: DashboardPageProps
                       key={index} 
                       style={{ 
                         borderBottom: '1px solid #e5e7eb',
-                        cursor: order.status === 'paid' ? 'pointer' : 'default'
+                        cursor: 'pointer',
+                        transition: 'background-color 0.2s'
                       }}
                       onClick={() => {
-                        if (order.status === 'paid') {
-                          // 배송관리 페이지로 이동하면서 주문 ID 전달
-                          router.push(`/${locale}/shipments?orderId=${order.id}&action=register`);
+                        // 상태별로 적절한 탭과 액션 설정
+                        let tab = '';
+                        let action = '';
+                        
+                        switch(order.status) {
+                          case 'paid':
+                            tab = 'ready';
+                            action = 'register';
+                            break;
+                          case 'shipped':
+                            tab = 'shipping';
+                            action = 'update';
+                            break;
+                          case 'done':
+                          case 'delivered':
+                            tab = 'completed';
+                            action = 'view';
+                            break;
+                          case 'refunded':
+                            tab = 'refunded';
+                            action = 'view';
+                            break;
+                          default:
+                            tab = 'ready';
+                            action = 'view';
                         }
+                        
+                        // 배송관리 페이지로 이동하면서 주문 정보와 탭 정보 전달
+                        router.push(`/${locale}/shipments?orderId=${order.id}&tab=${tab}&action=${action}`);
                       }}
                       onMouseEnter={(e) => {
-                        if (order.status === 'paid') {
-                          e.currentTarget.style.backgroundColor = '#f9fafb';
-                        }
+                        e.currentTarget.style.backgroundColor = '#f9fafb';
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.backgroundColor = 'transparent';

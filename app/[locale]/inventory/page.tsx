@@ -20,18 +20,21 @@ interface InventoryPageProps {
 interface Product {
   id: string;
   sku: string;
-  name: string;
+  name_ko: string;
+  name_zh: string;
   category: string;
   model: string;
-  color: string;
-  brand: string;
+  color_ko: string;
+  color_zh: string;
+  brand_ko: string;
+  brand_zh: string;
   costCny: number;
   salePriceKrw: number;
   onHand: number;
   lowStockThreshold: number;
   imageUrl?: string;
   description?: string;
-  active: boolean;
+  is_active: boolean;
 }
 
 interface StockMovement {
@@ -79,11 +82,14 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
 
   // 새 상품 폼 상태
   const [newProduct, setNewProduct] = useState({
-    name: '',
+    name_ko: '',
+    name_zh: '',
     category: '',
     model: '',
-    color: '',
-    brand: '',
+    color_ko: '',
+    color_zh: '',
+    brand_ko: '',
+    brand_zh: '',
     costCny: 0,
     salePriceKrw: 0,
     onHand: 1,
@@ -310,12 +316,9 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
         .from('products')
         .select(`
           *,
-          inventory!left (
-            on_hand,
-            allocated
-          ),
           categories (
-            name
+            name_ko,
+            name_zh
           )
         `)
         .eq('is_active', true);
@@ -330,18 +333,21 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
     const transformedProducts = products?.map((product: any) => ({
       id: product.id,
       sku: product.sku,
-      name: product.name,
-      category: product.categories?.name || '',
+      name_ko: product.name_ko,
+      name_zh: product.name_zh,
+      category: product.categories?.name_ko || product.category || '',
       model: product.model || '',
-      color: product.color || '',
-      brand: product.brand || '',
-      costCny: product.cost_cny,
-      salePriceKrw: product.price_krw || product.cost_cny * 180,
-      onHand: product.on_hand || product.inventory?.on_hand || 0,  // products 테이블 우선, inventory 백업
-      lowStockThreshold: product.low_stock_threshold,
+      color_ko: product.color_ko || '',
+      color_zh: product.color_zh || '',
+      brand_ko: product.brand_ko || '',
+      brand_zh: product.brand_zh || '',
+      costCny: product.unit_price_cny || 0,
+      salePriceKrw: product.unit_price_krw || 0,
+      onHand: product.on_hand || 0,
+      lowStockThreshold: product.low_stock_threshold || 5,
       imageUrl: product.image_url || '',
       description: product.description,
-      active: product.is_active
+      is_active: product.is_active
     })) || [];
     
     setProducts(transformedProducts);
@@ -362,11 +368,13 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
         .select(`
           *,
           products (
-            name,
+            name_ko,
+            name_zh,
             sku,
             model,
-            color,
-            category
+            color_ko,
+            color_zh,
+            category_id
           )
         `)
         .order('created_at', { ascending: false })
@@ -382,14 +390,14 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
       const transformedMovements = movements?.map((movement: any) => ({
         id: movement.id,
         productId: movement.product_id,
-        productName: movement.products?.name || '',
+        productName: locale === 'ko' ? movement.products?.name_ko : movement.products?.name_zh || '',
         productModel: movement.products?.model || '',
-        productColor: movement.products?.color || '',
-        productCategory: movement.products?.category || '',
+        productColor: locale === 'ko' ? movement.products?.color_ko : movement.products?.color_zh || '',
+        productCategory: movement.products?.category_id || '',
         type: movement.movement_type,
         quantity: movement.quantity,
-        balanceBefore: movement.balance_before || 0,
-        balanceAfter: movement.balance_after || 0,
+        balanceBefore: movement.previous_quantity || 0,
+        balanceAfter: movement.new_quantity || 0,
         unitCost: movement.cost_per_unit_cny,
         note: movement.notes,
         date: movement.created_at,
@@ -456,7 +464,7 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
     }
     
     // 필수 필드 체크 (brand 제외)
-    const requiredFields = ['name', 'category', 'model'];
+    const requiredFields = ['name_ko', 'name_zh', 'category', 'model'];
     const missingFields = requiredFields.filter(field => !newProduct[field]);
     console.log('❗ 누락된 필수 필드:', missingFields);
     
@@ -467,17 +475,20 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
     
     try {
       const productData = {
-        name: newProduct.name,
-        category: newProduct.category,
+        name_ko: newProduct.name_ko,
+        name_zh: newProduct.name_zh,
+        category_id: newProduct.category,  // category ID
         model: newProduct.model,
-        color: newProduct.color,
-        brand: newProduct.brand,
-        cost_cny: newProduct.costCny,
-        price_krw: newProduct.salePriceKrw,
+        color_ko: newProduct.color_ko,
+        color_zh: newProduct.color_zh,
+        brand_ko: newProduct.brand_ko,
+        brand_zh: newProduct.brand_zh,
+        unit_price_cny: newProduct.costCny,
+        unit_price_krw: newProduct.salePriceKrw,
         low_stock_threshold: newProduct.lowStockThreshold,
         description: newProduct.description,
         on_hand: newProduct.onHand || 0,  // 초기 재고 설정
-        active: true
+        is_active: true
       };
 
       console.log('📤 API로 전송할 데이터:', productData);
@@ -585,14 +596,14 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
       // 재고 조정 트랜잭션
       const newQuantity = Math.max(0, product.onHand + quantity);
       
-      // 1. 재고 업데이트
+      // 1. 재고 업데이트 (products 테이블에 직접 저장)
       const { error: inventoryError } = await supabase
-        .from('inventory')
+        .from('products')
         .update({ 
           on_hand: newQuantity,
           updated_at: new Date().toISOString()
-        } as any)
-        .eq('product_id', productId);
+        })
+        .eq('id', productId);
 
       if (inventoryError) {
         console.error('재고 업데이트 실패:', inventoryError);
@@ -628,7 +639,7 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
       const movement: StockMovement = {
         id: String(movements.length + 1),
         productId: product.id,
-        productName: product.name,
+        productName: locale === 'ko' ? product.name_ko : product.name_zh,
         type: 'adjustment',
         quantity: quantity,
         balanceBefore: product.onHand,
@@ -650,11 +661,14 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
 
   const resetProductForm = () => {
     setNewProduct({
-      name: '',
+      name_ko: '',
+      name_zh: '',
       category: '',
       model: '',
-      color: '',
-      brand: '',
+      color_ko: '',
+      color_zh: '',
+      brand_ko: '',
+      brand_zh: '',
       costCny: 0,
       salePriceKrw: 0,
       onHand: 0,
@@ -683,7 +697,8 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
   };
 
   const filteredProducts = products.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const name = locale === 'ko' ? product.name_ko : product.name_zh;
+    const matchesSearch = name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           product.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           product.model.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = filterCategory === 'all' || product.category === filterCategory;
@@ -712,12 +727,6 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <h1 className="text-lg md:text-2xl font-bold">{texts.title}</h1>
           <div className="flex gap-2">
-            <button
-              onClick={() => setShowProductModal(true)}
-              className="px-3 py-1.5 md:px-4 md:py-2 bg-green-500 text-white rounded-md text-sm md:text-base font-medium hover:bg-green-600"
-            >
-              + {texts.addProduct}
-            </button>
             <button
               onClick={() => setShowInboundModal(true)}
               className="px-3 py-1.5 md:px-4 md:py-2 bg-blue-600 text-white rounded-md text-sm md:text-base font-medium hover:bg-blue-700"
@@ -884,7 +893,7 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
                             {product.sku}
                           </div>
                           <div className="text-xs text-gray-500">
-                            {product.category} | {product.brand}
+                            {product.category} | {locale === 'ko' ? product.brand_ko : product.brand_zh}
                           </div>
                           <div className="flex justify-between items-center mt-2">
                             <div className="flex items-center gap-2">
@@ -1405,12 +1414,22 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
             <div style={{ marginBottom: '1.5rem' }}>
               <h3 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '1rem' }}>{texts.productInfo}</h3>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div style={{ gridColumn: 'span 2' }}>
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.productName} *</label>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.productName} (한국어) *</label>
                   <input
                     type="text"
-                    value={newProduct.name}
-                    onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
+                    value={newProduct.name_ko}
+                    onChange={(e) => setNewProduct({ ...newProduct, name_ko: e.target.value })}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
+                    required
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.productName} (중국어) *</label>
+                  <input
+                    type="text"
+                    value={newProduct.name_zh}
+                    onChange={(e) => setNewProduct({ ...newProduct, name_zh: e.target.value })}
                     style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
                     required
                   />
@@ -1442,20 +1461,38 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.color}</label>
+                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.color} (한국어)</label>
                   <input
                     type="text"
-                    value={newProduct.color}
-                    onChange={(e) => setNewProduct({ ...newProduct, color: e.target.value })}
+                    value={newProduct.color_ko}
+                    onChange={(e) => setNewProduct({ ...newProduct, color_ko: e.target.value })}
                     style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.brand}</label>
+                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.color} (중국어)</label>
                   <input
                     type="text"
-                    value={newProduct.brand}
-                    onChange={(e) => setNewProduct({ ...newProduct, brand: e.target.value })}
+                    value={newProduct.color_zh}
+                    onChange={(e) => setNewProduct({ ...newProduct, color_zh: e.target.value })}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.brand} (한국어)</label>
+                  <input
+                    type="text"
+                    value={newProduct.brand_ko}
+                    onChange={(e) => setNewProduct({ ...newProduct, brand_ko: e.target.value })}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.brand} (중국어)</label>
+                  <input
+                    type="text"
+                    value={newProduct.brand_zh}
+                    onChange={(e) => setNewProduct({ ...newProduct, brand_zh: e.target.value })}
                     style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
                   />
                 </div>
@@ -1535,11 +1572,14 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
                 onClick={() => {
                   setShowProductModal(false);
                   setNewProduct({
-                    name: '',
+                    name_ko: '',
+                    name_zh: '',
                     category: '',
                     model: '',
-                    color: '',
-                    brand: '',
+                    color_ko: '',
+                    color_zh: '',
+                    brand_ko: '',
+                    brand_zh: '',
                     costCny: 0,
                     salePriceKrw: 0,
                     onHand: 0,
@@ -1615,7 +1655,7 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
             padding: '2rem'
           }}>
             <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1.5rem' }}>
-              {texts.viewDetails} - {selectedProduct.name}
+              {texts.viewDetails} - {locale === 'ko' ? selectedProduct.name_ko : selectedProduct.name_zh}
             </h2>
 
             {/* 상품 이미지 */}
@@ -1623,7 +1663,7 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
               <div style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
                 <img
                   src={selectedProduct.imageUrl}
-                  alt={selectedProduct.name}
+                  alt={locale === 'ko' ? selectedProduct.name_ko : selectedProduct.name_zh}
                   style={{ maxWidth: '200px', maxHeight: '200px', objectFit: 'cover', borderRadius: '0.5rem' }}
                 />
               </div>
@@ -1646,11 +1686,11 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
                 </div>
                 <div>
                   <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>{texts.color}</p>
-                  <p style={{ fontWeight: '600' }}>{selectedProduct.color || '-'}</p>
+                  <p style={{ fontWeight: '600' }}>{locale === 'ko' ? selectedProduct.color_ko : selectedProduct.color_zh || '-'}</p>
                 </div>
                 <div>
                   <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>{texts.brand}</p>
-                  <p style={{ fontWeight: '600' }}>{selectedProduct.brand}</p>
+                  <p style={{ fontWeight: '600' }}>{locale === 'ko' ? selectedProduct.brand_ko : selectedProduct.brand_zh}</p>
                 </div>
                 <div>
                   <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>{texts.stock}</p>
