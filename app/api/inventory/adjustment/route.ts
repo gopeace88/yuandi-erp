@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.SUPABASE_API_KEY!;
+import { createServerSupabase } from '@/lib/supabase/server';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { product_id, quantity, type, reason, note, skip_cashbook } = body;
 
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabase = await createServerSupabase();
+    
+    // 현재 사용자 정보 가져오기
+    const { data: { user } } = await supabase.auth.getUser();
+    const userId = user?.id || '00000000-0000-0000-0000-000000000000';
 
     // 현재 상품 정보 조회
     const { data: product, error: productError } = await supabase
@@ -50,29 +51,51 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 재고 이동 내역 기록
-    const { error: movementError } = await supabase
+    // 재고 이동 내역 기록 (올바른 필드명 사용)
+    const { data: movement, error: movementError } = await supabase
       .from('inventory_movements')
       .insert({
         product_id,
-        product_name: product.name,
-        product_model: product.model,
-        product_color: product.color,
-        product_category: product.category,
-        type: 'adjustment',
+        movement_type: 'adjustment',
         quantity,
-        balance_before: currentStock,
-        balance_after: newStock,
+        previous_quantity: currentStock,
+        new_quantity: newStock,
         note: note || `Stock adjustment - ${reason}`,
-        created_by: 'admin' // TODO: 실제 사용자 정보 사용
-      });
+        movement_date: new Date().toISOString(),
+        created_by: userId
+      })
+      .select()
+      .single();
 
     if (movementError) {
       console.error('Failed to record inventory movement:', movementError);
       // 재고 이동 기록 실패는 치명적이지 않으므로 계속 진행
     }
 
-    // skip_cashbook가 true이므로 출납장부에는 기록하지 않음
+    // 출납장부 기록 (skip_cashbook가 false인 경우)
+    if (!skip_cashbook && type === 'loss') {
+      // 손실의 경우 adjustment 유형으로 기록
+      const { error: cashbookError } = await supabase
+        .from('cashbook_transactions')
+        .insert({
+          transaction_date: new Date().toISOString().slice(0, 10),
+          type: 'adjustment',
+          category: 'loss',  // 손실 출납유형
+          amount: 0,  // 재고 조정은 금액 영향 없음
+          amount_krw: 0,
+          currency: 'KRW',
+          fx_rate: 1.0,
+          description: `${product.name} 재고 조정 (${Math.abs(quantity)}개 ${quantity > 0 ? '증가' : '감소'})`,
+          ref_type: 'inventory_movement',
+          ref_id: movement?.id,
+          note: note || reason,
+          created_by: userId
+        });
+      
+      if (cashbookError) {
+        console.error('Failed to create cashbook entry:', cashbookError);
+      }
+    }
 
     return NextResponse.json({
       success: true,

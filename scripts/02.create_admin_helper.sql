@@ -19,7 +19,7 @@ SELECT
     p.email,
     p.name,
     p.role,
-    p.active,
+    p.is_active,
     p.created_at
 FROM user_profiles p
 WHERE p.email = 'admin@yuandi.com';
@@ -33,18 +33,16 @@ INSERT INTO user_profiles (
     email,
     name,
     role,
-    preferred_language,
-    locale,
-    active
+    language,
+    is_active
 )
 SELECT 
     u.id,
     u.email,
     '시스템 관리자' as name,
     'admin'::user_role as role,
-    'ko' as preferred_language,
-    'ko' as locale,
-    true as active
+    'ko'::user_language as language,
+    true as is_active
 FROM auth.users u
 WHERE u.email = 'admin@yuandi.com'
 AND NOT EXISTS (
@@ -52,7 +50,7 @@ AND NOT EXISTS (
 )
 ON CONFLICT (id) DO UPDATE SET
     role = 'admin',
-    active = true,
+    is_active = true,
     updated_at = NOW();
 
 
@@ -66,7 +64,7 @@ SELECT
         WHEN 'order_manager' THEN '주문 관리자'
         WHEN 'ship_manager' THEN '배송 관리자'
     END as role_ko,
-    p.active,
+    p.is_active,
     p.created_at
 FROM user_profiles p
 ORDER BY p.created_at;
@@ -75,7 +73,7 @@ ORDER BY p.created_at;
 SELECT 
     'System Ready Check' as check_type,
     CASE 
-        WHEN EXISTS (SELECT 1 FROM user_profiles WHERE role = 'admin' AND active = true)
+        WHEN EXISTS (SELECT 1 FROM user_profiles WHERE role = 'admin' AND is_active = true)
         THEN '✅ 관리자 계정 준비됨'
         ELSE '❌ 관리자 계정 필요'
     END as status
@@ -87,11 +85,11 @@ FROM information_schema.tables
 WHERE table_schema = 'public'
 UNION ALL
 SELECT 
-    'System Settings',
+    'Cashbook Types',
     CASE 
-        WHEN EXISTS (SELECT 1 FROM system_settings WHERE key = 'LOW_STOCK_THRESHOLD')
-        THEN '✅ 시스템 설정 준비됨'
-        ELSE '❌ 시스템 설정 필요'
+        WHEN EXISTS (SELECT 1 FROM cashbook_types WHERE is_system = true)
+        THEN '✅ 출납유형 기본값 준비됨'
+        ELSE '❌ 출납유형 기본값 필요'
     END;
 
 -- =====================================================

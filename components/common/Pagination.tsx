@@ -10,6 +10,7 @@ interface PaginationProps {
   totalItems?: number;
   itemsPerPage?: number;
   className?: string;
+  locale?: string;
 }
 
 export default function Pagination({
@@ -18,7 +19,8 @@ export default function Pagination({
   onPageChange,
   totalItems,
   itemsPerPage,
-  className = ''
+  className = '',
+  locale = 'ko'
 }: PaginationProps) {
   // 모바일에서는 3개, PC에서는 5개의 페이지 번호 표시
   const maxVisiblePages = typeof window !== 'undefined' && window.innerWidth < 640 ? 3 : 5;
@@ -80,10 +82,10 @@ export default function Pagination({
       {totalItems && itemsPerPage && (
         <div className="text-sm text-gray-700 dark:text-gray-300">
           <span className="hidden sm:inline">
-            {startItem}-{endItem} / 전체 {totalItems}개
+            {startItem}-{endItem} / {locale === 'ko' ? '전체' : '共'} {totalItems}{locale === 'ko' ? '개' : '条'}
           </span>
           <span className="sm:hidden">
-            {currentPage}/{totalPages} 페이지
+            {currentPage}/{totalPages} {locale === 'ko' ? '페이지' : '页'}
           </span>
         </div>
       )}

@@ -98,6 +98,14 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [userRole, setUserRole] = useState<string>('');
   const [isMobile, setIsMobile] = useState(false);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
+  
+  // URL 파라미터 저장 (데이터 로드 전에도 유지)
+  const [urlParams, setUrlParams] = useState<{
+    tab?: string | null;
+    orderId?: string | null;
+    action?: string | null;
+  }>({});
   
   // 페이지네이션 상태
   const [currentPage, setCurrentPage] = useState(1);
@@ -272,7 +280,7 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
               name_zh,
               sku,
               model,
-              unit_price_krw
+              price_krw
             )
           )
         `)
@@ -323,14 +331,14 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
                 console.log('🔍 Order Item 상세:', {
                   product_name: item.product_name,
                   product_model: item.product_model,
-                  unit_price_krw: item.unit_price_krw,
+                  unit_price_krw: item.price_krw,
                   products: item.products
                 });
                 return {
                   productName: item.product_name || item.products?.name_ko || item.products?.name_zh || '',
                   productModel: item.product_model || item.products?.model || '',
                   quantity: item.quantity || 0,
-                  unitPrice: item.unit_price_krw || item.products?.price_krw || 0
+                  unitPrice: item.price_krw || item.products?.price_krw || 0
                 };
               })
             : [];
@@ -351,10 +359,12 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
         console.log('✅ 포맷된 주문 데이터:', formattedOrders.length + '개');
         console.log('첫 번째 주문 상세:', formattedOrders[0]);
         setOrders(formattedOrders);
+        setIsDataLoaded(true); // 데이터 로드 완료 표시
         console.log('📝 상태 업데이트 완료');
       }
     } catch (error) {
       console.error('주문 데이터 로드 중 오류:', error);
+      setIsDataLoaded(true); // 에러가 나도 로드 시도는 완료됨
     }
   };
 
@@ -454,6 +464,16 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
     }
     setUserRole(role);
     
+    // URL 파라미터 먼저 저장
+    const tab = searchParams.get('tab');
+    const orderId = searchParams.get('orderId');
+    const action = searchParams.get('action');
+    
+    if (tab || orderId || action) {
+      console.log('📌 URL 파라미터 저장:', { tab, orderId, action });
+      setUrlParams({ tab, orderId, action });
+    }
+    
     // 실제 데이터 로드
     loadOrders();
     loadShipments();
@@ -478,16 +498,25 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
       // sessionStorage 클리어
       sessionStorage.removeItem('pendingShipment');
     }
-  }, [locale, router]);
+  }, [locale, router, searchParams]);
 
-  // URL 파라미터로 전달받은 주문 확인 (대시보드에서 왔을 때)
+  // URL 파라미터로 전달받은 주문 확인 (대시보드 또는 주문관리에서 왔을 때)
   useEffect(() => {
-    const tab = searchParams.get('tab');
-    const orderId = searchParams.get('orderId');
-    const action = searchParams.get('action');
+    // 데이터 로드가 완료되고 URL 파라미터가 있을 때만 처리
+    if (!isDataLoaded) {
+      console.log('⏳ 데이터 로드 대기 중...', { isDataLoaded, urlParams });
+      return;
+    }
     
-    if (tab && orderId && orders.length > 0) {
-      console.log('🔍 대시보드에서 전달받은 파라미터:', { tab, orderId, action });
+    if (urlParams.tab && urlParams.orderId && orders.length > 0) {
+      console.log('🔍 URL 파라미터 처리 시작:', { 
+        urlParams, 
+        ordersCount: orders.length,
+        shipmentsCount: shipments.length,
+        isDataLoaded
+      });
+      
+      const { tab, orderId, action } = urlParams;
       
       // 탭 설정 (ready는 pending으로 매핑)
       if (tab === 'ready' || tab === 'pending') setSelectedTab('pending');
@@ -495,51 +524,104 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
       else if (tab === 'completed' || tab === 'delivered') setSelectedTab('delivered');
       else if (tab === 'refunded') setSelectedTab('refunded');
       
-      // 해당 주문 찾기
-      const order = orders.find(o => o.id === orderId);
+      // 해당 주문 찾기 - 타입 안전성을 위해 문자열 비교
+      const order = orders.find(o => String(o.id) === String(orderId));
+      console.log('🔍 주문 검색 중:', { 
+        searchingFor: orderId,
+        searchingForType: typeof orderId,
+        availableOrders: orders.slice(0, 3).map(o => ({ 
+          id: o.id, 
+          idType: typeof o.id,
+          orderNo: o.orderNo 
+        }))
+      });
+      
       if (order) {
-        console.log('✅ 주문 찾음:', order);
+        console.log('✅ 주문 찾음:', { 
+          id: order.id, 
+          orderNo: order.orderNo, 
+          status: order.status,
+          action: action
+        });
+        
+        // 먼저 주문을 설정
         setSelectedOrder(order);
         
-        // action에 따라 모달 표시
-        if (action === 'register') {
-          // 배송 등록 모달 표시 (주로 paid 상태)
-          setShowShipModal(true);
-        } else if (action === 'update') {
-          // 배송 정보 업데이트 모달 (shipped 상태)
-          const shipment = shipments.find(s => s.orderId === orderId);
-          if (shipment) {
-            setSelectedShipment(shipment);
-            // 기존 배송 정보를 폼에 설정
+        // action에 따라 처리 - requestAnimationFrame으로 다음 렌더링 사이클에서 실행
+        requestAnimationFrame(() => {
+          if (action === 'register') {
+            // 배송 등록 모달 표시 (주로 paid 상태)
+            console.log('📦 배송 등록 모달 표시 시작');
+            // 폼 초기화
             setShipForm({
-              courier: shipment.courierCode || 'cj_logistics',
-              trackingNo: shipment.trackingNo || '',
-              trackingBarcode: shipment.trackingBarcode || '',
-              courierCn: shipment.courierCn || 'yuansun',
-              trackingNoCn: shipment.trackingNoCn || '',
-              shippingFee: shipment.shippingFee?.toString() || '',
-              actualWeight: shipment.actualWeight?.toString() || '',
-              volumeWeight: shipment.volumeWeight?.toString() || '',
-              shipmentPhotoUrl: shipment.shipmentPhotoUrl || '',
-              receiptPhotoUrl: shipment.receiptPhotoUrl || '',
+              courier: 'cj_logistics',
+              trackingNo: '',
+              trackingBarcode: '',
+              courierCn: 'yuansun',
+              trackingNoCn: '',
+              shippingFee: '',
+              actualWeight: '',
+              volumeWeight: '',
+              shipmentPhotoUrl: '',
+              receiptPhotoUrl: '',
             });
+            console.log('📦 폼 초기화 완료, 모달 표시');
+            setShowShipModal(true);
+            console.log('📦 모달 상태 설정 완료:', { showShipModal: true, selectedOrder: order });
+          } else if (action === 'update') {
+            // 배송 정보 업데이트 모달 (shipped 상태)
+            const shipment = shipments.find(s => String(s.orderId) === String(orderId));
+            console.log('🚚 배송 업데이트 모달 표시:', { shipmentFound: !!shipment });
+            if (shipment) {
+              setSelectedShipment(shipment);
+              // 기존 배송 정보를 폼에 설정
+              setShipForm({
+                courier: shipment.courierCode || 'cj_logistics',
+                trackingNo: shipment.trackingNo || '',
+                trackingBarcode: shipment.trackingBarcode || '',
+                courierCn: shipment.courierCn || 'yuansun',
+                trackingNoCn: shipment.trackingNoCn || '',
+                shippingFee: shipment.shippingFee?.toString() || '',
+                actualWeight: shipment.actualWeight?.toString() || '',
+                volumeWeight: shipment.volumeWeight?.toString() || '',
+                shipmentPhotoUrl: shipment.shipmentPhotoUrl || '',
+                receiptPhotoUrl: shipment.receiptPhotoUrl || '',
+              });
+            }
+            setShowShipModal(true);
+          } else if (action === 'view') {
+            // 상세보기 (delivered, refunded 상태)
+            const shipment = shipments.find(s => String(s.orderId) === String(orderId));
+            console.log('👀 상세보기 모달 표시:', { shipmentFound: !!shipment });
+            if (shipment) {
+              setSelectedShipment(shipment);
+            }
+            setShowShipModal(true);
           }
-          setShowShipModal(true);
-        } else if (action === 'view') {
-          // 상세보기 (delivered, refunded 상태)
-          const shipment = shipments.find(s => s.orderId === orderId);
-          if (shipment) {
-            setSelectedShipment(shipment);
-          }
-          setShowShipModal(true);
-        }
+        });
         
-        // URL 파라미터 제거 (모달 닫을 때 다시 열리지 않도록)
+        // URL 파라미터 제거 (한 번만 처리하도록)
         const newUrl = window.location.pathname;
         window.history.replaceState({}, '', newUrl);
+        setUrlParams({}); // URL 파라미터 초기화
+      } else {
+        console.log('⚠️ 주문을 찾을 수 없음:', { 
+          orderId, 
+          orderIdType: typeof orderId,
+          availableOrdersCount: orders.length,
+          firstFewOrders: orders.slice(0, 3).map(o => ({ 
+            id: o.id, 
+            idType: typeof o.id,
+            orderNo: o.orderNo 
+          }))
+        });
+        // 주문을 찾을 수 없어도 URL 파라미터는 초기화
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, '', newUrl);
+        setUrlParams({});
       }
     }
-  }, [searchParams, orders, shipments]);
+  }, [urlParams, orders, shipments, isDataLoaded, setShipForm]);
 
   // 배송 대기 주문 필터링 (paid 상태인 주문만)
   const pendingOrders = orders.filter(order => {
@@ -1089,6 +1171,7 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
               onPageChange={setCurrentPage}
               totalItems={pendingOrders.length}
               itemsPerPage={itemsPerPage}
+              locale={locale}
               className="mt-4"
             />
           )}
@@ -1246,6 +1329,7 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
               onPageChange={setCurrentPage}
               totalItems={shippingOrders.length}
               itemsPerPage={itemsPerPage}
+              locale={locale}
               className="mt-4"
             />
           )}
@@ -1403,6 +1487,7 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
               onPageChange={setCurrentPage}
               totalItems={deliveredOrders.length}
               itemsPerPage={itemsPerPage}
+              locale={locale}
               className="mt-4"
             />
           )}
@@ -1561,6 +1646,7 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
               onPageChange={setCurrentPage}
               totalItems={refundedOrders.length}
               itemsPerPage={itemsPerPage}
+              locale={locale}
               className="mt-4"
             />
           )}
@@ -1568,6 +1654,12 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
       )}
 
       {/* 배송 등록 모달 */}
+      {console.log('🔍 모달 렌더링 체크:', { 
+        showShipModal, 
+        selectedOrder: !!selectedOrder,
+        selectedOrderId: selectedOrder?.id,
+        selectedOrderNo: selectedOrder?.orderNo 
+      })}
       {showShipModal && selectedOrder && (
         <div style={{
           position: 'fixed',
@@ -1579,7 +1671,7 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          zIndex: 50
+          zIndex: 9999
         }}>
           <div style={{
             backgroundColor: 'white',
@@ -1692,10 +1784,15 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
                 </label>
                 <input
                   type="text"
-                  value={shipForm.trackingNoCn}
-                  onChange={(e) => selectedOrder?.status === 'paid' && setShipForm({ ...shipForm, trackingNoCn: e.target.value, trackingNo: e.target.value })}
+                  value={shipForm.trackingNoCn || ''}
+                  onChange={(e) => {
+                    if (selectedOrder?.status === 'paid') {
+                      console.log('📝 운송장 번호 입력:', e.target.value);
+                      setShipForm({ ...shipForm, trackingNoCn: e.target.value, trackingNo: e.target.value });
+                    }
+                  }}
                   readOnly={selectedOrder?.status !== 'paid'}
-                  placeholder={locale === 'ko' ? '송장번호를 입력하세요' : '请输入运单号'}
+                  placeholder={locale === 'ko' ? '중국 운송장 번호를 입력하세요 (필수)' : '请输入中国运单号 (必填)'}
                   style={{
                     width: '100%',
                     padding: '0.5rem',
@@ -1723,6 +1820,7 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
                     type="number"
                     value={shipForm.shippingFee}
                     onChange={(e) => selectedOrder?.status === 'paid' && setShipForm({ ...shipForm, shippingFee: e.target.value })}
+                    onFocus={(e) => e.target.select()}
                     readOnly={selectedOrder?.status !== 'paid'}
                     style={{
                       width: '100%',
@@ -1937,18 +2035,26 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
               </button>
               
               {/* 배송 등록 버튼 - paid 상태일 때만 */}
+              {console.log('🔘 버튼 상태:', { 
+                status: selectedOrder?.status,
+                courierCn: shipForm.courierCn,
+                trackingNoCn: shipForm.trackingNoCn,
+                shippingFee: shipForm.shippingFee,
+                isDisabled: !shipForm.courierCn || !shipForm.trackingNoCn || !shipForm.shippingFee
+              })}
               {selectedOrder?.status === 'paid' && (
                 <button
                   onClick={handleShipRegister}
-                  disabled={!shipForm.courierCn || !shipForm.trackingNoCn}
+                  disabled={!shipForm.trackingNoCn || !shipForm.shippingFee}
                   style={{
                     padding: '0.5rem 1rem',
-                    backgroundColor: shipForm.courierCn && shipForm.trackingNoCn ? '#2563eb' : '#9ca3af',
+                    backgroundColor: (shipForm.trackingNoCn && shipForm.shippingFee) ? '#2563eb' : '#9ca3af',
                     color: 'white',
                     border: 'none',
                     borderRadius: '0.375rem',
-                    cursor: shipForm.courierCn && shipForm.trackingNoCn ? 'pointer' : 'not-allowed'
+                    cursor: (shipForm.trackingNoCn && shipForm.shippingFee) ? 'pointer' : 'not-allowed'
                   }}
+                  title={!shipForm.trackingNoCn ? '중국 운송장 번호를 입력하세요' : !shipForm.shippingFee ? '배송비를 입력하세요' : ''}
                 >
                   {t.register}
                 </button>

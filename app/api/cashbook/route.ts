@@ -104,20 +104,26 @@ export async function POST(request: NextRequest) {
     const supabase = await createServerSupabase();
     const body = await request.json();
     
+    // 현재 사용자 정보 가져오기
+    const { data: { user } } = await supabase.auth.getUser();
+    const userId = user?.id || '00000000-0000-0000-0000-000000000000';
+    
     // 거래 생성
     const { data: transaction, error } = await supabase
       .from('cashbook_transactions')
       .insert({
         type: body.type,
-        amount_krw: body.amountKrw,
-        amount_cny: body.amountCny,
-        exchange_rate: body.exchangeRate || 1,
-        description: body.description,
-        transaction_date: body.date || new Date().toISOString(),
         category: body.category,
-        reference_type: body.referenceType,
-        reference_id: body.referenceId,
-        notes: body.notes
+        amount: body.amountCny || body.amountKrw,
+        amount_krw: body.amountKrw,
+        currency: body.amountCny ? 'CNY' : 'KRW',
+        fx_rate: body.exchangeRate || 1,
+        description: body.description,
+        transaction_date: body.date || new Date().toISOString().slice(0, 10),
+        ref_type: body.referenceType,
+        ref_id: body.referenceId,
+        note: body.notes,
+        created_by: userId
       })
       .select()
       .single();

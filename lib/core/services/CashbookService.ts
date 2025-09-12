@@ -10,11 +10,12 @@ import { createClient } from '@supabase/supabase-js';
  * - 현금 흐름 분석
  */
 
-export type TransactionType = 'sale' | 'inbound' | 'shipping' | 'adjustment' | 'refund';
+export type TransactionType = 'sale' | 'inbound' | 'shipping_fee' | 'adjustment' | 'refund';
 export type Currency = 'CNY' | 'KRW';
 
 export interface CashbookEntry {
-  type: TransactionType;
+  type: TransactionType; // income, expense, adjustment
+  category: string; // sale, inbound, shipping_fee, refund, adjustment 등 cashbook_types.code
   amount: number;
   currency: Currency;
   refType?: string;
@@ -62,20 +63,39 @@ export class CashbookService {
       const fxRate = await this.getExchangeRate(entry.currency, 'KRW');
       const amountKrw = entry.currency === 'KRW' 
         ? entry.amount 
-        : Math.round(entry.amount * fxRate);
+        : Math.round(entry.amount * fxRate); // entry.amount가 음수면 자동으로 음수 결과
       
+      // category에서 type 결정 (DB cashbook_types 참조)
+      const categoryToTypeMap: Record<string, string> = {
+        'sale': 'income',
+        'refund_cancel': 'income', 
+        'other_income': 'income',
+        'inbound': 'expense',
+        'refund': 'expense',
+        'shipping_fee': 'expense',
+        'operation_cost': 'expense',
+        'other_expense': 'expense',
+        'adjustment': 'adjustment',
+        'loss': 'adjustment',
+        'correction': 'adjustment'
+      };
+      
+      const transactionType = categoryToTypeMap[entry.category] || 'adjustment';
+
       const { data, error } = await this.supabase
         .from('cashbook_transactions')
         .insert({
-          date: entry.date || new Date(),
-          type: entry.type,
+          transaction_date: entry.date || new Date(),
+          type: transactionType,
+          category: entry.category,
           amount: entry.amount,
           currency: entry.currency,
           fx_rate: entry.currency === 'CNY' ? fxRate : null,
           amount_krw: amountKrw,
           ref_type: entry.refType,
           ref_id: entry.refId,
-          note: entry.note
+          note: entry.note,
+          description: entry.note || '' // description 필드도 필수
         })
         .select()
         .single();
@@ -114,7 +134,8 @@ export class CashbookService {
     message?: string;
   }> {
     return this.recordTransaction({
-      type: 'sale',
+      type: 'sale', // 사용하지 않음 (category에서 결정)
+      category: 'sale', // DB category
       amount: amount,
       currency: 'CNY',
       refType: 'order',
@@ -140,7 +161,8 @@ export class CashbookService {
     message?: string;
   }> {
     return this.recordTransaction({
-      type: 'inbound',
+      type: 'inbound', // 사용하지 않음
+      category: 'inbound', // DB category
       amount: -Math.abs(cost), // 지출은 음수
       currency: 'CNY',
       refType: 'inbound',
@@ -166,7 +188,8 @@ export class CashbookService {
     message?: string;
   }> {
     return this.recordTransaction({
-      type: 'shipping',
+      type: 'shipping_fee', // 사용하지 않음
+      category: 'shipping_fee', // DB category
       amount: -Math.abs(shippingCost), // 지출은 음수
       currency: 'KRW',
       refType: 'shipment',
@@ -198,7 +221,8 @@ export class CashbookService {
       : `환불${reason ? ` - ${reason}` : ''}`;
     
     return this.recordTransaction({
-      type: 'refund',
+      type: 'refund', // 사용하지 않음
+      category: 'refund', // DB category
       amount: -Math.abs(refundAmount), // 환불은 음수
       currency: 'CNY',
       refType: 'order',
@@ -224,7 +248,8 @@ export class CashbookService {
     message?: string;
   }> {
     return this.recordTransaction({
-      type: 'adjustment',
+      type: 'adjustment', // 사용하지 않음
+      category: 'adjustment', // DB category
       amount,
       currency,
       note
@@ -258,8 +283,8 @@ export class CashbookService {
       const { data, error } = await this.supabase
         .from('cashbook_transactions')
         .select('*')
-        .gte('date', startOfDay.toISOString())
-        .lte('date', endOfDay.toISOString())
+        .gte('transaction_date', startOfDay.toISOString())
+        .lte('transaction_date', endOfDay.toISOString())
         .order('created_at', { ascending: true });
       
       if (error) {
@@ -285,14 +310,14 @@ export class CashbookService {
       for (const entry of data || []) {
         const amountKrw = entry.amount_krw || 0;
         
-        if (entry.type === 'sale') {
+        if (entry.type === 'income') {
           sales += amountKrw;
-        } else if (amountKrw < 0) {
+        } else if (entry.type === 'expense') {
           expenses += Math.abs(amountKrw);
         }
         
         transactions.push({
-          type: entry.type,
+          type: entry.category, // category 사용
           amount: entry.amount,
           amountKrw: amountKrw,
           note: entry.note || ''
@@ -343,8 +368,8 @@ export class CashbookService {
       const { data, error } = await this.supabase
         .from('cashbook_transactions')
         .select('*')
-        .gte('date', startDate.toISOString())
-        .lte('date', endDate.toISOString());
+        .gte('transaction_date', startDate.toISOString())
+        .lte('transaction_date', endDate.toISOString());
       
       if (error) {
         console.error('Error fetching monthly summary:', error);
@@ -366,14 +391,17 @@ export class CashbookService {
       
       for (const entry of data || []) {
         const amountKrw = entry.amount_krw || 0;
-        const type = entry.type as TransactionType;
+        const category = entry.category as TransactionType;
         
-        byType[type].count++;
-        byType[type].totalAmount += amountKrw;
+        // category로 변경
+        if (byType[category]) {
+          byType[category].count++;
+          byType[category].totalAmount += amountKrw;
+        }
         
-        if (type === 'sale') {
+        if (entry.type === 'income') {
           totalSales += amountKrw;
-        } else if (amountKrw < 0) {
+        } else if (entry.type === 'expense') {
           totalExpenses += Math.abs(amountKrw);
         }
       }
@@ -428,7 +456,7 @@ export class CashbookService {
         .select('amount, currency, amount_krw');
       
       if (untilDate) {
-        query = query.lte('date', untilDate.toISOString());
+        query = query.lte('transaction_date', untilDate.toISOString());
       }
       
       const { data, error } = await query;

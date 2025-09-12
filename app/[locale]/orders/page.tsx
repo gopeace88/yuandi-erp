@@ -421,9 +421,17 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
   };
 
   const handleCreateOrder = async () => {
-    // 주문 생성 로직
-    const selectedProduct = products.find(p => p.id === newOrder.productId);
-    if (!selectedProduct) return;
+    // 필수 필드 검증
+    if (!newOrder.customerName || !newOrder.customerPhone || !newOrder.productId || !newOrder.quantity) {
+      alert(locale === 'ko' ? '필수 입력 항목을 모두 입력해주세요.' : '请填写所有必填项');
+      return;
+    }
+
+    const selectedProduct = products.find(p => p.id === Number(newOrder.productId));
+    if (!selectedProduct) {
+      alert(locale === 'ko' ? '상품을 선택해주세요.' : '请选择商品');
+      return;
+    }
 
     try {
       // API를 통해 주문 생성 (출납장부 기록 포함)
@@ -432,15 +440,14 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
         customerPhone: newOrder.customerPhone,
         customerEmail: newOrder.customerEmail || null,
         customerMessengerId: newOrder.kakaoId || null,
-        pcccCode: newOrder.pcccCode,
-        shippingAddress: newOrder.shippingAddress,
+        pcccCode: newOrder.pcccCode || '',  // PCCC 필수값으로 처리
+        shippingAddress: newOrder.shippingAddress || '',  // 주소 필수값으로 처리
         shippingAddressDetail: newOrder.shippingAddressDetail || null,
-        zipCode: newOrder.zipCode,
+        zipCode: newOrder.zipCode || '',  // 우편번호 필수값으로 처리
         productId: selectedProduct.id,
         quantity: newOrder.quantity,
         customPrice: newOrder.customPrice,  // 커스텀 가격 전달
         totalAmount: newOrder.customPrice * newOrder.quantity,  // 커스텀 가격 사용
-        shippingFee: 0,
         customerMemo: newOrder.customerMemo || null,
         paymentMethod: 'card'
       };
@@ -673,9 +680,15 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
   const handleOrderClick = (order: Order) => {
     // PAID 상태의 주문은 배송 관리로 이동하여 송장 입력 모달 열기
     if (order.status === 'paid') {
-      router.push(`/${locale}/shipments?orderId=${order.id}&action=register`);
+      router.push(`/${locale}/shipments?tab=pending&orderId=${order.id}&action=register`);
+    } else if (order.status === 'shipped') {
+      router.push(`/${locale}/shipments?tab=shipping&orderId=${order.id}&action=update`);
+    } else if (order.status === 'done' || order.status === 'delivered') {
+      router.push(`/${locale}/shipments?tab=delivered&orderId=${order.id}&action=view`);
+    } else if (order.status === 'refunded' || order.status === 'cancelled') {
+      router.push(`/${locale}/shipments?tab=refunded&orderId=${order.id}&action=view`);
     } else {
-      // 다른 상태의 주문은 상세 모달 표시
+      // 기타 상태의 주문은 상세 모달 표시
       setSelectedOrder(order);
       setShowDetailModal(true);
     }
@@ -870,6 +883,7 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
             onPageChange={setCurrentPage}
             totalItems={filteredOrders.length}
             itemsPerPage={itemsPerPage}
+            locale={locale}
             className="mt-4"
           />
         )}
@@ -946,7 +960,7 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
                   />
                 </div>
                 <div style={{ gridColumn: 'span 2' }}>
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.pccc} *</label>
+                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.pcccLabel} *</label>
                   <input
                     type="text"
                     value={newOrder.pcccCode}
@@ -1044,10 +1058,10 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
                 <select
                   value={newOrder.productId}
                   onChange={(e) => {
-                    const selectedProduct = products.find(p => p.id === e.target.value);
+                    const selectedProduct = products.find(p => p.id === parseInt(e.target.value));
                     setNewOrder({ 
                       ...newOrder, 
-                      productId: e.target.value,
+                      productId: parseInt(e.target.value),
                       customPrice: selectedProduct ? selectedProduct.salePrice : 0
                     });
                   }}
@@ -1083,6 +1097,7 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
                     min="0"
                     value={newOrder.customPrice}
                     onChange={(e) => setNewOrder({ ...newOrder, customPrice: parseInt(e.target.value) || 0 })}
+                    onFocus={(e) => e.target.value === '0' && e.target.select()}
                     style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
                     placeholder="₩"
                     required
@@ -1488,12 +1503,83 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
                     const result = await response.json();
 
                     if (!response.ok) {
-                      throw new Error(result.error || '업로드 실패');
+                      // 상세한 오류 메시지 표시
+                      let errorMessage = result.error || '업로드 실패';
+                      
+                      if (result.details && result.details.length > 0) {
+                        const errorDetails = result.details.map((d: any) => 
+                          `행 ${d.row}: ${d.errors.join(', ')}`
+                        ).join('\n');
+                        errorMessage += '\n\n' + errorDetails;
+                      }
+                      
+                      if (result.skipped && result.skipped.length > 0) {
+                        const skippedDetails = locale === 'ko' 
+                          ? '\n\n스킵된 항목:\n' 
+                          : '\n\n跳过的项目:\n';
+                        const skippedList = result.skipped.map((s: any) => 
+                          `행 ${s.row}: ${s.reason}`
+                        ).join('\n');
+                        errorMessage += skippedDetails + skippedList;
+                      }
+                      
+                      throw new Error(errorMessage);
                     }
 
-                    alert(locale === 'ko' 
-                      ? `✅ ${result.success}개 주문이 성공적으로 등록되었습니다.` 
-                      : `✅ 成功注册了${result.success}个订单`);
+                    // 성공, 실패, 스킵 정보를 모두 표시 (0개여도 표시)
+                    let message = locale === 'ko' 
+                      ? '=== 대량 주문 처리 결과 ===\n\n'
+                      : '=== 批量订单处理结果 ===\n\n';
+                    
+                    // 항상 성공 개수 표시
+                    message += locale === 'ko' 
+                      ? `✅ 성공: ${result.success || 0}개\n` 
+                      : `✅ 成功: ${result.success || 0}个\n`;
+                    
+                    // 항상 실패 개수 표시
+                    message += locale === 'ko' 
+                      ? `❌ 실패: ${result.failed || 0}개\n` 
+                      : `❌ 失败: ${result.failed || 0}个\n`;
+                    
+                    if (result.failedDetails && result.failedDetails.length > 0) {
+                      const failedList = result.failedDetails.slice(0, 5).map((f: any) => 
+                        `  행 ${f.row}: ${f.error}`
+                      ).join('\n');
+                      message += failedList;
+                      
+                      if (result.failedDetails.length > 5) {
+                        message += locale === 'ko' 
+                          ? `\n  ...외 ${result.failedDetails.length - 5}개` 
+                          : `\n  ...还有${result.failedDetails.length - 5}个`;
+                      }
+                      message += '\n';
+                    }
+                    
+                    // 항상 스킵 개수 표시
+                    message += locale === 'ko' 
+                      ? `⚠️ 스킵: ${result.skipped || 0}개 (품절 상품)\n` 
+                      : `⚠️ 跳过: ${result.skipped || 0}个 (缺货产品)\n`;
+                    
+                    if (result.skippedDetails && result.skippedDetails.length > 0) {
+                      const skippedList = result.skippedDetails.slice(0, 3).map((s: any) => 
+                        `  행 ${s.row}: ${s.reason}`
+                      ).join('\n');
+                      message += skippedList;
+                      
+                      if (result.skippedDetails.length > 3) {
+                        message += locale === 'ko' 
+                          ? `\n  ...외 ${result.skippedDetails.length - 3}개` 
+                          : `\n  ...还有${result.skippedDetails.length - 3}个`;
+                      }
+                    }
+                    
+                    // 전체 처리 개수 표시
+                    const totalProcessed = (result.success || 0) + (result.failed || 0) + (result.skipped || 0);
+                    message += locale === 'ko' 
+                      ? `\n────────────────\n총 처리: ${totalProcessed}개`
+                      : `\n────────────────\n总处理: ${totalProcessed}个`;
+                    
+                    alert(message.trim());
                     
                     setShowBulkModal(false);
                     setBulkOrderFile(null);

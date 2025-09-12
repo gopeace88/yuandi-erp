@@ -20,7 +20,8 @@ export const zhCNMessages = {
     "previous": "上一步",
     "close": "关闭",
     "view": "查看",
-    "reset": "重置"
+    "reset": "重置",
+    "selectOption": "请选择"
   },
   "nav": {
     "dashboard": "仪表板",
@@ -272,14 +273,7 @@ export const zhCNMessages = {
     "amount": "金额",
     "description": "说明",
     "category": "分类",
-    "salesCategory": "销售",
-    "salesDescription": "销售",
     "allTypes": "所有类型",
-    "sale": "销售",
-    "inbound": "采购",
-    "shipping": "运费",
-    "adjustment": "调整",
-    "refund": "退款",
     "startDate": "开始日期",
     "endDate": "结束日期"
   },

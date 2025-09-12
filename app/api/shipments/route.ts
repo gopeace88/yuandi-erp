@@ -75,23 +75,39 @@ export async function POST(request: NextRequest) {
     const shippingCostCny = body.shippingCost;
     const shippingCostKrw = shippingCostCny * CNY_TO_KRW_RATE;
     
-    // 배송 정보 생성 - 중국 배송 정보를 메인으로 사용
+    // 주문 정보 가져오기 (배송지 정보 포함)
+    const { data: orderData } = await supabase
+      .from('orders')
+      .select('shipping_address_line1, shipping_address_line2, shipping_postal_code')
+      .eq('id', body.orderId)
+      .single();
+    
+    // 배송 정보 생성 - 단순화된 스키마 사용
     const { data: shipment, error: shipmentError } = await supabase
       .from('shipments')
       .insert({
         order_id: body.orderId,
-        // 중국 배송 정보를 메인 tracking_number와 courier로 사용 (필수)
+        // 배송지 정보
+        shipping_address: orderData ? 
+          `${orderData.shipping_address_line1} ${orderData.shipping_address_line2 || ''}`.trim() : '',
+        shipping_address_line1: orderData?.shipping_address_line1 || '',
+        shipping_address_line2: orderData?.shipping_address_line2 || '',
+        shipping_postal_code: orderData?.shipping_postal_code || '',
+        // 배송 방법
+        shipping_method: 'express', // 기본값
+        // 단순화된 배송 정보 (중국택배사가 초기에 정해지고 송장번호는 하나)
+        courier: body.courierCn || 'YUANSUN',
         tracking_number: body.trackingNumberCn || body.trackingNumber,
-        courier: body.courierCn || body.courier || 'other',
-        tracking_url: body.trackingUrlCn || body.trackingUrl,
-        shipping_cost_cny: shippingCostCny || null,
+        tracking_url: body.trackingUrlCn || body.trackingUrl || null,
+        // 배송비
+        shipping_cost_cny: shippingCostCny,
         shipping_cost_krw: shippingCostKrw,
-        weight_g: body.weight || null,
-        package_images: body.packageImages || [],
+        // 날짜
+        shipped_date: new Date().toISOString().split('T')[0],
+        // 상태
         status: 'in_transit',
-        delivery_notes: body.notes || '',
-        estimated_delivery_date: body.estimatedDelivery || null,
-        package_count: 1
+        // 메모
+        notes: body.notes || `배송비: ${shippingCostCny} CNY (₩${shippingCostKrw.toLocaleString()})`
       })
       .select()
       .single();
@@ -104,14 +120,12 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // 주문 상태 업데이트
+    // 주문 상태 업데이트 (orders 테이블에는 courier, tracking_number 컬럼이 없을 수 있음)
     const { error: orderError } = await supabase
       .from('orders')
       .update({
         status: 'shipped',
-        // 중국 배송 정보를 메인으로 저장 (한국 배송 정보는 나중에 추가 가능)
-        courier: body.courierCn || body.courier || 'other',
-        tracking_number: body.trackingNumberCn || body.trackingNumber
+        shipped_at: new Date().toISOString()
       })
       .eq('id', body.orderId);
     
@@ -142,34 +156,21 @@ export async function POST(request: NextRequest) {
         .eq('id', body.orderId)
         .single();
       
-      // 현재 잔액 조회
-      const { data: lastTransaction } = await supabase
-        .from('cashbook_transactions')
-        .select('balance_krw')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-      
-      const currentBalance = lastTransaction?.balance_krw || 0;
-      const newBalance = currentBalance - shippingCostKrw; // 배송비는 지출
-      
       const { error: cashbookError } = await supabase
         .from('cashbook_transactions')
         .insert({
           transaction_date: new Date().toISOString().slice(0, 10),
-          type: 'shipping' as const,  // 배송 유형 사용
-          amount: -shippingCostCny,  // 기본 amount는 CNY (지출이므로 음수)
-          amount_krw: -shippingCostKrw,  // 원화 환산 금액 (지출이므로 음수)
-          amount_cny: shippingCostCny,  // 위안화 금액 (양수로 기록)
-          currency: 'CNY' as const,
-          exchange_rate: CNY_TO_KRW_RATE,
-          balance_krw: newBalance,
-          description: `배송비 - ${orderData?.order_number} (${orderData?.customer_name}) [¥${shippingCostCny}]`,
-          reference_type: 'shipment',
-          reference_id: shipment.id,
-          category: 'shipping',
-          tags: ['shipping_cost', orderData?.order_number, body.courierCn || body.courier],
-          created_by: userName  // 사용자 이름 사용
+          type: 'expense',  // 지출
+          category: 'shipping_fee',  // 배송비 카테고리 (DB 스키마에 맞게)
+          amount: -Math.abs(shippingCostCny),  // CNY 금액 (지출이므로 음수)
+          amount_krw: -Math.abs(shippingCostKrw),  // 원화 환산 금액 (지출이므로 음수)
+          currency: 'CNY',
+          fx_rate: CNY_TO_KRW_RATE,
+          description: `배송비 - ${orderData?.order_number} (${orderData?.customer_name})`,
+          ref_type: 'shipment',
+          ref_id: shipment.id.toString(),
+          note: `주문번호: ${orderData?.order_number || ''}, 중국 운송장: ${body.trackingNumberCn || ''}`,
+          created_by: user?.id || '00000000-0000-0000-0000-000000000000'  // UUID 타입
         });
       
       if (cashbookError) {

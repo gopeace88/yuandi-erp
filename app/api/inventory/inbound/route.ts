@@ -6,6 +6,8 @@ export async function POST(request: NextRequest) {
     const supabase = await createServerSupabase();
     const body = await request.json();
     
+    console.log('🔥 API 입고 요청 받음:', body);
+    
     // 현재 사용자 정보 가져오기 (선택적)
     const { data: { user } } = await supabase.auth.getUser();
     const userId = user?.id || '00000000-0000-0000-0000-000000000000';
@@ -23,6 +25,9 @@ export async function POST(request: NextRequest) {
     
     const { product_id, quantity, unit_cost, note } = body;
     
+    console.log('📋 파싱된 데이터:', { product_id, quantity, unit_cost, note });
+    console.log('📋 product_id 타입:', typeof product_id);
+    
     // 입력 검증
     if (!product_id || !quantity) {
       return NextResponse.json(
@@ -32,14 +37,18 @@ export async function POST(request: NextRequest) {
     }
     
     // 1. 현재 상품 정보 조회 (products 테이블의 on_hand 사용)
+    console.log('🔍 상품 조회 시작:', product_id);
     const { data: currentProduct, error: productFetchError } = await supabase
       .from('products')
-      .select('id, name, on_hand, cost_cny, price_krw')
+      .select('id, name_ko, name_zh, on_hand, cost_cny, price_krw')
       .eq('id', product_id)
       .single();
     
+    console.log('🔍 상품 조회 결과:', currentProduct);
+    console.log('🔍 상품 조회 에러:', productFetchError);
+    
     if (productFetchError) {
-      console.error('Product fetch error:', productFetchError);
+      console.error('❌ Product fetch error:', productFetchError);
       return NextResponse.json(
         { error: 'Product not found' },
         { status: 404 }
@@ -51,13 +60,11 @@ export async function POST(request: NextRequest) {
       product_id,
       movement_type: 'inbound' as const,
       quantity: Math.abs(quantity),
-      balance_before: currentProduct.on_hand || 0,
-      balance_after: (currentProduct.on_hand || 0) + Math.abs(quantity),
-      unit_cost: unit_cost || currentProduct.cost_cny || 0,
-      total_cost: (unit_cost || currentProduct.cost_cny || 0) * Math.abs(quantity),
+      previous_quantity: currentProduct.on_hand || 0,
+      new_quantity: (currentProduct.on_hand || 0) + Math.abs(quantity),
       note: note || '재고 입고',
       movement_date: new Date().toISOString(),
-      created_by: userName  // 사용자 이름 사용
+      created_by: userId  // UUID 사용
     };
     
     const { data: movement, error: movementError } = await supabase
@@ -67,7 +74,8 @@ export async function POST(request: NextRequest) {
       .single();
     
     if (movementError) {
-      console.error('Movement creation error:', movementError);
+      console.error('❌ Movement creation error:', movementError);
+      console.error('❌ Movement data was:', movementData);
       return NextResponse.json(
         { error: movementError.message },
         { status: 500 }
@@ -86,28 +94,32 @@ export async function POST(request: NextRequest) {
       .eq('id', product_id);
     
     if (productUpdateError) {
-      console.error('Product on_hand update error:', productUpdateError);
+      console.error('❌ Product on_hand update error:', productUpdateError);
+      console.error('❌ Update values were: on_hand =', newOnHand, ', product_id =', product_id);
       return NextResponse.json(
         { error: 'Failed to update product stock' },
         { status: 500 }
       );
     }
     
+    console.log('✅ 재고 업데이트 성공: product_id =', product_id, ', new on_hand =', newOnHand);
+    
     // 4. 출납장부 기록 생성 (입고는 지출) - 실제 스키마에 맞춘 필드들
     const totalCost = (unit_cost || currentProduct.cost_cny || 0) * Math.abs(quantity);
     
     const cashbookData = {
       transaction_date: new Date().toISOString().slice(0, 10),
-      type: 'inbound' as const,
-      amount: totalCost, // 지출 금액 (양수로 기록)
-      amount_krw: totalCost,
+      type: 'expense' as const,  // 'inbound'가 아닌 'expense' 사용
+      category: 'inbound',  // 출납유형 코드
+      amount: -Math.abs(totalCost), // 지출 금액 (지출이므로 음수)
+      amount_krw: -Math.abs(totalCost), // 입고는 지출이므로 음수
       currency: 'KRW' as const,
       fx_rate: 1.0, // KRW 기준이므로 1.0
-      description: `${currentProduct.name} 재고 입고 (${Math.abs(quantity)}개)`,
+      description: `${currentProduct.name_ko || currentProduct.name_zh || '상품'} 재고 입고 (${Math.abs(quantity)}개)`,
       ref_type: 'inventory_movement',
       ref_id: movement.id,
       note: note || '재고 입고',
-      created_by: userName  // 사용자 이름 사용
+      created_by: userId  // UUID 사용
     };
     
     const { error: cashbookError } = await supabase

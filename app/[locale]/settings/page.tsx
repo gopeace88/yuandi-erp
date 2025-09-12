@@ -32,8 +32,7 @@ interface Product {
   name: string;
   name_ko: string;
   name_zh: string;
-  category: string;
-  category_id?: string;
+  category_id: number;
   model?: string;
   color?: string;
   color_ko?: string;
@@ -96,7 +95,6 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
   const [editCashbookType, setEditCashbookType] = useState<CashbookType | null>(null);
   const [systemSettings, setSystemSettings] = useState<SystemSetting[]>([]);
   const [editedSettings, setEditedSettings] = useState<{[key: string]: string}>({});
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [showCashbookModal, setShowCashbookModal] = useState(false);
   const [editUser, setEditUser] = useState<User | null>(null);
   const [showUserModal, setShowUserModal] = useState(false);
@@ -104,6 +102,13 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
   const [showBulkImportModal, setShowBulkImportModal] = useState(false);
   const [bulkImportFile, setBulkImportFile] = useState<File | null>(null);
   const [bulkImportLoading, setBulkImportLoading] = useState(false);
+  
+  // 페이지네이션
+  const [productPage, setProductPage] = useState(1);
+  const [categoryPage, setCategoryPage] = useState(1);
+  const [userPage, setUserPage] = useState(1);
+  const [cashbookTypePage, setCashbookTypePage] = useState(1);
+  const itemsPerPage = 20;
 
   // 번역
   const t = locale === 'ko' ? {
@@ -132,6 +137,7 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
     productNameKo: '상품명 (한국어)',
     productNameZh: '상품명 (중국어)',
     sku: 'SKU',
+    category: '카테고리',
     model: '모델',
     color: '색상',
     brand: '브랜드',
@@ -205,6 +211,7 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
     productNameKo: '产品名称 (韩文)',
     productNameZh: '产品名称 (中文)',
     sku: 'SKU',
+    category: '分类',
     model: '型号',
     color: '颜色',
     brand: '品牌',
@@ -287,7 +294,7 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
     } else if (activeTab === 'system') {
       loadSystemSettings();
     }
-  }, [activeTab, selectedCategory]);
+  }, [activeTab]);
 
   const checkUserRole = async () => {
     try {
@@ -331,9 +338,7 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
 
   const loadSystemSettings = async () => {
     try {
-      const url = selectedCategory === 'all' 
-        ? '/api/system-settings'
-        : `/api/system-settings?category=${selectedCategory}`;
+      const url = '/api/system-settings';
       
       const response = await fetch(url);
       if (response.ok) {
@@ -444,7 +449,163 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
     }
   };
 
-  // SKU 자동 생성 함수
+  // 페이지네이션 렌더링 함수
+  const renderPagination = (totalItems: number, currentPage: number, setPage: (page: number) => void) => {
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
+    
+    if (totalPages <= 1) return null;
+    
+    const pages = [];
+    const maxPagesToShow = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+    let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+    
+    if (endPage - startPage < maxPagesToShow - 1) {
+      startPage = Math.max(1, endPage - maxPagesToShow + 1);
+    }
+    
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center',
+        gap: '0.5rem',
+        marginTop: '1.5rem',
+        padding: '1rem'
+      }}>
+        <button
+          onClick={() => setPage(1)}
+          disabled={currentPage === 1}
+          style={{
+            padding: '0.5rem 0.75rem',
+            border: '1px solid #d1d5db',
+            borderRadius: '0.375rem',
+            backgroundColor: currentPage === 1 ? '#f3f4f6' : 'white',
+            color: currentPage === 1 ? '#9ca3af' : '#374151',
+            cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+            fontSize: '0.875rem'
+          }}
+        >
+          {locale === 'ko' ? '처음' : '首页'}
+        </button>
+        
+        <button
+          onClick={() => setPage(Math.max(1, currentPage - 1))}
+          disabled={currentPage === 1}
+          style={{
+            padding: '0.5rem 0.75rem',
+            border: '1px solid #d1d5db',
+            borderRadius: '0.375rem',
+            backgroundColor: currentPage === 1 ? '#f3f4f6' : 'white',
+            color: currentPage === 1 ? '#9ca3af' : '#374151',
+            cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+            fontSize: '0.875rem'
+          }}
+        >
+          {locale === 'ko' ? '이전' : '上一页'}
+        </button>
+        
+        {startPage > 1 && (
+          <>
+            <button
+              onClick={() => setPage(1)}
+              style={{
+                padding: '0.5rem 0.75rem',
+                border: '1px solid #d1d5db',
+                borderRadius: '0.375rem',
+                backgroundColor: 'white',
+                color: '#374151',
+                cursor: 'pointer',
+                fontSize: '0.875rem'
+              }}
+            >
+              1
+            </button>
+            {startPage > 2 && <span>...</span>}
+          </>
+        )}
+        
+        {Array.from({ length: endPage - startPage + 1 }, (_, i) => startPage + i).map(page => (
+          <button
+            key={page}
+            onClick={() => setPage(page)}
+            style={{
+              padding: '0.5rem 0.75rem',
+              border: '1px solid #d1d5db',
+              borderRadius: '0.375rem',
+              backgroundColor: currentPage === page ? '#3b82f6' : 'white',
+              color: currentPage === page ? 'white' : '#374151',
+              cursor: 'pointer',
+              fontSize: '0.875rem',
+              fontWeight: currentPage === page ? '600' : '400'
+            }}
+          >
+            {page}
+          </button>
+        ))}
+        
+        {endPage < totalPages && (
+          <>
+            {endPage < totalPages - 1 && <span>...</span>}
+            <button
+              onClick={() => setPage(totalPages)}
+              style={{
+                padding: '0.5rem 0.75rem',
+                border: '1px solid #d1d5db',
+                borderRadius: '0.375rem',
+                backgroundColor: 'white',
+                color: '#374151',
+                cursor: 'pointer',
+                fontSize: '0.875rem'
+              }}
+            >
+              {totalPages}
+            </button>
+          </>
+        )}
+        
+        <button
+          onClick={() => setPage(Math.min(totalPages, currentPage + 1))}
+          disabled={currentPage === totalPages}
+          style={{
+            padding: '0.5rem 0.75rem',
+            border: '1px solid #d1d5db',
+            borderRadius: '0.375rem',
+            backgroundColor: currentPage === totalPages ? '#f3f4f6' : 'white',
+            color: currentPage === totalPages ? '#9ca3af' : '#374151',
+            cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+            fontSize: '0.875rem'
+          }}
+        >
+          {locale === 'ko' ? '다음' : '下一页'}
+        </button>
+        
+        <button
+          onClick={() => setPage(totalPages)}
+          disabled={currentPage === totalPages}
+          style={{
+            padding: '0.5rem 0.75rem',
+            border: '1px solid #d1d5db',
+            borderRadius: '0.375rem',
+            backgroundColor: currentPage === totalPages ? '#f3f4f6' : 'white',
+            color: currentPage === totalPages ? '#9ca3af' : '#374151',
+            cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+            fontSize: '0.875rem'
+          }}
+        >
+          {locale === 'ko' ? '마지막' : '末页'}
+        </button>
+        
+        <span style={{ marginLeft: '1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+          {locale === 'ko' 
+            ? `${totalItems}개 중 ${(currentPage - 1) * itemsPerPage + 1}-${Math.min(currentPage * itemsPerPage, totalItems)}`
+            : `${(currentPage - 1) * itemsPerPage + 1}-${Math.min(currentPage * itemsPerPage, totalItems)} / ${totalItems}`
+          }
+        </span>
+      </div>
+    );
+  };
+
   const generateSKU = (category: string, model: string, color: string, brand: string) => {
     const timestamp = Date.now().toString(36).toUpperCase(); // 타임스탬프를 36진수로 변환
     const categoryCode = category ? category.substring(0, 3).toUpperCase() : 'XXX';
@@ -474,8 +635,9 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
       // SKU 자동 생성 (신규 등록시만)
       let sku = editProduct.sku;
       if (!editProduct.id) {
+        const category = categories.find(c => c.id === editProduct.category_id);
         sku = generateSKU(
-          editProduct.category,
+          category?.category || '',
           editProduct.model || '',
           editProduct.color_ko || editProduct.color || '',
           editProduct.brand_ko || editProduct.brand || ''
@@ -485,15 +647,12 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
       // 데이터 준비
       const productData: any = {
         sku: sku,
-        name: editProduct.name || '',
-        name_ko: editProduct.name_ko || editProduct.name,
-        name_zh: editProduct.name_zh || editProduct.name,
-        category: editProduct.category,
+        name_ko: editProduct.name_ko || editProduct.name || '',
+        name_zh: editProduct.name_zh || editProduct.name || '',
+        category_id: editProduct.category_id,
         model: editProduct.model || null,
-        color: editProduct.color || null,
         color_ko: editProduct.color_ko || editProduct.color,
         color_zh: editProduct.color_zh || editProduct.color,
-        brand: editProduct.brand || null,
         brand_ko: editProduct.brand_ko || editProduct.brand,
         brand_zh: editProduct.brand_zh || editProduct.brand,
         cost_cny: editProduct.cost_cny || 0,
@@ -982,7 +1141,7 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
                     name: '',
                     name_ko: '',
                     name_zh: '',
-                    category: '',
+                    category_id: 0,
                     model: '',
                     color: '',
                     color_ko: '',
@@ -1031,7 +1190,9 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
                     </tr>
                   </thead>
                   <tbody>
-                    {products.map(product => (
+                    {products
+                      .slice((productPage - 1) * itemsPerPage, productPage * itemsPerPage)
+                      .map(product => (
                       <tr key={product.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
                         <td style={{ padding: '0.75rem' }}>
                           <div style={{ fontSize: '0.875rem', fontWeight: '500' }}>
@@ -1043,14 +1204,14 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
                         </td>
                         <td style={{ padding: '0.75rem' }}>
                           {(() => {
-                            const cat = categories.find(c => c.category === product.category);
+                            const cat = categories.find(c => c.id === product.category_id);
                             return (
                               <div>
                                 <div style={{ fontSize: '0.875rem' }}>
-                                  {cat?.name_ko || product.category || '-'}
+                                  {cat?.name_ko || '-'}
                                 </div>
                                 <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.125rem' }}>
-                                  {cat?.name_zh || product.category || '-'}
+                                  {cat?.name_zh || '-'}
                                 </div>
                               </div>
                             );
@@ -1073,8 +1234,12 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
                           </div>
                         </td>
                         <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>{product.model || '-'}</td>
-                        <td style={{ padding: '0.75rem', fontSize: '0.875rem', textAlign: 'right' }}>¥{product.cost_cny}</td>
-                        <td style={{ padding: '0.75rem', fontSize: '0.875rem', textAlign: 'right' }}>₩{product.price_krw?.toLocaleString()}</td>
+                        <td style={{ padding: '0.75rem', fontSize: '0.875rem', textAlign: 'right' }}>
+                          {product.cost_cny ? `¥${product.cost_cny.toLocaleString()}` : '-'}
+                        </td>
+                        <td style={{ padding: '0.75rem', fontSize: '0.875rem', textAlign: 'right' }}>
+                          {product.price_krw ? `₩${product.price_krw.toLocaleString()}` : '-'}
+                        </td>
                         <td style={{ padding: '0.75rem', textAlign: 'center' }}>
                           <span style={{
                             padding: '0.25rem 0.5rem',
@@ -1112,6 +1277,7 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
                 </table>
               </div>
             )}
+            {renderPagination(products.length, productPage, setProductPage)}
           </div>
         )}
 
@@ -1172,7 +1338,9 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
                     </tr>
                   </thead>
                   <tbody>
-                    {users.map(user => (
+                    {users
+                      .slice((userPage - 1) * itemsPerPage, userPage * itemsPerPage)
+                      .map(user => (
                       <tr key={user.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
                         <td style={{ padding: '0.75rem' }}>{user.email}</td>
                         <td style={{ padding: '0.75rem' }}>{user.name}</td>
@@ -1255,6 +1423,7 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
                 </table>
               </div>
             )}
+            {renderPagination(users.length, userPage, setUserPage)}
           </div>
         )}
 
@@ -1309,7 +1478,9 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
                     </tr>
                   </thead>
                   <tbody>
-                    {categories.map(category => (
+                    {categories
+                      .slice((categoryPage - 1) * itemsPerPage, categoryPage * itemsPerPage)
+                      .map(category => (
                       <tr key={category.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
                         <td style={{ padding: '0.75rem' }}>{category.display_order}</td>
                         <td style={{ padding: '0.75rem' }}>{category.code}</td>
@@ -1367,6 +1538,7 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
                 </table>
               </div>
             )}
+            {renderPagination(categories.length, categoryPage, setCategoryPage)}
           </div>
         )}
 
@@ -1423,7 +1595,9 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
                     </tr>
                   </thead>
                   <tbody>
-                    {cashbookTypes.map(type => (
+                    {cashbookTypes
+                      .slice((cashbookTypePage - 1) * itemsPerPage, cashbookTypePage * itemsPerPage)
+                      .map(type => (
                       <tr key={type.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
                         <td style={{ padding: '0.75rem' }}>{type.display_order}</td>
                         <td style={{ padding: '0.75rem' }}>{type.code}</td>
@@ -1507,6 +1681,7 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
                 </table>
               </div>
             )}
+            {renderPagination(cashbookTypes.length, cashbookTypePage, setCashbookTypePage)}
           </div>
         )}
 
@@ -1558,28 +1733,6 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
               </div>
             </div>
 
-            {/* 카테고리 필터 */}
-            <div style={{ marginBottom: '1rem' }}>
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                style={{
-                  padding: '0.5rem',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '0.375rem',
-                  width: '200px'
-                }}
-              >
-                <option value="all">{t.allCategories}</option>
-                <option value="inventory">{t.inventory}</option>
-                <option value="order">{t.order}</option>
-                <option value="shipping">{t.shipping}</option>
-                <option value="currency">{t.currency}</option>
-                <option value="notification">{t.notification}</option>
-                <option value="accounting">{t.accounting}</option>
-                <option value="system">{t.system}</option>
-              </select>
-            </div>
 
             {/* 시스템 설정 테이블 */}
             {loading ? (
@@ -2138,8 +2291,8 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
                   {locale === 'ko' ? '카테고리' : '分类'} *
                 </label>
                 <select
-                  value={editProduct?.category || ''}
-                  onChange={(e) => setEditProduct(prev => ({ ...prev!, category: e.target.value }))}
+                  value={editProduct?.category_id || ''}
+                  onChange={(e) => setEditProduct(prev => ({ ...prev!, category_id: parseInt(e.target.value) }))}
                   required
                   style={{
                     width: '100%',
@@ -2151,7 +2304,7 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
                 >
                   <option value="">{locale === 'ko' ? '선택하세요' : '请选择'}</option>
                   {categories.map(cat => (
-                    <option key={cat.id} value={cat.category}>
+                    <option key={cat.id} value={cat.id}>
                       {locale === 'ko' ? cat.name_ko : cat.name_zh}
                     </option>
                   ))}

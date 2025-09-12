@@ -87,7 +87,7 @@ export async function GET(request: NextRequest) {
         product_name: item.products?.name || '',
         sku: item.products?.sku || '',
         quantity: item.quantity,
-        unit_price: item.unit_price_krw,
+        unit_price: item.price_krw,
         total_price: item.total_price_krw
       }))
     })) || [];
@@ -146,12 +146,9 @@ export async function POST(request: NextRequest) {
         shipping_address_line1: body.shippingAddress,
         shipping_address_line2: body.shippingAddressDetail,
         shipping_postal_code: body.zipCode,
-        shipping_city: body.city || '',
-        shipping_state: body.state || '',
         status: 'paid',
         subtotal_krw: body.totalAmount,
-        shipping_fee_krw: body.shippingFee || 0,
-        total_krw: body.totalAmount + (body.shippingFee || 0),
+        total_krw: body.totalAmount,
         payment_method: body.paymentMethod || 'card',
         paid_at: new Date().toISOString(),
         customer_memo: body.customerMemo,
@@ -184,14 +181,8 @@ export async function POST(request: NextRequest) {
         .insert({
           order_id: order.id,
           product_id: body.productId,
-          sku: product?.sku || '',
-          product_name: product?.name || '',
-          product_category: product?.category || '',
-          product_model: product?.model || '',
-          product_color: product?.color || '',
-          product_brand: product?.brand || '',
           quantity: body.quantity,
-          unit_price_krw: unitPrice,
+          price_krw: unitPrice,
           total_price_krw: unitPrice * body.quantity
         });
       
@@ -199,43 +190,7 @@ export async function POST(request: NextRequest) {
         console.error('Order item creation error:', itemError);
       }
       
-      // 재고 업데이트 - inventory 테이블 업데이트
-      const { data: currentInventory } = await supabase
-        .from('inventory')
-        .select('on_hand, allocated')
-        .eq('product_id', body.productId)
-        .single();
-      
-      if (currentInventory) {
-        // allocated 증가 (주문 시 할당량 증가)
-        const newAllocated = (currentInventory.allocated || 0) + body.quantity;
-        
-        const { error: inventoryError } = await supabase
-          .from('inventory')
-          .update({ 
-            allocated: newAllocated
-          })
-          .eq('product_id', body.productId);
-        
-        if (inventoryError) {
-          console.error('Inventory update error:', inventoryError);
-        }
-      } else {
-        // inventory 레코드가 없으면 생성
-        const { error: createError } = await supabase
-          .from('inventory')
-          .insert({
-            product_id: body.productId,
-            on_hand: 0,
-            allocated: body.quantity
-          });
-        
-        if (createError) {
-          console.error('Inventory creation error:', createError);
-        }
-      }
-      
-      // products 테이블의 on_hand도 감소
+      // products 테이블의 on_hand 감소 (inventory 테이블은 없음)
       const { data: currentProduct } = await supabase
         .from('products')
         .select('on_hand')
@@ -254,30 +209,22 @@ export async function POST(request: NextRequest) {
           console.error('Product on_hand update error:', productError);
         }
         
-        // 사용자 이름 가져오기
-        let userName = 'System';
+        // 사용자 ID 가져오기
         const { data: { user } } = await supabase.auth.getUser();
-        if (user?.id) {
-          const { data: profile } = await supabase
-            .from('user_profiles')
-            .select('name')
-            .eq('id', user.id)
-            .single();
-          userName = profile?.name || user.email?.split('@')[0] || 'User';
-        }
+        const userId = user?.id || '00000000-0000-0000-0000-000000000000';
         
-        // 재고 이동 내역 기록 (판매)
+        // 재고 이동 내역 기록 (판매) - 올바른 필드명 사용
         const { error: movementError } = await supabase
           .from('inventory_movements')
           .insert({
             product_id: body.productId,
             movement_type: 'sale',
             quantity: -body.quantity, // 판매는 음수로 기록
-            balance_before: currentProduct.on_hand,
-            balance_after: newOnHand,
-            note: `주문 #${data.order_number}`,
+            previous_quantity: currentProduct.on_hand,
+            new_quantity: newOnHand,
+            note: `주문 #${orderNumber}`,
             movement_date: new Date().toISOString(),
-            created_by: userName  // 사용자 이름 사용
+            created_by: userId  // UUID 사용
           });
         
         if (movementError) {
@@ -287,44 +234,23 @@ export async function POST(request: NextRequest) {
     }
     
     // 현재 사용자 정보 가져오기
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    // 사용자 이름 가져오기 (출납장부용)
-    let cashbookUserName = 'System';
-    if (user?.id) {
-      const { data: profile } = await supabase
-        .from('user_profiles')
-        .select('name')
-        .eq('id', user.id)
-        .single();
-      cashbookUserName = profile?.name || user.email?.split('@')[0] || 'User';
-    }
-    
-    // 현재 잔액 조회 (가장 최근 기록)
-    const { data: lastTransaction } = await supabase
-      .from('cashbook_transactions')
-      .select('balance_krw')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
-    
-    const currentBalance = lastTransaction?.balance_krw || 0;
-    const newBalance = currentBalance + order.total_krw; // 수입이므로 더하기
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    const cashbookUserId = currentUser?.id || '00000000-0000-0000-0000-000000000000';
     
     // 출납장부에 판매 수익 기록
     const cashbookData = {
       transaction_date: new Date().toISOString().slice(0, 10),
-      type: 'sale' as const,  // 주문 유형 사용
+      type: 'income' as const,  // 'sale'이 아닌 'income' 사용
+      category: 'sale',  // 출납유형 코드
       amount: order.total_krw,  // 기본 amount는 KRW (주문은 원화)
       amount_krw: order.total_krw,  // 주문은 수입이므로 양수
       currency: 'KRW' as const,
-      balance_krw: newBalance,  // 계산된 잔액
+      fx_rate: 1.0,
       description: `주문 판매 수익 - ${orderNumber} (${body.customerName})`,
-      reference_type: 'order',
-      reference_id: order.id,
-      category: 'sales',
-      tags: ['order_payment', orderNumber, body.customerName],
-      created_by: cashbookUserName  // 사용자 이름 사용
+      ref_type: 'order',
+      ref_id: order.id,
+      note: `주문번호: ${orderNumber}`,
+      created_by: cashbookUserId  // UUID 사용
     };
     
     const { error: cashbookError } = await supabase
@@ -441,11 +367,11 @@ export async function PATCH(request: NextRequest) {
                   product_id: item.product_id,
                   movement_type: 'adjustment',
                   quantity: item.quantity, // 환불은 양수로 기록 (재고 증가)
-                  balance_before: currentProduct.on_hand,
-                  balance_after: newOnHand,
+                  previous_quantity: currentProduct.on_hand,
+                  new_quantity: newOnHand,
                   note: `주문 ${status === 'refunded' ? '환불' : '취소'} #${id}`,
                   movement_date: new Date().toISOString(),
-                  created_by: userName  // 사용자 이름 사용
+                  created_by: user?.id || '00000000-0000-0000-0000-000000000000'  // UUID 사용
                 });
               
               if (movementError) {
@@ -467,44 +393,23 @@ export async function PATCH(request: NextRequest) {
           if (orderData) {
             // 현재 사용자 정보 가져오기
             const { data: { user } } = await supabase.auth.getUser();
-            
-            // 사용자 이름 가져오기
-            let userName = 'System';
-            if (user?.id) {
-              const { data: profile } = await supabase
-                .from('user_profiles')
-                .select('name')
-                .eq('id', user.id)
-                .single();
-              userName = profile?.name || user.email?.split('@')[0] || 'User';
-            }
-            
-            // 현재 잔액 조회
-            const { data: lastTransaction } = await supabase
-              .from('cashbook_transactions')
-              .select('balance_krw')
-              .order('created_at', { ascending: false })
-              .limit(1)
-              .single();
-            
-            const currentBalance = lastTransaction?.balance_krw || 0;
-            const newBalance = currentBalance - orderData.total_krw; // 환불이므로 차감
+            const userId = user?.id || '00000000-0000-0000-0000-000000000000';
             
             const { error: cashbookError } = await supabase
               .from('cashbook_transactions')
               .insert({
                 transaction_date: new Date().toISOString().slice(0, 10),
-                type: 'refund' as const,  // refund 타입 사용
-                amount: -orderData.total_krw, // 기본 amount는 KRW (환불은 음수)
-                amount_krw: -orderData.total_krw, // 환불은 음수로 기록
+                type: 'expense' as const,  // 'refund'가 아닌 'expense' 사용
+                category: 'refund',  // 출납유형 코드
+                amount: -Math.abs(orderData.total_krw), // 지출 금액 (지출이므로 음수)
+                amount_krw: -Math.abs(orderData.total_krw), // 환불은 지출이므로 음수
                 currency: 'KRW' as const,
-                balance_krw: newBalance,
+                fx_rate: 1.0,
                 description: `주문 환불 - ${orderData.order_number} (${orderData.customer_name})`,
-                reference_type: 'order',
-                reference_id: id,
-                category: 'refund',
-                tags: ['order_refund', orderData.order_number],
-                created_by: userName  // 사용자 이름 사용
+                ref_type: 'order',
+                ref_id: id,
+                note: `주문번호: ${orderData.order_number}`,
+                created_by: userId  // UUID 사용
               });
             
             if (cashbookError) {

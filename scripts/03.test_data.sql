@@ -2,6 +2,7 @@
 -- YUANDI ERP - BULK TEST DATA (대용량 테스트 데이터)
 -- 상품 100개 이상, 주문 200개 이상 생성
 -- 다양한 주문 상태 포함 (paid, shipped, done, cancelled, refunded)
+-- Updated: 2025-01-11 - Fixed all field names
 -- =====================================================
 
 -- 기존 데이터 삭제 (CASCADE로 연관 데이터도 삭제)
@@ -22,7 +23,7 @@ TRUNCATE TABLE products CASCADE;
 -- 제품 생성을 위한 임시 함수
 DO $$
 DECLARE
-    v_category_id UUID;
+    v_category_id INTEGER;
     v_brand_names TEXT[][] := ARRAY[
         ARRAY['Louis Vuitton', '路易威登'],
         ARRAY['Gucci', '古驰'],
@@ -86,9 +87,9 @@ BEGIN
             v_sku := 'PRD-' || LPAD(v_counter::TEXT, 4, '0') || '-' || 
                      SUBSTR(MD5(RANDOM()::TEXT), 1, 6);
             
-            -- 가격 생성 (50만원 ~ 2000만원 범위)
+            -- 가격 생성 (판매가: 50만원 ~ 2000만원, 원가: 판매가의 60-80%)
             v_price_krw := ROUND((RANDOM() * 19500000 + 500000) / 10000) * 10000;
-            v_price_cny := ROUND(v_price_krw / 190);
+            v_price_cny := ROUND(v_price_krw * (0.6 + RANDOM() * 0.2) / 190);  -- 원가는 판매가의 60-80%
             
             -- 재고 생성 (0 ~ 50개)
             v_stock := FLOOR(RANDOM() * 51)::INTEGER;
@@ -100,7 +101,7 @@ BEGIN
                 color_ko, color_zh, 
                 brand_ko, brand_zh, 
                 size, 
-                unit_price_krw, unit_price_cny, 
+                price_krw, cost_cny, 
                 on_hand, 
                 is_active
             ) VALUES (
@@ -202,22 +203,44 @@ BEGIN
             order_number, 
             customer_name, 
             customer_phone,
+            customer_email,
+            customer_messenger_id,
+            customer_memo,
+            pccc,
+            shipping_address_line1,
+            shipping_address_line2,
+            shipping_postal_code,
             status, 
             order_date, 
             subtotal_krw, 
             total_krw,
-            payment_method, 
+            payment_method,
+            paid_at,
             notes, 
             created_by
         ) VALUES (
             v_order_number,
             v_customer_name,
             v_customer_phone,
+            v_customer_name || '@example.com',  -- customer_email
+            'kakao_' || SUBSTR(v_customer_phone, 4, 8),  -- customer_messenger_id
+            CASE (i % 5)
+                WHEN 0 THEN '빠른 배송 부탁드립니다'
+                WHEN 1 THEN '선물포장 해주세요'
+                WHEN 2 THEN '오후에 배송 부탁드립니다'
+                WHEN 3 THEN '안전하게 포장해주세요'
+                ELSE NULL
+            END,  -- customer_memo
+            'P' || LPAD(FLOOR(RANDOM() * 99999999999 + 1)::TEXT, 11, '0'),  -- pccc
+            '서울시 강남구 테헤란로 ' || (i % 100 + 1) || '길 ' || (i % 50 + 1),  -- shipping_address_line1
+            (i % 10 + 1) || '층 ' || (i % 20 + 101) || '호',  -- shipping_address_line2
+            LPAD(((i % 900) + 100)::TEXT, 3, '0') || LPAD(((i % 900) + 100)::TEXT, 3, '0'),  -- shipping_postal_code
             v_status,
             v_order_date,
             v_subtotal,
             v_subtotal,
             v_payment,
+            v_order_date + INTERVAL '1 hour',  -- paid_at
             CASE (i % 10)
                 WHEN 0 THEN 'VIP 고객, 빠른 배송 요청'
                 WHEN 1 THEN '선물 포장 요청'
@@ -259,7 +282,7 @@ BEGIN
         
         -- 랜덤하게 상품 선택하여 추가
         FOR v_product IN (
-            SELECT id, unit_price_krw, on_hand 
+            SELECT id, price_krw, on_hand 
             FROM products 
             WHERE is_active = true 
             ORDER BY RANDOM() 
@@ -269,7 +292,7 @@ BEGIN
             v_quantity := FLOOR(RANDOM() * 3 + 1)::INTEGER;
             
             -- 가격 계산
-            v_unit_price := v_product.unit_price_krw;
+            v_unit_price := v_product.price_krw;
             v_total_price := v_unit_price * v_quantity;
             v_items_total := v_items_total + v_total_price;
             v_product_count := v_product_count + 1;
@@ -278,7 +301,7 @@ BEGIN
                 order_id,
                 product_id,
                 quantity,
-                unit_price_krw,
+                price_krw,
                 total_price_krw
             ) VALUES (
                 v_order.id,
@@ -305,17 +328,30 @@ END $$;
 
 INSERT INTO shipments (
     order_id, 
-    shipping_address, 
+    shipping_address,
+    shipping_address_line1,
+    shipping_address_line2,
+    shipping_postal_code,
     shipping_method,
+    -- 새로운 통합 컬럼
+    courier,
+    tracking_number,
+    tracking_url,
+    shipping_cost_cny,
+    shipping_cost_krw,
+    status,
+    -- 레거시 컬럼 (하위 호환성)
     korea_tracking_number, 
     korea_shipping_company,
     china_tracking_number,
     china_shipping_company,
     shipped_date,
-    delivered_date
+    delivered_date,
+    actual_delivery_date
 )
 SELECT 
     o.id,
+    -- shipping_address
     CASE (o.id % 5)
         WHEN 0 THEN '서울시 강남구 청담동 ' || (o.id % 100 + 1) || '-' || (o.id % 50 + 1)
         WHEN 1 THEN '서울시 송파구 잠실동 ' || (o.id % 100 + 1) || '-' || (o.id % 50 + 1)
@@ -323,11 +359,44 @@ SELECT
         WHEN 3 THEN '경기도 성남시 분당구 ' || (o.id % 100 + 1) || '-' || (o.id % 50 + 1)
         ELSE '인천시 연수구 송도동 ' || (o.id % 100 + 1) || '-' || (o.id % 50 + 1)
     END,
+    -- shipping_address_line1
+    CASE (o.id % 5)
+        WHEN 0 THEN '서울시 강남구 청담동'
+        WHEN 1 THEN '서울시 송파구 잠실동'
+        WHEN 2 THEN '부산시 해운대구 우동'
+        WHEN 3 THEN '경기도 성남시 분당구'
+        ELSE '인천시 연수구 송도동'
+    END,
+    -- shipping_address_line2
+    (o.id % 100 + 1)::TEXT || '-' || (o.id % 50 + 1)::TEXT,
+    -- shipping_postal_code
+    LPAD(((o.id % 90000) + 10000)::TEXT, 5, '0'),
+    -- shipping_method
     CASE 
         WHEN RANDOM() < 0.3 THEN 'express'::shipping_method
         WHEN RANDOM() < 0.6 THEN 'standard'::shipping_method
         ELSE 'international'::shipping_method
     END,
+    -- courier (중국 택배사 기준)
+    CASE FLOOR(RANDOM() * 3)::INTEGER
+        WHEN 0 THEN 'YUANSUN'
+        WHEN 1 THEN 'SF'
+        ELSE 'EMS'
+    END,
+    -- tracking_number
+    'CN' || LPAD(FLOOR(RANDOM() * 1000000000)::TEXT, 10, '0'),
+    -- tracking_url
+    'https://track.example.com/cn/' || LPAD(FLOOR(RANDOM() * 1000000000)::TEXT, 10, '0'),
+    -- shipping_cost_cny
+    FLOOR(RANDOM() * 200 + 50)::DECIMAL(10,2),
+    -- shipping_cost_krw
+    FLOOR((RANDOM() * 200 + 50) * 180)::DECIMAL(12,0),
+    -- status
+    CASE 
+        WHEN o.status = 'done' THEN 'delivered'
+        ELSE 'in_transit'
+    END,
+    -- 레거시 컬럼들
     'KR' || LPAD(FLOOR(RANDOM() * 1000000000)::TEXT, 12, '0'),
     CASE FLOOR(RANDOM() * 4)::INTEGER
         WHEN 0 THEN 'CJ대한통운'
@@ -335,17 +404,18 @@ SELECT
         WHEN 2 THEN '로젠택배'
         ELSE '우체국택배'
     END,
-    CASE WHEN RANDOM() < 0.3 THEN 
-        'CN' || LPAD(FLOOR(RANDOM() * 1000000000)::TEXT, 10, '0')
-    ELSE NULL END,
-    CASE WHEN RANDOM() < 0.3 THEN 
-        CASE FLOOR(RANDOM() * 3)::INTEGER
-            WHEN 0 THEN '顺丰速运'
-            WHEN 1 THEN '韵达快递'
-            ELSE 'EMS中国'
-        END
-    ELSE NULL END,
+    'CN' || LPAD(FLOOR(RANDOM() * 1000000000)::TEXT, 10, '0'),
+    CASE FLOOR(RANDOM() * 3)::INTEGER
+        WHEN 0 THEN '顺丰速运'
+        WHEN 1 THEN '韵达快递'
+        ELSE 'EMS中国'
+    END,
     o.order_date + INTERVAL '1 day' * FLOOR(RANDOM() * 3 + 1)::INTEGER,
+    CASE 
+        WHEN o.status = 'done' THEN 
+            o.order_date + INTERVAL '1 day' * FLOOR(RANDOM() * 7 + 3)::INTEGER
+        ELSE NULL 
+    END,
     CASE 
         WHEN o.status = 'done' THEN 
             o.order_date + INTERVAL '1 day' * FLOOR(RANDOM() * 7 + 3)::INTEGER
@@ -358,6 +428,15 @@ WHERE o.status IN ('shipped', 'done');
 -- 5. INVENTORY MOVEMENTS 생성
 -- =====================================================
 
+-- Inventory 테이블 초기화 (products 테이블과 동기화)
+INSERT INTO inventory (product_id, on_hand, allocated)
+SELECT id, on_hand, 0 FROM products
+ON CONFLICT (product_id) 
+DO UPDATE SET 
+    on_hand = EXCLUDED.on_hand,
+    allocated = 0,
+    updated_at = NOW();
+
 -- 초기 재고 입고 기록
 INSERT INTO inventory_movements (
     product_id, 
@@ -366,7 +445,8 @@ INSERT INTO inventory_movements (
     previous_quantity, 
     new_quantity,
     reference_type, 
-    notes, 
+    note,  -- notes -> note로 변경
+    movement_date,  -- 추가
     created_by
 )
 SELECT 
@@ -377,6 +457,7 @@ SELECT
     p.on_hand + 50,
     'adjustment'::reference_type,
     '초기 재고 입고',
+    NOW(),  -- movement_date 추가
     (SELECT id FROM user_profiles WHERE role = 'admin' LIMIT 1)
 FROM products p;
 
@@ -389,7 +470,8 @@ INSERT INTO inventory_movements (
     new_quantity,
     reference_type,
     reference_id,
-    notes,
+    note,  -- notes -> note로 변경
+    movement_date,  -- 추가
     created_by
 )
 SELECT 
@@ -401,6 +483,7 @@ SELECT
     'order'::reference_type,
     oi.order_id,
     '주문 #' || o.order_number,
+    o.order_date,  -- movement_date로 주문 날짜 사용
     o.created_by
 FROM order_items oi
 JOIN orders o ON o.id = oi.order_id
@@ -413,19 +496,25 @@ WHERE o.status NOT IN ('cancelled', 'refunded');
 
 -- 초기 자본금
 INSERT INTO cashbook_transactions (
-    transaction_date, 
-    category, 
-    description, 
+    transaction_date,
+    type,
+    category,
+    amount,
     amount_krw,
-    payment_method, 
-    notes, 
+    currency,
+    fx_rate,
+    description,
+    note,
     created_by
 ) VALUES (
     CURRENT_DATE - INTERVAL '90 days',
-    '자본금',
-    '초기 운영 자본금',
+    'income',
+    'other_income',  -- 기타수입 출납유형
+    500000000,
     500000000,  -- 5억원
-    'transfer'::payment_method,
+    'KRW',
+    1.0,
+    '초기 운영 자본금',
     '사업 시작 자본금',
     (SELECT id FROM user_profiles WHERE role = 'admin' LIMIT 1)
 );
@@ -433,19 +522,25 @@ INSERT INTO cashbook_transactions (
 -- 재고 매입 비용 (월별로)
 INSERT INTO cashbook_transactions (
     transaction_date,
+    type,
     category,
-    description,
+    amount,
     amount_krw,
-    payment_method,
-    notes,
+    currency,
+    fx_rate,
+    description,
+    note,
     created_by
 )
 SELECT 
     CURRENT_DATE - (n || ' days')::INTERVAL,
-    '매입',
+    'expense',
+    'inbound',  -- 입고 출납유형
+    (RANDOM() * 50000000 + 10000000)::NUMERIC,  -- 1천만원 ~ 6천만원 (양수)
+    (RANDOM() * 50000000 + 10000000)::NUMERIC,
+    'KRW',
+    1.0,
     TO_CHAR(CURRENT_DATE - (n || ' days')::INTERVAL, 'MM') || '월 재고 매입',
-    -(RANDOM() * 50000000 + 10000000)::NUMERIC,  -- -1천만원 ~ -6천만원
-    'transfer'::payment_method,
     '명품 재고 매입',
     (SELECT id FROM user_profiles WHERE role = 'admin' LIMIT 1)
 FROM generate_series(0, 60, 15) AS n;  -- 15일마다
@@ -453,21 +548,29 @@ FROM generate_series(0, 60, 15) AS n;  -- 15일마다
 -- 판매 수입 (완료된 주문들)
 INSERT INTO cashbook_transactions (
     transaction_date,
+    type,
     category,
-    description,
+    amount,
     amount_krw,
-    payment_method,
-    order_id,
-    notes,
+    currency,
+    fx_rate,
+    description,
+    ref_type,
+    ref_id,
+    note,
     created_by
 )
 SELECT 
     o.order_date,
-    '판매',
-    '상품 판매 - ' || o.customer_name,
+    'income',
+    'sale',  -- 판매 출납유형
     o.total_krw,
-    o.payment_method,
-    o.id,
+    o.total_krw,
+    'KRW',
+    1.0,
+    '상품 판매 - ' || o.customer_name,
+    'order',
+    o.id::TEXT,
     '주문 #' || o.order_number,
     o.created_by
 FROM orders o
@@ -476,21 +579,29 @@ WHERE o.status IN ('paid', 'shipped', 'done');
 -- 환불 처리
 INSERT INTO cashbook_transactions (
     transaction_date,
+    type,
     category,
-    description,
+    amount,
     amount_krw,
-    payment_method,
-    order_id,
-    notes,
+    currency,
+    fx_rate,
+    description,
+    ref_type,
+    ref_id,
+    note,
     created_by
 )
 SELECT 
     o.order_date + INTERVAL '3 days',
-    '환불',
+    'expense',
+    'refund',  -- 환불 출납유형
+    o.total_krw,  -- 지출은 양수
+    o.total_krw,
+    'KRW',
+    1.0,
     '주문 환불 - ' || o.customer_name,
-    -o.total_krw,
-    o.payment_method,
-    o.id,
+    'order',
+    o.id::TEXT,
     '환불 처리 #' || o.order_number,
     o.created_by
 FROM orders o
@@ -499,19 +610,25 @@ WHERE o.status = 'refunded';
 -- 운영비 (월별)
 INSERT INTO cashbook_transactions (
     transaction_date,
+    type,
     category,
-    description,
+    amount,
     amount_krw,
-    payment_method,
-    notes,
+    currency,
+    fx_rate,
+    description,
+    note,
     created_by
 )
 SELECT 
     DATE_TRUNC('month', CURRENT_DATE - (n || ' days')::INTERVAL) + INTERVAL '25 days',
-    '운영비',
+    'expense',
+    'operation_cost',  -- 운영비 출납유형
+    3500000,  -- 지출은 양수
+    3500000,
+    'KRW',
+    1.0,
     TO_CHAR(CURRENT_DATE - (n || ' days')::INTERVAL, 'MM') || '월 사무실 임대료',
-    -3500000,
-    'transfer'::payment_method,
     '강남 사무실',
     (SELECT id FROM user_profiles WHERE role = 'admin' LIMIT 1)
 FROM generate_series(0, 60, 30) AS n;  -- 30일마다
@@ -519,19 +636,22 @@ FROM generate_series(0, 60, 30) AS n;  -- 30일마다
 -- 기타 운영비
 INSERT INTO cashbook_transactions (
     transaction_date,
+    type,
     category,
-    description,
+    amount,
     amount_krw,
-    payment_method,
-    notes,
+    currency,
+    fx_rate,
+    description,
+    note,
     created_by
 )
 VALUES
-    (CURRENT_DATE - INTERVAL '45 days', '마케팅', '온라인 광고비', -2500000, 'card'::payment_method, 'SNS 마케팅', (SELECT id FROM user_profiles WHERE role = 'admin' LIMIT 1)),
-    (CURRENT_DATE - INTERVAL '30 days', '배송비', '국제배송 정산', -1850000, 'transfer'::payment_method, 'EMS/DHL', (SELECT id FROM user_profiles WHERE role = 'admin' LIMIT 1)),
-    (CURRENT_DATE - INTERVAL '20 days', '인건비', '직원 급여', -8500000, 'transfer'::payment_method, '3명 급여', (SELECT id FROM user_profiles WHERE role = 'admin' LIMIT 1)),
-    (CURRENT_DATE - INTERVAL '10 days', '세금', '부가세 납부', -4200000, 'transfer'::payment_method, '3분기 부가세', (SELECT id FROM user_profiles WHERE role = 'admin' LIMIT 1)),
-    (CURRENT_DATE - INTERVAL '5 days', '수수료', '카드 수수료', -850000, 'card'::payment_method, '월 카드 수수료', (SELECT id FROM user_profiles WHERE role = 'admin' LIMIT 1));
+    (CURRENT_DATE - INTERVAL '45 days', 'expense', 'other_expense', 2500000, 2500000, 'KRW', 1.0, '온라인 광고비', 'SNS 마케팅', (SELECT id FROM user_profiles WHERE role = 'admin' LIMIT 1)),
+    (CURRENT_DATE - INTERVAL '30 days', 'expense', 'shipping_fee', 1850000, 1850000, 'KRW', 1.0, '국제배송 정산', 'EMS/DHL', (SELECT id FROM user_profiles WHERE role = 'admin' LIMIT 1)),
+    (CURRENT_DATE - INTERVAL '20 days', 'expense', 'operation_cost', 8500000, 8500000, 'KRW', 1.0, '직원 급여', '3명 급여', (SELECT id FROM user_profiles WHERE role = 'admin' LIMIT 1)),
+    (CURRENT_DATE - INTERVAL '10 days', 'expense', 'other_expense', 4200000, 4200000, 'KRW', 1.0, '부가세 납부', '3분기 부가세', (SELECT id FROM user_profiles WHERE role = 'admin' LIMIT 1)),
+    (CURRENT_DATE - INTERVAL '5 days', 'expense', 'other_expense', 850000, 850000, 'KRW', 1.0, '카드 수수료', '월 카드 수수료', (SELECT id FROM user_profiles WHERE role = 'admin' LIMIT 1));
 
 -- =====================================================
 -- 7. 최종 데이터 확인

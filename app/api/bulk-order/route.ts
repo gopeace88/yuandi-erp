@@ -53,6 +53,21 @@ export async function POST(request: NextRequest) {
     const orders = [];
     const errors = [];
     
+    // 카테고리 정보 가져오기
+    const { data: categories } = await supabase
+      .from('categories')
+      .select('id, name_ko, name_zh')
+      .order('id');
+    
+    // 카테고리 맵 생성 (이름 -> ID, ID -> 이름)
+    const categoryNameToId = new Map();
+    const categoryIdToName = new Map();
+    categories?.forEach(c => {
+      const name = c.name_ko || c.name_zh || `Category ${c.id}`;
+      categoryNameToId.set(name, c.id);
+      categoryIdToName.set(c.id, name);
+    });
+    
     // 상품 정보 미리 로드
     const { data: products } = await supabase
       .from('products')
@@ -67,29 +82,46 @@ export async function POST(request: NextRequest) {
     // 상품 선택 형식으로 상품 맵 생성 (모델:상품명:카테고리:색상:브랜드:재고 형식)
     const productMapBySelection = new Map();
     products?.forEach(p => {
-      const name = p.name_ko || p.name;
-      const brand = p.brand || '';
+      const name = p.name_ko || p.name_zh || '';
+      const brand = p.brand_ko || p.brand_zh || '';
       const model = p.model || '';
-      const category = p.category || '';
-      const color = p.color || '';
+      const categoryName = categoryIdToName.get(p.category_id) || '';
+      const color = p.color_ko || p.color_zh || '';
       const stock = p.on_hand || 0;
       
-      // 재고 포함 형식
-      const displayName = `${model}:${name}:${category}:${color}:${brand}:재고${stock}`;
-      productMapBySelection.set(displayName, p);
+      // 카테고리 이름을 사용한 형식
+      const displayNameWithCategoryName = `${model}:${name}:${categoryName}:${color}:${brand}:재고${stock}`;
+      productMapBySelection.set(displayNameWithCategoryName, p);
+      
+      // 카테고리 ID를 사용한 형식 (호환성)
+      const displayNameWithCategoryId = `${model}:${name}:${p.category_id || ''}:${color}:${brand}:재고${stock}`;
+      productMapBySelection.set(displayNameWithCategoryId, p);
       
       // [품절] 표시가 있는 형식도 처리
       if (stock === 0) {
-        const soldOutName = `[품절] ${displayName}`;
-        productMapBySelection.set(soldOutName, p);
+        const soldOutNameWithCategoryName = `[품절] ${displayNameWithCategoryName}`;
+        productMapBySelection.set(soldOutNameWithCategoryName, p);
+        
+        const soldOutNameWithCategoryId = `[품절] ${displayNameWithCategoryId}`;
+        productMapBySelection.set(soldOutNameWithCategoryId, p);
       }
       
       // 상품명만으로도 찾을 수 있도록 (호환성)
       productMapBySelection.set(name, p);
+      
+      // SKU로도 찾을 수 있도록
+      productMapBySelection.set(p.sku, p);
+      
+      // 모델명 + 상품명 조합으로도 찾을 수 있도록
+      if (model && name) {
+        productMapBySelection.set(`${model} ${name}`, p);
+      }
     });
 
     // 헤더 행 제외하고 데이터 읽기
     let processedRows = 0;
+    let skippedOrders: Array<{row: number, reason: string}> = [];
+    
     worksheet.eachRow((row, rowNumber) => {
       if (rowNumber === 1) return; // 헤더 건너뛰기
       
@@ -115,7 +147,20 @@ export async function POST(request: NextRequest) {
         rowNumber
       };
 
-      // 유효성 검사
+      // 상품 찾기
+      const product = productMapBySelection.get(order.productName);
+      
+      // 품절 상품은 스킵 처리
+      if (product && (order.productName.startsWith('[품절]') || (product.on_hand || 0) <= 0)) {
+        console.log(`행 ${rowNumber} 품절 상품 스킵:`, order.productName);
+        skippedOrders.push({
+          row: rowNumber,
+          reason: `품절 상품: ${order.productName}`
+        });
+        return;
+      }
+
+      // 유효성 검사 (품절 체크 제외)
       const validationErrors = [];
       
       if (!order.customerPhone) validationErrors.push('전화번호 누락');
@@ -126,12 +171,8 @@ export async function POST(request: NextRequest) {
       if (!order.address) validationErrors.push('주소 누락');
       if (!order.productName) validationErrors.push('상품 미선택');
       
-      // 상품 찾기
-      const product = productMapBySelection.get(order.productName);
       if (!product) {
         validationErrors.push(`상품 "${order.productName}" 없음`);
-      } else if (order.productName.startsWith('[품절]') || (product.on_hand || 0) <= 0) {
-        validationErrors.push(`상품 "${order.productName}"은(는) 품절 상태입니다`);
       }
       
       if (order.quantity <= 0) validationErrors.push('수량 오류');
@@ -148,21 +189,23 @@ export async function POST(request: NextRequest) {
       }
     });
     
-    console.log(`처리된 행 수: ${processedRows}, 유효한 주문: ${orders.length}, 오류: ${errors.length}`);
+    console.log(`처리된 행 수: ${processedRows}, 유효한 주문: ${orders.length}, 스킵: ${skippedOrders.length}, 오류: ${errors.length}`);
 
-    if (errors.length > 0) {
+    // 처리할 수 있는 데이터가 전혀 없는 경우만 에러
+    if (orders.length === 0 && skippedOrders.length === 0 && errors.length === 0) {
+      return NextResponse.json({
+        error: '처리할 주문이 없습니다',
+        message: '엑셀 파일에 데이터가 없거나 유효한 주문 데이터가 없습니다'
+      }, { status: 400 });
+    }
+    
+    // 유효성 검사 오류만 있는 경우
+    if (orders.length === 0 && errors.length > 0 && skippedOrders.length === 0) {
       console.log('유효성 검사 오류 상세:', errors);
       return NextResponse.json({
         error: '유효성 검사 실패',
         details: errors,
-        message: `${errors.length}개 행에서 오류 발생`
-      }, { status: 400 });
-    }
-    
-    if (orders.length === 0) {
-      return NextResponse.json({
-        error: '처리할 주문이 없습니다',
-        message: '엑셀 파일에 유효한 주문 데이터가 없습니다'
+        message: `모든 주문이 유효성 검사에 실패했습니다 (${errors.length}개)`
       }, { status: 400 });
     }
 
@@ -222,14 +265,8 @@ export async function POST(request: NextRequest) {
           .insert({
             order_id: newOrder.id,
             product_id: product.id,
-            sku: product.sku,
-            product_name: product.name_ko || product.name,
-            product_category: product.category,
-            product_model: product.model,
-            product_color: product.color,
-            product_brand: product.brand,
             quantity: order.quantity,
-            unit_price_krw: order.price,
+            price_krw: order.price,
             total_price_krw: order.price * order.quantity
           });
 
@@ -280,7 +317,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: successCount,
       failed: failedOrders.length,
-      failedDetails: failedOrders
+      failedDetails: failedOrders,
+      skipped: skippedOrders.length,
+      skippedDetails: skippedOrders
     });
 
   } catch (error) {

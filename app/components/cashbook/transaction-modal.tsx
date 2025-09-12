@@ -1,8 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Locale } from '@/lib/i18n/config'
 import { translate } from '@/lib/i18n/translations'
+
+interface CashbookType {
+  id: number
+  code: string
+  name_ko: string
+  name_zh: string
+  type: string
+  color?: string
+  display_order: number
+}
 
 interface TransactionModalProps {
   locale: Locale
@@ -12,6 +22,7 @@ interface TransactionModalProps {
 
 export function TransactionModal({ locale, onClose, onSuccess }: TransactionModalProps) {
   const [isLoading, setIsLoading] = useState(false)
+  const [cashbookTypes, setCashbookTypes] = useState<CashbookType[]>([])
   const [formData, setFormData] = useState({
     type: 'income',
     category: '',
@@ -21,6 +32,26 @@ export function TransactionModal({ locale, onClose, onSuccess }: TransactionModa
   })
 
   const t = (key: string) => translate(locale, key)
+
+  // DB에서 cashbook_types 가져오기
+  useEffect(() => {
+    fetchCashbookTypes()
+  }, [])
+
+  const fetchCashbookTypes = async () => {
+    try {
+      const response = await fetch('/api/cashbook-types')
+      const data = await response.json()
+      console.log('Fetched cashbook types:', data)
+      // API는 배열을 직접 반환함
+      if (Array.isArray(data)) {
+        setCashbookTypes(data)
+        console.log('Set cashbook types:', data)
+      }
+    } catch (error) {
+      console.error('Error fetching cashbook types:', error)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -83,22 +114,18 @@ export function TransactionModal({ locale, onClose, onSuccess }: TransactionModa
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="">선택하세요</option>
-                {formData.type === 'income' ? (
-                  <>
-                    <option value="sales">{t('cashbook.salesCategory')}</option>
-                    <option value="refund">환불</option>
-                    <option value="other">기타 수입</option>
-                  </>
-                ) : (
-                  <>
-                    <option value="purchase">상품 구매</option>
-                    <option value="shipping">배송비</option>
-                    <option value="fee">수수료</option>
-                    <option value="tax">세금</option>
-                    <option value="other">기타 지출</option>
-                  </>
-                )}
+                <option value="">{t('common.selectOption')}</option>
+                {(() => {
+                  const filteredTypes = cashbookTypes.filter(type => type.type === formData.type)
+                  console.log('Current type:', formData.type)
+                  console.log('All types:', cashbookTypes)
+                  console.log('Filtered types:', filteredTypes)
+                  return filteredTypes.map(type => (
+                    <option key={type.id} value={type.code}>
+                      {locale === 'zh-CN' ? type.name_zh : type.name_ko}
+                    </option>
+                  ))
+                })()}
               </select>
             </div>
 

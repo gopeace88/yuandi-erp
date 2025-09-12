@@ -341,8 +341,8 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
       color_zh: product.color_zh || '',
       brand_ko: product.brand_ko || '',
       brand_zh: product.brand_zh || '',
-      costCny: product.unit_price_cny || 0,
-      salePriceKrw: product.unit_price_krw || 0,
+      costCny: product.cost_cny || 0,
+      salePriceKrw: product.price_krw || 0,
       onHand: product.on_hand || 0,
       lowStockThreshold: product.low_stock_threshold || 5,
       imageUrl: product.image_url || '',
@@ -483,8 +483,8 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
         color_zh: newProduct.color_zh,
         brand_ko: newProduct.brand_ko,
         brand_zh: newProduct.brand_zh,
-        unit_price_cny: newProduct.costCny,
-        unit_price_krw: newProduct.salePriceKrw,
+        cost_cny: newProduct.costCny,
+        price_krw: newProduct.salePriceKrw,
         low_stock_threshold: newProduct.lowStockThreshold,
         description: newProduct.description,
         on_hand: newProduct.onHand || 0,  // 초기 재고 설정
@@ -512,8 +512,33 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
   };
 
   const handleInbound = async () => {
-    const product = products.find(p => p.id === inboundForm.productId);
-    if (!product) return;
+    console.log('🔥 handleInbound 함수 시작!');
+    console.log('📋 inboundForm:', inboundForm);
+    console.log('📋 전체 products 목록:', products);
+    console.log('📋 products 개수:', products.length);
+    console.log('📋 선택된 productId:', inboundForm.productId);
+    console.log('📋 productId 타입:', typeof inboundForm.productId);
+    
+    const product = products.find(p => {
+      const match = String(p.id) === String(inboundForm.productId);
+      console.log(`🔍 비교: p.id(${p.id}, ${typeof p.id}) vs productId(${inboundForm.productId}, ${typeof inboundForm.productId}) = ${match}`);
+      return match;
+    });
+    
+    console.log('🎯 찾은 product:', product);
+    
+    if (!product) {
+      console.error('❌ 상품을 찾을 수 없습니다:', inboundForm.productId);
+      console.error('❌ 사용 가능한 상품 ID들:', products.map(p => p.id));
+      alert('상품을 선택해주세요.');
+      return;
+    }
+
+    if (!inboundForm.quantity || inboundForm.quantity <= 0) {
+      console.error('❌ 수량이 유효하지 않습니다:', inboundForm.quantity);
+      alert('수량을 입력해주세요.');
+      return;
+    }
 
     try {
       const inboundData = {
@@ -523,15 +548,19 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
         note: inboundForm.note
       };
 
-      await api.inventory.inbound(inboundData);
+      console.log('📤 API 호출 데이터:', inboundData);
+      const result = await api.inventory.inbound(inboundData);
+      console.log('✅ API 호출 성공:', result);
       
       // 제품 및 재고 이동 목록 새로고침
       await loadProducts();
       await loadMovements();
       setShowInboundModal(false);
       resetInboundForm();
+      
+      console.log('🎉 재고 입고 완료!');
     } catch (error) {
-      console.error('재고 입고 실패:', error);
+      console.error('❌ 재고 입고 실패:', error);
       alert(locale === 'ko' ? '재고 입고에 실패했습니다.' : '库存入库失败');
     }
   };
@@ -616,13 +645,14 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
         .from('inventory_movements')
         .insert({
           product_id: productId,
-          type: 'adjustment',
+          movement_type: 'adjustment',
           quantity: quantity,
-          balance_before: product.onHand,
-          balance_after: newQuantity,
-          notes: reason,
-          created_by: localStorage.getItem('userName') || 'User'
-        } as any);
+          previous_quantity: product.onHand,
+          new_quantity: newQuantity,
+          note: reason,
+          movement_date: new Date().toISOString(),
+          created_by: '00000000-0000-0000-0000-000000000000' // 임시 UUID, 실제로는 사용자 ID 필요
+        });
 
       if (movementError) {
         console.error('재고 이동 내역 기록 실패:', movementError);
@@ -782,16 +812,16 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
           <div className="bg-white p-3 md:p-4 rounded-lg shadow">
             <p className="text-xs md:text-sm text-gray-500">{texts.totalProductsCount}</p>
-            <p className="text-lg md:text-2xl font-bold mt-1">{products.length}개</p>
+            <p className="text-lg md:text-2xl font-bold mt-1">{products.length}{locale === 'ko' ? '개' : '单'}</p>
           </div>
           <div className="bg-white p-3 md:p-4 rounded-lg shadow">
             <p className="text-xs md:text-sm text-gray-500">{texts.totalStockQuantity}</p>
-            <p className="text-lg md:text-2xl font-bold mt-1">{products.reduce((sum, p) => sum + p.onHand, 0)}개</p>
+            <p className="text-lg md:text-2xl font-bold mt-1">{products.reduce((sum, p) => sum + p.onHand, 0)}{locale === 'ko' ? '개' : '单'}</p>
           </div>
           <div className="bg-white p-3 md:p-4 rounded-lg shadow">
             <p className="text-xs md:text-sm text-gray-500">{texts.lowStockProducts}</p>
             <p className="text-lg md:text-2xl font-bold text-amber-600 mt-1">
-              {products.filter(p => p.onHand <= p.lowStockThreshold).length}개
+              {products.filter(p => p.onHand <= p.lowStockThreshold).length}{locale === 'ko' ? '개' : '单'}
             </p>
           </div>
           <div className="bg-white p-3 md:p-4 rounded-lg shadow">
@@ -996,6 +1026,7 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
               onPageChange={setCurrentPage}
               totalItems={filteredProducts.length}
               itemsPerPage={itemsPerPage}
+              locale={locale}
               className="mt-4 px-4 pb-4"
             />
           )}
@@ -1135,7 +1166,12 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
               <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>{texts.selectProduct} *</label>
               <select
                 value={inboundForm.productId}
-                onChange={(e) => setInboundForm({ ...inboundForm, productId: e.target.value })}
+                onChange={(e) => {
+                  console.log('🔄 상품 선택 변경:', e.target.value);
+                  console.log('🔄 변경 전 productId:', inboundForm.productId);
+                  setInboundForm({ ...inboundForm, productId: e.target.value });
+                  console.log('🔄 변경 후 productId:', e.target.value);
+                }}
                 style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
                 required
               >
@@ -1158,6 +1194,7 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
                   min="1"
                   value={inboundForm.quantity}
                   onChange={(e) => setInboundForm({ ...inboundForm, quantity: parseInt(e.target.value) || 0 })}
+                  onFocus={(e) => e.target.select()}
                   style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
                   required
                 />
@@ -1168,6 +1205,7 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
                   type="number"
                   value={inboundForm.unitCost}
                   onChange={(e) => setInboundForm({ ...inboundForm, unitCost: parseFloat(e.target.value) || 0 })}
+                  onFocus={(e) => e.target.select()}
                   style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
                 />
               </div>
@@ -1215,7 +1253,11 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
                 {texts.cancel}
               </button>
               <button
-                onClick={handleInbound}
+                onClick={(e) => {
+                  console.log('🔥 재고 입고 저장 버튼 클릭!', e);
+                  e.preventDefault();
+                  handleInbound();
+                }}
                 style={{
                   padding: '0.5rem 1rem',
                   backgroundColor: '#2563eb',
@@ -1290,6 +1332,7 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
                   type="number"
                   value={stockEditForm.quantity}
                   onChange={(e) => setStockEditForm({ ...stockEditForm, quantity: parseInt(e.target.value) || 0 })}
+                  onFocus={(e) => e.target.select()}
                   style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
                   placeholder={locale === 'ko' ? '+ 증가, - 감소' : '+ 增加, - 减少'}
                   required
@@ -1509,6 +1552,7 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
                     type="number"
                     value={newProduct.costCny}
                     onChange={(e) => setNewProduct({ ...newProduct, costCny: parseFloat(e.target.value) || 0 })}
+                    onFocus={(e) => e.target.value === '0' && e.target.select()}
                     style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
                     required
                   />
@@ -1519,6 +1563,7 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
                     type="number"
                     value={newProduct.salePriceKrw}
                     onChange={(e) => setNewProduct({ ...newProduct, salePriceKrw: parseFloat(e.target.value) || 0 })}
+                    onFocus={(e) => e.target.value === '0' && e.target.select()}
                     style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
                     required
                   />

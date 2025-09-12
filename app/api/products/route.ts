@@ -127,8 +127,8 @@ export async function POST(request: NextRequest) {
     }
     
     // 원가(CNY)와 판매가(KRW) 확인
-    const cost_cny = parseFloat(body.cost_cny || body.unit_price_cny) || 0;
-    const price_krw = parseFloat(body.price_krw || body.unit_price_krw) || 0;
+    const cost_cny = parseFloat(body.cost_cny) || 0;
+    const price_krw = parseFloat(body.price_krw) || 0;
     
     // 자동 환산 계산
     const cost_krw = cost_cny * currentRate;  // CNY -> KRW
@@ -149,8 +149,8 @@ export async function POST(request: NextRequest) {
       brand_ko: body.brand_ko,
       brand_zh: body.brand_zh,
       size: body.size,
-      unit_price_cny: cost_cny,
-      unit_price_krw: price_krw,
+      cost_cny: cost_cny,
+      price_krw: price_krw,
       on_hand: initialStock,   // 초기 재고 설정
       location: body.location,
       low_stock_threshold: body.low_stock_threshold || await getLowStockThresholdServer(),
@@ -213,46 +213,22 @@ export async function POST(request: NextRequest) {
       });
       
       // cashbook_transactions 테이블 구조에 맞게 수정
-      // created_by와 balance_krw 필드 추가 필요
       const { data: { user } } = await supabase.auth.getUser();
-      
-      // 사용자 이름 가져오기
-      let userName = 'System';
-      if (user?.id) {
-        const { data: profile } = await supabase
-          .from('user_profiles')
-          .select('name')
-          .eq('id', user.id)
-          .single();
-        userName = profile?.name || user.email?.split('@')[0] || 'User';
-      }
-      
-      // 현재 잔액 조회 (가장 최근 기록)
-      const { data: lastTransaction } = await supabase
-        .from('cashbook_transactions')
-        .select('balance_krw')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-      
-      const currentBalance = lastTransaction?.balance_krw || 0;
-      const newBalance = currentBalance - totalCost; // 지출이므로 차감
+      const userId = user?.id || '00000000-0000-0000-0000-000000000000';
       
       const cashbookData = {
         transaction_date: new Date().toISOString().split('T')[0],
-        type: 'inbound' as const,
-        amount: -totalCostCny,  // 기본 amount는 CNY (지출이므로 음수)
-        amount_krw: -totalCost,  // 원화 환산 금액 (지출이므로 음수)
-        amount_cny: totalCostCny,  // 위안화 금액 (양수로 기록)
+        type: 'expense' as const,  // 'inbound'가 아닌 'expense' 사용
+        category: 'inbound',  // 출납유형 코드
+        amount: totalCostCny,  // 지출 금액 (양수로 기록)
+        amount_krw: totalCost,  // 원화 환산 금액
         currency: 'CNY' as const,
-        exchange_rate: currentRate,
-        balance_krw: newBalance,  // 계산된 잔액 (필수 필드)
-        reference_type: 'product_initial_stock',
-        reference_id: product.id,
+        fx_rate: currentRate,
+        ref_type: 'product_initial_stock',
+        ref_id: product.id,
         description: `${product.name_ko || product.name_zh} 초기 재고 입고 (${initialStock}개 × ¥${cost_cny.toFixed(2)})`,
-        category: 'purchase',
-        tags: ['initial_stock', 'product_registration', product.sku],
-        created_by: userName  // 사용자 이름 사용
+        note: '상품 등록 시 초기 재고',
+        created_by: userId  // UUID 사용
       };
       
       const { data: cashbookEntry, error: cashbookError } = await supabase
@@ -268,17 +244,16 @@ export async function POST(request: NextRequest) {
         console.log('✅ 출납장부 기록 성공:', cashbookEntry);
       }
       
-      // 3. inventory_movements 테이블에도 기록
+      // 3. inventory_movements 테이블에도 기록 (올바른 필드명 사용)
       const movementData = {
         product_id: product.id,
         movement_type: 'inbound',
         quantity: initialStock,
-        balance_before: 0,
-        balance_after: initialStock,
+        previous_quantity: 0,
+        new_quantity: initialStock,
         note: '상품 등록 시 초기 재고',
-        unit_cost: cost_cny,
-        total_cost: totalCostCny,
-        created_by: userName  // 사용자 이름 사용
+        movement_date: new Date().toISOString(),
+        created_by: userId  // UUID 사용
       };
       
       const { error: movementError } = await supabase

@@ -10,6 +10,15 @@ export async function GET() {
   try {
     const supabase = await createClient();
     
+    // 카테고리 정보 가져오기
+    const { data: categories } = await supabase
+      .from('categories')
+      .select('id, name_ko, name_zh')
+      .order('id');
+    
+    // 카테고리 맵 생성
+    const categoryMap = new Map(categories?.map(c => [c.id, c.name_ko || c.name_zh || `Category ${c.id}`]) || []);
+    
     // 현재 상품 목록 가져오기
     const { data: products, error: productsError } = await supabase
       .from('products')
@@ -47,11 +56,11 @@ export async function GET() {
       products.forEach(product => {
         wsProducts.addRow({
           sku: product.sku,
-          name: product.name_ko || product.name,
-          category: product.category,
-          model: product.model,
-          color: product.color || '',
-          brand: product.brand || '',
+          name: product.name_ko || product.name_zh || '',
+          category: categoryMap.get(product.category_id) || '',
+          model: product.model || '',
+          color: product.color_ko || product.color_zh || '',
+          brand: product.brand_ko || product.brand_zh || '',
           price: product.price_krw || 0,
           stock: product.on_hand || 0
         });
@@ -94,7 +103,7 @@ export async function GET() {
       address: '서울시 강남구 테헤란로',
       addressDetail: '123호',
       productName: products && products[0] ? 
-        `${products[0].model || ''}:${products[0].name_ko || products[0].name}:${products[0].category || ''}:${products[0].color || ''}:${products[0].brand || ''}:재고${products[0].on_hand || 0}` 
+        `${products[0].model || ''}:${products[0].name_ko || products[0].name_zh || ''}:${categoryMap.get(products[0].category_id) || ''}:${products[0].color_ko || products[0].color_zh || ''}:${products[0].brand_ko || products[0].brand_zh || ''}:재고${products[0].on_hand || 0}` 
         : '모델:상품명:카테고리:색상:브랜드:재고',
       quantity: 1,
       price: products && products[0] ? products[0].price_krw : 100000,
@@ -131,11 +140,11 @@ export async function GET() {
       
       // 상품 리스트 추가 (모델:상품명:카테고리:색상:브랜드:재고 형식)
       sortedProducts.forEach(p => {
-        const name = p.name_ko || p.name;
-        const brand = p.brand || '';
+        const name = p.name_ko || p.name_zh || '';
+        const brand = p.brand_ko || p.brand_zh || '';
         const model = p.model || '';
-        const category = p.category || '';
-        const color = p.color || '';
+        const category = categoryMap.get(p.category_id) || '';
+        const color = p.color_ko || p.color_zh || '';
         const stock = p.on_hand || 0;
         
         // 재고가 0인 경우 [품절] 표시 추가

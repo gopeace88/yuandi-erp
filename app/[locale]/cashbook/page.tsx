@@ -18,7 +18,8 @@ interface CashbookPageProps {
 interface Transaction {
   id: string;
   transactionDate: string;
-  type: string; // Changed to string to support dynamic types
+  type: string; // income/expense
+  category: string; // 세부 카테고리 (sale, shipping, adjustment, etc.)
   amount: number;
   currency: 'KRW' | 'CNY';
   fxRate: number;
@@ -38,6 +39,7 @@ interface TransactionType {
   name: { ko: string; 'zh-CN': string };
   color: string;
   active: boolean;
+  dbType: string; // income, expense, adjustment
 }
 
 // 초기화 - Mock 데이터 제거
@@ -69,14 +71,12 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
   // 거래 추가 폼 상태
   const [addForm, setAddForm] = useState({
     transactionDate: new Date().toISOString().split('T')[0],
-    type: 'adjustment', // Changed to string to support dynamic types
+    type: '', // 빈 값으로 시작하여 사용자가 선택하도록
     amount: '',
     currency: 'KRW' as 'KRW' | 'CNY',
     fxRate: '1',
     description: '',
-    note: '',
-    bankName: '',
-    accountNo: ''
+    note: ''
   });
 
   // 다국어 텍스트
@@ -116,8 +116,6 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
       currency: '통화',
       exchangeRate: '환율',
       amountKrw: '원화 금액',
-      bank: '은행',
-      account: '계좌번호',
       cancel: '취소',
       save: '저장',
       close: '닫기',
@@ -169,8 +167,6 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
       currency: '货币',
       exchangeRate: '汇率',
       amountKrw: '韩元金额',
-      bank: '银行',
-      account: '账号',
       cancel: '取消',
       save: '保存',
       close: '关闭',
@@ -191,9 +187,9 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
 
   const t = texts[locale as keyof typeof texts] || texts.ko;
 
-  // 거래 유형별 색상
-  const getTypeColor = (type: string) => {
-    const transType = transactionTypes.find(t => t.id === type);
+  // 거래 카테고리별 색상
+  const getCategoryColor = (category: string) => {
+    const transType = transactionTypes.find(t => t.id === category);
     if (transType) {
       // Convert hex to light background with darker text
       const hexToRgb = (hex: string) => {
@@ -213,13 +209,13 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
     return { bg: '#f3f4f6', text: '#374151' };
   };
 
-  // 거래 유형 라벨
-  const getTypeLabel = (type: string) => {
-    const transType = transactionTypes.find(t => t.id === type);
+  // 거래 카테고리 라벨
+  const getCategoryLabel = (category: string) => {
+    const transType = transactionTypes.find(t => t.id === category);
     if (transType) {
       return transType.name[locale as 'ko' | 'zh-CN'];
     }
-    return t[type as keyof typeof t] || type;
+    return t[category as keyof typeof t] || category;
   };
 
   // 출납유형 로드 함수
@@ -233,7 +229,8 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
           id: type.code,
           name: { ko: type.name_ko, 'zh-CN': type.name_zh },
           color: type.color,
-          active: type.active
+          active: type.is_active,  // is_active로 수정
+          dbType: type.type // DB의 type 정보 추가 (income, expense, adjustment)
         }));
         setTransactionTypes(types);
         console.log('✅ 출납유형 로드 완료:', types);
@@ -278,16 +275,15 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
           id: t.id,
           transactionDate: t.transaction_date,
           type: t.type,
+          category: t.category,
           amount: t.amount || 0,
           currency: t.currency || 'KRW',
           fxRate: t.fx_rate || 1,
           amountKrw: t.amount_krw || 0,
           refType: t.ref_type || '',
-          refNo: t.ref_no || '',
+          refNo: t.ref_id || '', // ref_id 사용 (스키마에 맞게)
           description: t.description || '',
           note: t.note || '',
-          bankName: t.bank_name || '',
-          accountNo: t.account_no || '',
           createdAt: t.created_at,
           createdBy: t.created_by || 'Unknown'
         }));
@@ -335,8 +331,8 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
         return false;
       }
 
-      // 유형 필터
-      if (filterType !== 'all' && transaction.type !== filterType) {
+      // 카테고리 필터
+      if (filterType !== 'all' && transaction.category !== filterType) {
         return false;
       }
 
@@ -394,32 +390,34 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
     const fxRate = parseFloat(addForm.fxRate);
     const amountKrw = addForm.currency === 'KRW' ? amount : amount * fxRate;
     
-    // adjustment와 shipping은 일반적으로 지출
-    const finalAmount = addForm.type === 'adjustment' || addForm.type === 'shipping' 
-      ? -Math.abs(amount) 
-      : amount;
-    const finalAmountKrw = addForm.type === 'adjustment' || addForm.type === 'shipping'
-      ? -Math.abs(amountKrw)
-      : amountKrw;
+    // 선택된 거래 유형에서 type 확인
+    const selectedCashbookType = transactionTypes.find(t => t.id === addForm.type);
+    const isExpense = selectedCashbookType?.dbType === 'expense';
+    
+    // expense는 음수로, income과 adjustment는 양수로
+    const finalAmount = isExpense ? -Math.abs(amount) : Math.abs(amount);
+    const finalAmountKrw = isExpense ? -Math.abs(amountKrw) : Math.abs(amountKrw);
 
     try {
       // Supabase에 거래 저장
       const { createClient } = await import('@/lib/supabase/client');
       const supabase = createClient();
 
+      // 선택된 거래 유형에서 type 가져오기
+      const transactionType = selectedCashbookType?.dbType || 'adjustment';
+      
       const { data, error } = await supabase
         .from('cashbook_transactions')
         .insert({
           transaction_date: addForm.transactionDate,
-          type: addForm.type,
+          type: transactionType,
+          category: addForm.type, // 선택된 거래 유형 code
           amount: finalAmount,
           currency: addForm.currency,
           fx_rate: fxRate,
           amount_krw: finalAmountKrw,
           description: addForm.description,
-          note: addForm.note || null,
-          bank_name: addForm.bankName || null,
-          account_no: addForm.accountNo || null
+          note: addForm.note || null
         } as any)
         .select()
         .single();
@@ -437,14 +435,13 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
           id: dataTyped.id,
           transactionDate: dataTyped.transaction_date,
           type: dataTyped.type,
+          category: dataTyped.category,
           amount: dataTyped.amount,
           currency: dataTyped.currency,
           fxRate: dataTyped.fx_rate,
           amountKrw: dataTyped.amount_krw,
           description: dataTyped.description,
           note: dataTyped.note,
-          bankName: dataTyped.bank_name,
-          accountNo: dataTyped.account_no,
           createdAt: dataTyped.created_at,
           createdBy: localStorage.getItem('userName') || 'Unknown'
         };
@@ -456,14 +453,12 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
       // 폼 초기화
       setAddForm({
         transactionDate: new Date().toISOString().split('T')[0],
-        type: 'adjustment',
+        type: '',
         amount: '',
         currency: 'KRW',
         fxRate: '1',
         description: '',
-        note: '',
-        bankName: '',
-        accountNo: ''
+        note: ''
       });
       
       alert(locale === 'ko' ? '거래가 추가되었습니다.' : '交易已添加');
@@ -642,7 +637,7 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
           onClick={() => {
             const excelData = filteredTransactions.map(transaction => ({
               ...transaction,
-              typeLabel: getTypeLabel(transaction.type),
+              categoryLabel: getCategoryLabel(transaction.category),
               amountIn: transaction.amountKrw > 0 ? transaction.amountKrw : 0,
               amountOut: transaction.amountKrw < 0 ? Math.abs(transaction.amountKrw) : 0
             }));
@@ -651,7 +646,7 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
               data: excelData,
               columns: [
                 { key: 'transactionDate', header: t.date },
-                { key: 'typeLabel', header: t.type },
+                { key: 'categoryLabel', header: t.type },
                 { key: 'description', header: t.description },
                 { key: 'refNo', header: t.reference },
                 { key: 'amountIn', header: t.amountIn },
@@ -701,7 +696,7 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
             </thead>
             <tbody>
               {paginatedTransactions.map((transaction, index) => {
-                const typeColor = getTypeColor(transaction.type);
+                const categoryColor = getCategoryColor(transaction.category);
                 // 전체 리스트에서의 실제 인덱스 계산
                 const actualIndex = startIndex + index;
                 const balance = calculateBalance(actualIndex);
@@ -731,10 +726,10 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
                         borderRadius: '9999px',
                         fontSize: '0.75rem',
                         fontWeight: '500',
-                        backgroundColor: typeColor.bg,
-                        color: typeColor.text
+                        backgroundColor: categoryColor.bg,
+                        color: categoryColor.text
                       }}>
-                        {getTypeLabel(transaction.type)}
+                        {getCategoryLabel(transaction.category)}
                       </span>
                     </td>
                     <td style={{ padding: '0.75rem' }}>
@@ -778,6 +773,7 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
           onPageChange={setCurrentPage}
           totalItems={filteredTransactions.length}
           itemsPerPage={itemsPerPage}
+          locale={locale}
         />
       )}
 
@@ -968,43 +964,6 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
                 />
               </div>
 
-              {/* 은행 정보 */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: '500' }}>
-                    {t.bank}
-                  </label>
-                  <input
-                    type="text"
-                    value={addForm.bankName}
-                    onChange={(e) => setAddForm({ ...addForm, bankName: e.target.value })}
-                    style={{
-                      width: '100%',
-                      padding: '0.5rem',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '0.375rem',
-                      fontSize: '0.875rem'
-                    }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: '500' }}>
-                    {t.account}
-                  </label>
-                  <input
-                    type="text"
-                    value={addForm.accountNo}
-                    onChange={(e) => setAddForm({ ...addForm, accountNo: e.target.value })}
-                    style={{
-                      width: '100%',
-                      padding: '0.5rem',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '0.375rem',
-                      fontSize: '0.875rem'
-                    }}
-                  />
-                </div>
-              </div>
             </div>
 
             {/* 버튼 */}
@@ -1014,14 +973,12 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
                   setShowAddModal(false);
                   setAddForm({
                     transactionDate: new Date().toISOString().split('T')[0],
-                    type: 'adjustment',
+                    type: '',
                     amount: '',
                     currency: 'KRW',
                     fxRate: '1',
                     description: '',
-                    note: '',
-                    bankName: '',
-                    accountNo: ''
+                    note: ''
                   });
                 }}
                 style={{
@@ -1037,14 +994,14 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
               </button>
               <button
                 onClick={handleAddTransaction}
-                disabled={!addForm.amount || !addForm.description}
+                disabled={!addForm.type || !addForm.amount || !addForm.description}
                 style={{
                   padding: '0.5rem 1rem',
-                  backgroundColor: addForm.amount && addForm.description ? '#2563eb' : '#9ca3af',
+                  backgroundColor: addForm.type && addForm.amount && addForm.description ? '#2563eb' : '#9ca3af',
                   color: 'white',
                   border: 'none',
                   borderRadius: '0.375rem',
-                  cursor: addForm.amount && addForm.description ? 'pointer' : 'not-allowed'
+                  cursor: addForm.type && addForm.amount && addForm.description ? 'pointer' : 'not-allowed'
                 }}
               >
                 {t.save}
@@ -1096,10 +1053,10 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
                     borderRadius: '9999px',
                     fontSize: '0.75rem',
                     fontWeight: '500',
-                    backgroundColor: getTypeColor(selectedTransaction.type).bg,
-                    color: getTypeColor(selectedTransaction.type).text
+                    backgroundColor: getCategoryColor(selectedTransaction.category).bg,
+                    color: getCategoryColor(selectedTransaction.category).text
                   }}>
-                    {getTypeLabel(selectedTransaction.type)}
+                    {getCategoryLabel(selectedTransaction.category)}
                   </span>
                 </div>
                 <div>

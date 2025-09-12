@@ -20,7 +20,8 @@ export const koMessages = {
     "previous": "이전",
     "close": "닫기",
     "view": "보기",
-    "reset": "초기화"
+    "reset": "초기화",
+    "selectOption": "선택하세요"
   },
   "nav": {
     "dashboard": "대시보드",
@@ -279,14 +280,7 @@ export const koMessages = {
     "amount": "금액",
     "description": "설명",
     "category": "분류",
-    "salesCategory": "매출",
-    "salesDescription": "판매",
     "allTypes": "모든 유형",
-    "sale": "매출",
-    "inbound": "매입",
-    "shipping": "배송비",
-    "adjustment": "조정",
-    "refund": "환불",
     "startDate": "시작일",
     "endDate": "종료일"
   },

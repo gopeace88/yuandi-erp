@@ -69,14 +69,8 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // 사용자 이름 가져오기
-    let userName = 'User';
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('name')
-      .eq('id', user.id)
-      .single();
-    userName = profile?.name || user.email?.split('@')[0] || 'User';
+    // 사용자 ID 사용
+    const userId = user.id;
     
     const { product_id, type, quantity, from_location, to_location, notes } = body;
     
@@ -91,17 +85,16 @@ export async function POST(request: NextRequest) {
     // 트랜잭션 시작을 위한 개별 작업
     const operations = [];
     
-    // 1. 재고 이동 기록 생성
+    // 1. 재고 이동 기록 생성 (올바른 필드명 사용)
     const movementData = {
       product_id,
-      type,
+      movement_type: type,  // type이 아닌 movement_type 사용
       quantity: Math.abs(quantity), // 항상 양수로 저장
-      from_location: from_location || (type === 'inbound' ? 'supplier' : 'warehouse'),
-      to_location: to_location || (type === 'inbound' ? 'warehouse' : 'customer'),
-      reference_type: type === 'inbound' ? 'purchase' : type === 'outbound' ? 'sales' : 'adjustment',
-      reference_id: `${type.toUpperCase()}-${Date.now()}`,
-      notes,
-      created_by: userName  // 사용자 이름 사용
+      previous_quantity: 0,  // 나중에 업데이트 필요
+      new_quantity: 0,  // 나중에 업데이트 필요
+      note: notes || '',
+      movement_date: new Date().toISOString(),
+      created_by: userId  // UUID 사용
     };
     
     const { data: movement, error: movementError } = await supabase
@@ -218,14 +211,17 @@ export async function POST(request: NextRequest) {
         
         const cashbookData = {
           transaction_date: new Date().toISOString().slice(0, 10),
-          type: type === 'inbound' ? 'inbound' : 'sale',  // 입고는 inbound, 출고는 sale 유형 사용
-          category: type === 'inbound' ? 'purchase' : 'sales',
-          amount_krw: type === 'inbound' ? -amount : amount,  // 입고는 지출(음수), 출고는 수입(양수)
+          type: type === 'inbound' ? 'expense' : 'income',  // 입고는 expense, 출고는 income
+          category: type === 'inbound' ? 'inbound' : 'sale',  // 출납유형 코드
+          amount: Math.abs(amount),  // 양수로 기록
+          amount_krw: Math.abs(amount),  // 양수로 기록
+          currency: 'KRW',
+          fx_rate: 1.0,
           description: `${type === 'inbound' ? '상품 입고' : '상품 출고'} - ${product.name} ${Math.abs(quantity)}개`,
-          reference_type: 'inventory_movement',
-          reference_id: movement.id,
-          created_by: userName,  // 사용자 이름 사용
-          balance_krw: 0 // 잔액은 트리거나 별도 계산으로 처리
+          ref_type: 'inventory_movement',
+          ref_id: movement.id,
+          note: notes || '',
+          created_by: userId  // UUID 사용
         };
         
         const { error: cashbookError } = await supabase
