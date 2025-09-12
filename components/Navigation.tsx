@@ -112,7 +112,7 @@ export default function Navigation({ locale }: NavigationProps) {
       path: `/${locale}/inventory`,
       label: t.inventory,
       icon: '📋',
-      roles: ['admin', 'order_manager']
+      roles: ['admin', 'order_manager', 'ship_manager']
     },
     {
       path: `/${locale}/cashbook`,

@@ -187,6 +187,70 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
 
   const t = texts[locale as keyof typeof texts] || texts.ko;
 
+  // 거래 설명 다국어 처리
+  const getLocalizedDescription = (description: string): string => {
+    if (!description) return '-';
+    
+    // 패턴: [TYPE] 나머지 내용
+    const match = description.match(/^\[([A-Z_]+)\]\s*(.*)$/);
+    if (!match) return description;
+    
+    const [, type, details] = match;
+    
+    // 거래 유형별 다국어 텍스트
+    const typeTranslations: Record<string, { ko: string; 'zh-CN': string }> = {
+      // 판매/구매 관련
+      'ORDER_SALE': { ko: '주문 판매', 'zh-CN': '订单销售' },
+      'ORDER_REFUND': { ko: '주문 환불', 'zh-CN': '订单退款' },
+      'ORDER_CANCEL': { ko: '주문 취소', 'zh-CN': '订单取消' },
+      
+      // 배송 관련
+      'SHIPPING_FEE': { ko: '배송비', 'zh-CN': '运费' },
+      'SHIPPING_REFUND': { ko: '배송비 환불', 'zh-CN': '运费退款' },
+      
+      // 재고 관련
+      'INVENTORY_INBOUND': { ko: '재고 입고', 'zh-CN': '库存入库' },
+      'INVENTORY_OUTBOUND': { ko: '재고 출고', 'zh-CN': '库存出库' },
+      'INVENTORY_ADJUSTMENT': { ko: '재고 조정', 'zh-CN': '库存调整' },
+      
+      // 일반 거래
+      'ADJUSTMENT': { ko: '조정', 'zh-CN': '调整' },
+      'DEPOSIT': { ko: '입금', 'zh-CN': '存款' },
+      'WITHDRAWAL': { ko: '출금', 'zh-CN': '取款' },
+      'EXPENSE': { ko: '지출', 'zh-CN': '支出' },
+      'INCOME': { ko: '수입', 'zh-CN': '收入' },
+      'TRANSFER': { ko: '이체', 'zh-CN': '转账' },
+      'FEE': { ko: '수수료', 'zh-CN': '手续费' }
+    };
+    
+    const translation = typeTranslations[type];
+    if (translation) {
+      const localizedType = translation[locale as 'ko' | 'zh-CN'] || translation.ko;
+      return details ? `${localizedType} - ${details}` : localizedType;
+    }
+    
+    return description;
+  };
+
+  // 컴포넌트 마운트 시 초기화
+  useEffect(() => {
+    // localStorage에서 사용자 역할 가져오기
+    const role = localStorage.getItem('userRole');
+    if (role) {
+      setUserRole(role);
+      console.log('User role loaded:', role);
+    }
+
+    // 모바일 여부 체크
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   // 거래 카테고리별 색상
   const getCategoryColor = (category: string) => {
     const transType = transactionTypes.find(t => t.id === category);
@@ -545,8 +609,8 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
             }}
           />
 
-          {/* 거래 추가 버튼 (admin/order_manager만) */}
-          {(userRole === 'admin' || userRole === 'order_manager') && (
+          {/* 거래 추가 버튼 (admin/order_manager/ship_manager) */}
+          {(userRole === 'admin' || userRole === 'order_manager' || userRole === 'ship_manager') && (
             <button
               onClick={() => setShowAddModal(true)}
               style={{
@@ -733,7 +797,7 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
                       </span>
                     </td>
                     <td style={{ padding: '0.75rem' }}>
-                      <div>{transaction.description}</div>
+                      <div>{getLocalizedDescription(transaction.description)}</div>
                       {transaction.note && (
                         <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
                           {transaction.note}
@@ -1060,7 +1124,7 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
                   </span>
                 </div>
                 <div>
-                  <strong>{t.description}:</strong> {selectedTransaction.description}
+                  <strong>{t.description}:</strong> {getLocalizedDescription(selectedTransaction.description)}
                 </div>
               </div>
 

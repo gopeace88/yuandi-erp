@@ -246,7 +246,7 @@ export async function POST(request: NextRequest) {
       amount_krw: order.total_krw,  // 주문은 수입이므로 양수
       currency: 'KRW' as const,
       fx_rate: 1.0,
-      description: `주문 판매 수익 - ${orderNumber} (${body.customerName})`,
+      description: `[ORDER_SALE] ${orderNumber} (${body.customerName})`,
       ref_type: 'order',
       ref_id: order.id,
       note: `주문번호: ${orderNumber}`,
@@ -405,7 +405,7 @@ export async function PATCH(request: NextRequest) {
                 amount_krw: -Math.abs(orderData.total_krw), // 환불은 지출이므로 음수
                 currency: 'KRW' as const,
                 fx_rate: 1.0,
-                description: `주문 환불 - ${orderData.order_number} (${orderData.customer_name})`,
+                description: `[ORDER_REFUND] ${orderData.order_number} (${orderData.customer_name})`,
                 ref_type: 'order',
                 ref_id: id,
                 note: `주문번호: ${orderData.order_number}`,

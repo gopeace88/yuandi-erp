@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
       amount_krw: -Math.abs(totalCost), // 입고는 지출이므로 음수
       currency: 'KRW' as const,
       fx_rate: 1.0, // KRW 기준이므로 1.0
-      description: `${currentProduct.name_ko || currentProduct.name_zh || '상품'} 재고 입고 (${Math.abs(quantity)}개)`,
+      description: `[INVENTORY_INBOUND] ${currentProduct.name_ko || currentProduct.name_zh || ''} (${Math.abs(quantity)})`,
       ref_type: 'inventory_movement',
       ref_id: movement.id,
       note: note || '재고 입고',

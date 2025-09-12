@@ -166,7 +166,7 @@ export async function POST(request: NextRequest) {
           amount_krw: -Math.abs(shippingCostKrw),  // 원화 환산 금액 (지출이므로 음수)
           currency: 'CNY',
           fx_rate: CNY_TO_KRW_RATE,
-          description: `배송비 - ${orderData?.order_number} (${orderData?.customer_name})`,
+          description: `[SHIPPING_FEE] ${orderData?.order_number} (${orderData?.customer_name})`,
           ref_type: 'shipment',
           ref_id: shipment.id.toString(),
           note: `주문번호: ${orderData?.order_number || ''}, 중국 운송장: ${body.trackingNumberCn || ''}`,

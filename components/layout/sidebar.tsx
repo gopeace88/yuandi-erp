@@ -38,6 +38,12 @@ const ProductsIcon = ({ className }: { className?: string }) => (
   </svg>
 )
 
+const ShipmentsIcon = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" />
+  </svg>
+)
+
 const InventoryIcon = ({ className }: { className?: string }) => (
   <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
     <path strokeLinecap="round" strokeLinejoin="round" d="M6 6.878V6a2.25 2.25 0 012.25-2.25h7.5A2.25 2.25 0 0118 6v.878m-12 0c.235-.083.487-.128.75-.128h10.5c.263 0 .515.045.75.128m-12 0A2.25 2.25 0 004.5 9v.878m13.5-3A2.25 2.25 0 0119.5 9v.878m-15 0A2.25 2.25 0 005.25 12v6.75a2.25 2.25 0 002.25 2.25h9a2.25 2.25 0 002.25-2.25V12a2.25 2.25 0 00-1.5-2.122m-15 0A2.25 2.25 0 003.75 12v6.75a2.25 2.25 0 002.25 2.25H9" />
@@ -110,10 +116,16 @@ export function Sidebar({ user }: SidebarProps) {
       roles: ['admin', 'order_manager']
     },
     { 
+      name: currentLocale === 'ko' ? '배송 관리' : '配送管理', 
+      href: `/${currentLocale}/shipments`, 
+      icon: ShipmentsIcon,
+      roles: ['admin', 'order_manager', 'ship_manager']
+    },
+    { 
       name: currentLocale === 'ko' ? '재고 관리' : '库存管理', 
       href: `/${currentLocale}/inventory`, 
       icon: InventoryIcon,
-      roles: ['admin', 'order_manager']
+      roles: ['admin', 'order_manager', 'ship_manager']
     },
     { 
       name: currentLocale === 'ko' ? '출납장부' : '出纳簿', 
