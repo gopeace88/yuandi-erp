@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { clearSystemSettingsCache } from '@/lib/utils/system-settings';
+import { MobileBottomNav } from '@/components/Navigation';
+import { createClient } from '@/lib/supabase/client';
 
 interface Category {
   id: string;
@@ -82,6 +84,7 @@ interface SettingsPageProps {
 
 export default function SettingsPage({ params: { locale } }: SettingsPageProps) {
   const router = useRouter();
+  const [supabase] = useState(() => createClient());
   const [activeTab, setActiveTab] = useState<'products' | 'users' | 'categories' | 'cashbook_types' | 'system'>('products');
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -102,6 +105,7 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
   const [showBulkImportModal, setShowBulkImportModal] = useState(false);
   const [bulkImportFile, setBulkImportFile] = useState<File | null>(null);
   const [bulkImportLoading, setBulkImportLoading] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   
   // 페이지네이션
   const [productPage, setProductPage] = useState(1);
@@ -279,6 +283,18 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
   useEffect(() => {
     checkUserRole();
   }, []);
+  
+  // 모바일 감지
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // 탭별 데이터 로드
   useEffect(() => {
@@ -298,8 +314,6 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
 
   const checkUserRole = async () => {
     try {
-      const { createClient } = await import('@/lib/supabase/client');
-      const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       
       if (user) {
@@ -414,8 +428,6 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
   const loadProducts = async () => {
     setLoading(true);
     try {
-      const { createClient } = await import('@/lib/supabase/client');
-      const supabase = createClient();
       
       const { data, error } = await supabase
         .from('products')
@@ -629,8 +641,6 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
     
     try {
       setLoading(true);
-      const { createClient } = await import('@/lib/supabase/client');
-      const supabase = createClient();
       
       // SKU 자동 생성 (신규 등록시만)
       let sku = editProduct.sku;
@@ -1003,7 +1013,7 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
   };
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f3f4f6', padding: '2rem' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: '#f3f4f6', padding: '2rem', paddingBottom: isMobile ? '100px' : '2rem' }}>
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
         {/* 헤더 */}
         <div style={{ 
@@ -1174,21 +1184,24 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
             {loading ? (
               <div style={{ textAlign: 'center', padding: '2rem' }}>로딩중...</div>
             ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600' }}>{t.productName}</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600' }}>{t.category}</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600' }}>{locale === 'ko' ? '색상' : '颜色'}</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600' }}>{t.brand}</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600' }}>{t.model}</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'right', fontSize: '0.875rem', fontWeight: '600' }}>{t.costCny}</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'right', fontSize: '0.875rem', fontWeight: '600' }}>{t.priceKrw}</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'center', fontSize: '0.875rem', fontWeight: '600' }}>{t.status}</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'center', fontSize: '0.875rem', fontWeight: '600' }}>{t.actions}</th>
-                    </tr>
-                  </thead>
+              <>
+                {/* 데스크톱 테이블 뷰 */}
+                {!isMobile && (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600' }}>{t.productName}</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600' }}>{t.category}</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600' }}>{locale === 'ko' ? '색상' : '颜色'}</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600' }}>{t.brand}</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600' }}>{t.model}</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'right', fontSize: '0.875rem', fontWeight: '600' }}>{t.costCny}</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'right', fontSize: '0.875rem', fontWeight: '600' }}>{t.priceKrw}</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'center', fontSize: '0.875rem', fontWeight: '600' }}>{t.status}</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'center', fontSize: '0.875rem', fontWeight: '600' }}>{t.actions}</th>
+                        </tr>
+                      </thead>
                   <tbody>
                     {products
                       .slice((productPage - 1) * itemsPerPage, productPage * itemsPerPage)
@@ -1272,10 +1285,169 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
                           </button>
                         </td>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                      ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {/* 모바일 카드 뷰 */}
+                {isMobile && (
+                  <div style={{ display: 'grid', gap: '1rem' }}>
+                    {products
+                      .slice((productPage - 1) * itemsPerPage, productPage * itemsPerPage)
+                      .map(product => {
+                        const cat = categories.find(c => c.id === product.category_id);
+                        return (
+                          <div key={product.id} style={{
+                            backgroundColor: 'white',
+                            border: '1px solid #e5e7eb',
+                            borderRadius: '0.5rem',
+                            padding: '1rem',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                          }}>
+                            {/* 상품명과 상태 */}
+                            <div style={{ 
+                              display: 'flex', 
+                              justifyContent: 'space-between', 
+                              alignItems: 'flex-start',
+                              marginBottom: '0.75rem'
+                            }}>
+                              <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: '1rem', fontWeight: '600', color: '#1f2937' }}>
+                                  {product.name_ko || product.name || '-'}
+                                </div>
+                                <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                                  {product.name_zh || product.name || '-'}
+                                </div>
+                              </div>
+                              <span style={{
+                                padding: '0.375rem 0.75rem',
+                                borderRadius: '0.375rem',
+                                fontSize: '0.75rem',
+                                fontWeight: '600',
+                                backgroundColor: product.is_active ? '#dcfce7' : '#fee2e2',
+                                color: product.is_active ? '#166534' : '#dc2626'
+                              }}>
+                                {product.is_active ? t.active : t.inactive}
+                              </span>
+                            </div>
+
+                            {/* 제품 정보 그리드 */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
+                              <div>
+                                <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem' }}>
+                                  {t.category}
+                                </div>
+                                <div style={{ fontSize: '0.875rem', fontWeight: '500' }}>
+                                  <div>{cat?.name_ko || '-'}</div>
+                                  <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{cat?.name_zh || '-'}</div>
+                                </div>
+                              </div>
+                              
+                              <div>
+                                <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem' }}>
+                                  {t.model}
+                                </div>
+                                <div style={{ fontSize: '0.875rem', fontWeight: '500' }}>
+                                  {product.model || '-'}
+                                </div>
+                              </div>
+
+                              <div>
+                                <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem' }}>
+                                  {locale === 'ko' ? '색상' : '颜色'}
+                                </div>
+                                <div style={{ fontSize: '0.875rem', fontWeight: '500' }}>
+                                  <div>{product.color_ko || product.color || '-'}</div>
+                                  <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{product.color_zh || product.color || '-'}</div>
+                                </div>
+                              </div>
+
+                              <div>
+                                <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem' }}>
+                                  {t.brand}
+                                </div>
+                                <div style={{ fontSize: '0.875rem', fontWeight: '500' }}>
+                                  <div>{product.brand_ko || product.brand || '-'}</div>
+                                  <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{product.brand_zh || product.brand || '-'}</div>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* 가격 정보 */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
+                              <div>
+                                <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem' }}>
+                                  {t.costCny}
+                                </div>
+                                <div style={{ fontSize: '1rem', fontWeight: '600', color: '#ef4444' }}>
+                                  ¥{product.cost_cny?.toLocaleString() || '0'}
+                                </div>
+                              </div>
+                              
+                              <div>
+                                <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem' }}>
+                                  {t.priceKrw}
+                                </div>
+                                <div style={{ fontSize: '1rem', fontWeight: '600', color: '#2563eb' }}>
+                                  ₩{product.price_krw?.toLocaleString() || '0'}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* 추가 정보 */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem', padding: '0.75rem', backgroundColor: '#f9fafb', borderRadius: '0.375rem' }}>
+                              <div>
+                                <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem' }}>
+                                  SKU
+                                </div>
+                                <div style={{ fontSize: '0.875rem', fontFamily: 'monospace' }}>
+                                  {product.sku || '-'}
+                                </div>
+                              </div>
+                              
+                              <div>
+                                <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem' }}>
+                                  {locale === 'ko' ? '재고' : '库존'}
+                                </div>
+                                <div style={{ fontSize: '0.875rem', fontWeight: '500' }}>
+                                  {product.on_hand || 0}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* 액션 버튼 */}
+                            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                              <button
+                                onClick={() => {
+                                  setEditProduct(product);
+                                  setShowProductModal(true);
+                                }}
+                                style={{
+                                  padding: '0.5rem 1rem',
+                                  backgroundColor: '#3b82f6',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '0.375rem',
+                                  fontSize: '0.875rem',
+                                  fontWeight: '500',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '0.5rem'
+                                }}
+                              >
+                                ✏️ {t.edit}
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })
+                    }
+                  </div>
+                )}
+              </>
             )}
             {renderPagination(products.length, productPage, setProductPage)}
           </div>
@@ -1326,11 +1498,14 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
             {loading ? (
               <div style={{ textAlign: 'center', padding: '2rem' }}>Loading...</div>
             ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
-                      <th style={{ padding: '0.75rem', textAlign: 'left' }}>{t.email}</th>
+              <>
+                {/* 데스크톱 테이블 뷰 */}
+                {!isMobile && (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
+                          <th style={{ padding: '0.75rem', textAlign: 'left' }}>{t.email}</th>
                       <th style={{ padding: '0.75rem', textAlign: 'left' }}>{t.name}</th>
                       <th style={{ padding: '0.75rem', textAlign: 'left' }}>{t.role}</th>
                       <th style={{ padding: '0.75rem', textAlign: 'center' }}>{t.status}</th>
@@ -1418,10 +1593,150 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
                           </div>
                         </td>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                      ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {/* 모바일 카드 뷰 */}
+                {isMobile && (
+                  <div style={{ display: 'grid', gap: '1rem' }}>
+                    {users
+                      .slice((userPage - 1) * itemsPerPage, userPage * itemsPerPage)
+                      .map(user => (
+                        <div key={user.id} style={{
+                          backgroundColor: 'white',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '0.5rem',
+                          padding: '1rem',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                        }}>
+                          {/* 이름과 상태 */}
+                          <div style={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'flex-start',
+                            marginBottom: '0.75rem'
+                          }}>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: '1rem', fontWeight: '600', color: '#1f2937' }}>
+                                {user.name}
+                              </div>
+                              <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                                {user.email}
+                              </div>
+                            </div>
+                            <span style={{
+                              padding: '0.375rem 0.75rem',
+                              borderRadius: '0.375rem',
+                              fontSize: '0.75rem',
+                              fontWeight: '600',
+                              backgroundColor: user.is_active ? '#dcfce7' : '#fee2e2',
+                              color: user.is_active ? '#166534' : '#dc2626'
+                            }}>
+                              {user.is_active ? t.active : t.inactive}
+                            </span>
+                          </div>
+
+                          {/* 역할 정보 */}
+                          <div style={{ marginBottom: '1rem' }}>
+                            <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem' }}>
+                              {t.role}
+                            </div>
+                            <div style={{ 
+                              fontSize: '0.875rem', 
+                              fontWeight: '500',
+                              padding: '0.375rem 0.75rem',
+                              backgroundColor: 
+                                user.role === 'admin' ? '#dbeafe' : 
+                                user.role === 'order_manager' ? '#e0e7ff' : '#f3f4f6',
+                              color: 
+                                user.role === 'admin' ? '#1d4ed8' : 
+                                user.role === 'order_manager' ? '#3730a3' : '#374151',
+                              borderRadius: '0.375rem',
+                              display: 'inline-block'
+                            }}>
+                              {user.role === 'admin' ? t.admin : 
+                               user.role === 'order_manager' ? t.orderManager : 
+                               t.shipManager}
+                            </div>
+                          </div>
+
+                          {/* 추가 정보 */}
+                          <div style={{ marginBottom: '1rem', padding: '0.75rem', backgroundColor: '#f9fafb', borderRadius: '0.375rem' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                              <div>
+                                <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem' }}>
+                                  {locale === 'ko' ? '언어' : '语言'}
+                                </div>
+                                <div style={{ fontSize: '0.875rem', fontWeight: '500' }}>
+                                  {user.language === 'ko' ? '한국어' : 
+                                   user.language === 'zh' ? '中文' : 'English'}
+                                </div>
+                              </div>
+                              
+                              <div>
+                                <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem' }}>
+                                  ID
+                                </div>
+                                <div style={{ fontSize: '0.75rem', fontFamily: 'monospace', color: '#6b7280' }}>
+                                  {user.id.slice(0, 8)}...
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* 액션 버튼들 */}
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                            <button
+                              onClick={() => {
+                                setEditUser(user);
+                                setShowUserModal(true);
+                              }}
+                              style={{
+                                padding: '0.5rem 1rem',
+                                backgroundColor: '#3b82f6',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '0.375rem',
+                                fontSize: '0.875rem',
+                                fontWeight: '500',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem'
+                              }}
+                            >
+                              ✏️ {t.edit}
+                            </button>
+                            {user.role !== 'admin' && (
+                              <button
+                                onClick={() => handleDeleteUser(user.id)}
+                                style={{
+                                  padding: '0.5rem 1rem',
+                                  backgroundColor: '#fee2e2',
+                                  color: '#dc2626',
+                                  border: '1px solid #fecaca',
+                                  borderRadius: '0.375rem',
+                                  fontSize: '0.875rem',
+                                  fontWeight: '500',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '0.5rem'
+                                }}
+                              >
+                                🗑️ {t.delete}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    }
+                  </div>
+                )}
+              </>
             )}
             {renderPagination(users.length, userPage, setUserPage)}
           </div>
@@ -1465,18 +1780,21 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
             {loading ? (
               <div style={{ textAlign: 'center', padding: '2rem' }}>Loading...</div>
             ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
-                      <th style={{ padding: '0.75rem', textAlign: 'left' }}>{t.displayOrder}</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'left' }}>{t.code}</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'left' }}>{t.name_ko}</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'left' }}>{t.name_zh}</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'center' }}>{t.isSystem}</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'center' }}>{t.actions}</th>
-                    </tr>
-                  </thead>
+              <>
+                {/* 데스크톱 테이블 뷰 */}
+                {!isMobile && (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
+                          <th style={{ padding: '0.75rem', textAlign: 'left' }}>{t.displayOrder}</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left' }}>{t.code}</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left' }}>{t.name_ko}</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left' }}>{t.name_zh}</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'center' }}>{t.isSystem}</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'center' }}>{t.actions}</th>
+                        </tr>
+                      </thead>
                   <tbody>
                     {categories
                       .slice((categoryPage - 1) * itemsPerPage, categoryPage * itemsPerPage)
@@ -1531,12 +1849,85 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
                           >
                             {t.delete}
                           </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                          </td>
+                        </tr>
+                      ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {/* 모바일 카드 뷰 */}
+                {isMobile && (
+                  <div style={{ display: 'grid', gap: '1rem' }}>
+                    {categories
+                      .slice((categoryPage - 1) * itemsPerPage, categoryPage * itemsPerPage)
+                      .map(category => (
+                        <div key={category.id} style={{
+                          backgroundColor: 'white',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '0.5rem',
+                          padding: '1rem',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                        }}>
+                          {/* 카테고리명 */}
+                          <div style={{ marginBottom: '0.75rem' }}>
+                            <div style={{ fontSize: '1rem', fontWeight: '600', color: '#1f2937' }}>
+                              {category.name_ko}
+                            </div>
+                            <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                              {category.name_zh}
+                            </div>
+                          </div>
+
+                          {/* 정보 그리드 */}
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
+                            <div>
+                              <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem' }}>
+                                {t.code}
+                              </div>
+                              <div style={{ fontSize: '0.875rem', fontWeight: '500', fontFamily: 'monospace' }}>
+                                {category.code}
+                              </div>
+                            </div>
+                            
+                            <div>
+                              <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem' }}>
+                                {t.displayOrder}
+                              </div>
+                              <div style={{ fontSize: '0.875rem', fontWeight: '500' }}>
+                                {category.display_order}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* 액션 버튼 */}
+                          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                            <button
+                              onClick={() => {
+                                setEditCategory(category);
+                                setShowAddModal(true);
+                              }}
+                              style={{
+                                padding: '0.5rem 1rem',
+                                backgroundColor: '#3b82f6',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '0.375rem',
+                                fontSize: '0.875rem',
+                                fontWeight: '500',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              ✏️ {t.edit}
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    }
+                  </div>
+                )}
+              </>
             )}
             {renderPagination(categories.length, categoryPage, setCategoryPage)}
           </div>
@@ -1580,18 +1971,21 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
             {loading ? (
               <div style={{ textAlign: 'center', padding: '2rem' }}>Loading...</div>
             ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
-                      <th style={{ padding: '0.75rem', textAlign: 'left' }}>{t.displayOrder}</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'left' }}>{t.code}</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'left' }}>{t.name_ko}</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'left' }}>{t.name_zh}</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'center' }}>{t.type}</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'center' }}>{t.typeColor}</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'center' }}>{t.isSystem}</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'center' }}>{t.actions}</th>
+              <>
+                {/* 데스크톱 테이블 뷰 */}
+                {!isMobile && (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
+                          <th style={{ padding: '0.75rem', textAlign: 'left' }}>{t.displayOrder}</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left' }}>{t.code}</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left' }}>{t.name_ko}</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left' }}>{t.name_zh}</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'center' }}>{t.type}</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'center' }}>{t.typeColor}</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'center' }}>{t.isSystem}</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'center' }}>{t.actions}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1681,6 +2075,146 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
                 </table>
               </div>
             )}
+
+                {/* 모바일 카드 뷰 */}
+                {isMobile && (
+                  <div style={{ display: 'grid', gap: '1rem' }}>
+                    {cashbookTypes
+                      .slice((cashbookTypePage - 1) * itemsPerPage, cashbookTypePage * itemsPerPage)
+                      .map(type => (
+                      <div key={type.id} style={{
+                        backgroundColor: '#f9fafb',
+                        padding: '1rem',
+                        borderRadius: '0.5rem',
+                        border: '1px solid #e5e7eb'
+                      }}>
+                        <div style={{ 
+                          display: 'flex', 
+                          justifyContent: 'space-between', 
+                          alignItems: 'flex-start',
+                          marginBottom: '0.75rem'
+                        }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ 
+                              fontSize: '1rem', 
+                              fontWeight: '600', 
+                              marginBottom: '0.25rem',
+                              color: '#111827'
+                            }}>
+                              {type.name_ko}
+                            </div>
+                            <div style={{ 
+                              fontSize: '0.875rem', 
+                              color: '#6b7280',
+                              marginBottom: '0.25rem'
+                            }}>
+                              {type.name_zh}
+                            </div>
+                            <div style={{ 
+                              fontSize: '0.75rem', 
+                              color: '#9ca3af',
+                              fontFamily: 'monospace'
+                            }}>
+                              {t.code}: {type.code}
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
+                            <span style={{
+                              padding: '0.25rem 0.5rem',
+                              backgroundColor: 
+                                type.type === 'income' ? '#dcfce7' : 
+                                type.type === 'expense' ? '#fee2e2' : '#f3f4f6',
+                              color: 
+                                type.type === 'income' ? '#166534' : 
+                                type.type === 'expense' ? '#dc2626' : '#6b7280',
+                              borderRadius: '0.25rem',
+                              fontSize: '0.75rem',
+                              fontWeight: '500'
+                            }}>
+                              {type.type === 'income' ? t.income : 
+                               type.type === 'expense' ? t.expense : t.adjustment}
+                            </span>
+                            <div style={{
+                              width: '1.5rem',
+                              height: '1.5rem',
+                              backgroundColor: type.color,
+                              borderRadius: '0.25rem',
+                              border: '1px solid #d1d5db'
+                            }} />
+                          </div>
+                        </div>
+                        
+                        <div style={{ 
+                          display: 'flex', 
+                          justifyContent: 'space-between', 
+                          alignItems: 'center',
+                          marginBottom: '0.75rem'
+                        }}>
+                          <div style={{ 
+                            fontSize: '0.875rem', 
+                            color: '#374151'
+                          }}>
+                            <span style={{ fontWeight: '500' }}>{t.displayOrder}:</span> {type.display_order}
+                          </div>
+                          {false && (
+                            <span style={{
+                              padding: '0.25rem 0.5rem',
+                              backgroundColor: '#dbeafe',
+                              color: '#1e40af',
+                              borderRadius: '0.25rem',
+                              fontSize: '0.75rem',
+                              fontWeight: '500'
+                            }}>
+                              System
+                            </span>
+                          )}
+                        </div>
+                        
+                        <div style={{ 
+                          display: 'flex', 
+                          gap: '0.5rem',
+                          justifyContent: 'flex-end'
+                        }}>
+                          <button
+                            onClick={() => {
+                              setEditCashbookType(type);
+                              setShowCashbookModal(true);
+                            }}
+                            style={{
+                              padding: '0.5rem 1rem',
+                              backgroundColor: '#f3f4f6',
+                              border: '1px solid #d1d5db',
+                              borderRadius: '0.375rem',
+                              fontSize: '0.875rem',
+                              cursor: 'pointer',
+                              color: '#374151',
+                              fontWeight: '500'
+                            }}
+                          >
+                            {t.edit}
+                          </button>
+                          <button
+                            onClick={() => handleDeleteCashbookType(type.id)}
+                            style={{
+                              padding: '0.5rem 1rem',
+                              backgroundColor: '#fee2e2',
+                              color: '#dc2626',
+                              border: '1px solid #fecaca',
+                              borderRadius: '0.375rem',
+                              fontSize: '0.875rem',
+                              cursor: 'pointer',
+                              fontWeight: '500'
+                            }}
+                          >
+                            {t.delete}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
             {renderPagination(cashbookTypes.length, cashbookTypePage, setCashbookTypePage)}
           </div>
         )}
@@ -1738,44 +2272,188 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
             {loading ? (
               <div style={{ textAlign: 'center', padding: '2rem' }}>Loading...</div>
             ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', width: '30%' }}>
-                        {locale === 'ko' ? '설정 항목' : '设置项'}
-                      </th>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', width: '40%' }}>
-                        {locale === 'ko' ? '값' : '值'}
-                      </th>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', width: '30%' }}>
-                        {locale === 'ko' ? '설명' : '说明'}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
+              <>
+                {/* 데스크톱 테이블 뷰 */}
+                {!isMobile && (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', width: '30%' }}>
+                            {locale === 'ko' ? '설정 항목' : '设置项'}
+                          </th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', width: '40%' }}>
+                            {locale === 'ko' ? '값' : '值'}
+                          </th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', width: '30%' }}>
+                            {locale === 'ko' ? '설명' : '说明'}
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {systemSettings.map((setting) => (
+                          <tr key={setting.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                            <td style={{ padding: '0.75rem' }}>
+                              <div style={{ fontWeight: '500' }}>
+                                {locale === 'ko' ? setting.name_ko : setting.name_zh}
+                              </div>
+                              {setting.is_required && (
+                                <span style={{ color: '#ef4444', fontSize: '0.75rem' }}> *필수</span>
+                              )}
+                            </td>
+                            <td style={{ padding: '0.75rem' }}>
+                              {setting.value_type === 'boolean' ? (
+                                <select
+                                  value={editedSettings[setting.key] || setting.value}
+                                  onChange={(e) => handleSettingChange(setting.key, e.target.value)}
+                                  disabled={!setting.is_editable}
+                                  style={{
+                                    padding: '0.5rem',
+                                    border: '1px solid #d1d5db',
+                                    borderRadius: '0.375rem',
+                                    width: '100%',
+                                    backgroundColor: setting.is_editable ? 'white' : '#f3f4f6'
+                                  }}
+                                >
+                                  <option value="true">{locale === 'ko' ? '활성' : '启用'}</option>
+                                  <option value="false">{locale === 'ko' ? '비활성' : '禁用'}</option>
+                                </select>
+                              ) : setting.value_type === 'number' ? (
+                                <input
+                                  type="number"
+                                  value={editedSettings[setting.key] || setting.value}
+                                  onChange={(e) => handleSettingChange(setting.key, e.target.value)}
+                                  disabled={!setting.is_editable}
+                                  min={setting.min_value || undefined}
+                                  max={setting.max_value || undefined}
+                                  style={{
+                                    padding: '0.5rem',
+                                    border: '1px solid #d1d5db',
+                                    borderRadius: '0.375rem',
+                                    width: '100%',
+                                    backgroundColor: setting.is_editable ? 'white' : '#f3f4f6'
+                                  }}
+                                />
+                              ) : (
+                                <input
+                                  type="text"
+                                  value={editedSettings[setting.key] || setting.value}
+                                  onChange={(e) => handleSettingChange(setting.key, e.target.value)}
+                                  disabled={!setting.is_editable}
+                                  style={{
+                                    padding: '0.5rem',
+                                    border: '1px solid #d1d5db',
+                                    borderRadius: '0.375rem',
+                                    width: '100%',
+                                    backgroundColor: setting.is_editable ? 'white' : '#f3f4f6'
+                                  }}
+                                />
+                              )}
+                            </td>
+                            <td style={{ padding: '0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                              {locale === 'ko' ? setting.description_ko : setting.description_zh}
+                              {setting.min_value !== null && setting.max_value !== null && (
+                                <div style={{ marginTop: '0.25rem', fontSize: '0.75rem' }}>
+                                  {locale === 'ko' ? `범위: ${setting.min_value} ~ ${setting.max_value}` : `范围: ${setting.min_value} ~ ${setting.max_value}`}
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {/* 모바일 카드 뷰 */}
+                {isMobile && (
+                  <div style={{ display: 'grid', gap: '1rem' }}>
                     {systemSettings.map((setting) => (
-                      <tr key={setting.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                        <td style={{ padding: '0.75rem' }}>
-                          <div style={{ fontWeight: '500' }}>
+                      <div key={setting.id} style={{
+                        backgroundColor: '#f9fafb',
+                        padding: '1rem',
+                        borderRadius: '0.5rem',
+                        border: '1px solid #e5e7eb'
+                      }}>
+                        <div style={{ marginBottom: '1rem' }}>
+                          <div style={{ 
+                            fontSize: '1rem', 
+                            fontWeight: '600', 
+                            marginBottom: '0.25rem',
+                            color: '#111827',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem'
+                          }}>
                             {locale === 'ko' ? setting.name_ko : setting.name_zh}
+                            {setting.is_required && (
+                              <span style={{ 
+                                color: '#ef4444', 
+                                fontSize: '0.75rem',
+                                backgroundColor: '#fef2f2',
+                                padding: '0.125rem 0.375rem',
+                                borderRadius: '0.25rem',
+                                fontWeight: '500'
+                              }}>
+                                필수
+                              </span>
+                            )}
+                            {!setting.is_editable && (
+                              <span style={{ 
+                                color: '#6b7280', 
+                                fontSize: '0.75rem',
+                                backgroundColor: '#f3f4f6',
+                                padding: '0.125rem 0.375rem',
+                                borderRadius: '0.25rem',
+                                fontWeight: '500'
+                              }}>
+                                읽기전용
+                              </span>
+                            )}
                           </div>
-                          {setting.is_required && (
-                            <span style={{ color: '#ef4444', fontSize: '0.75rem' }}> *필수</span>
-                          )}
-                        </td>
-                        <td style={{ padding: '0.75rem' }}>
+                          <div style={{ 
+                            fontSize: '0.875rem', 
+                            color: '#6b7280',
+                            marginBottom: '0.75rem',
+                            lineHeight: '1.5'
+                          }}>
+                            {locale === 'ko' ? setting.description_ko : setting.description_zh}
+                            {setting.min_value !== null && setting.max_value !== null && (
+                              <div style={{ 
+                                marginTop: '0.25rem', 
+                                fontSize: '0.75rem',
+                                color: '#9ca3af',
+                                fontStyle: 'italic'
+                              }}>
+                                {locale === 'ko' ? `범위: ${setting.min_value} ~ ${setting.max_value}` : `范围: ${setting.min_value} ~ ${setting.max_value}`}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <label style={{
+                            display: 'block',
+                            fontSize: '0.875rem',
+                            fontWeight: '500',
+                            color: '#374151',
+                            marginBottom: '0.5rem'
+                          }}>
+                            {locale === 'ko' ? '현재 값' : '当前值'}
+                          </label>
                           {setting.value_type === 'boolean' ? (
                             <select
                               value={editedSettings[setting.key] || setting.value}
                               onChange={(e) => handleSettingChange(setting.key, e.target.value)}
                               disabled={!setting.is_editable}
                               style={{
-                                padding: '0.5rem',
+                                padding: '0.75rem',
                                 border: '1px solid #d1d5db',
-                                borderRadius: '0.375rem',
+                                borderRadius: '0.5rem',
                                 width: '100%',
-                                backgroundColor: setting.is_editable ? 'white' : '#f3f4f6'
+                                fontSize: '1rem',
+                                backgroundColor: setting.is_editable ? 'white' : '#f3f4f6',
+                                color: setting.is_editable ? '#111827' : '#6b7280'
                               }}
                             >
                               <option value="true">{locale === 'ko' ? '활성' : '启用'}</option>
@@ -1790,11 +2468,13 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
                               min={setting.min_value || undefined}
                               max={setting.max_value || undefined}
                               style={{
-                                padding: '0.5rem',
+                                padding: '0.75rem',
                                 border: '1px solid #d1d5db',
-                                borderRadius: '0.375rem',
+                                borderRadius: '0.5rem',
                                 width: '100%',
-                                backgroundColor: setting.is_editable ? 'white' : '#f3f4f6'
+                                fontSize: '1rem',
+                                backgroundColor: setting.is_editable ? 'white' : '#f3f4f6',
+                                color: setting.is_editable ? '#111827' : '#6b7280'
                               }}
                             />
                           ) : (
@@ -1804,28 +2484,22 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
                               onChange={(e) => handleSettingChange(setting.key, e.target.value)}
                               disabled={!setting.is_editable}
                               style={{
-                                padding: '0.5rem',
+                                padding: '0.75rem',
                                 border: '1px solid #d1d5db',
-                                borderRadius: '0.375rem',
+                                borderRadius: '0.5rem',
                                 width: '100%',
-                                backgroundColor: setting.is_editable ? 'white' : '#f3f4f6'
+                                fontSize: '1rem',
+                                backgroundColor: setting.is_editable ? 'white' : '#f3f4f6',
+                                color: setting.is_editable ? '#111827' : '#6b7280'
                               }}
                             />
                           )}
-                        </td>
-                        <td style={{ padding: '0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>
-                          {locale === 'ko' ? setting.description_ko : setting.description_zh}
-                          {setting.min_value !== null && setting.max_value !== null && (
-                            <div style={{ marginTop: '0.25rem', fontSize: '0.75rem' }}>
-                              {locale === 'ko' ? `범위: ${setting.min_value} ~ ${setting.max_value}` : `范围: ${setting.min_value} ~ ${setting.max_value}`}
-                            </div>
-                          )}
-                        </td>
-                      </tr>
+                        </div>
+                      </div>
                     ))}
-                  </tbody>
-                </table>
-              </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
@@ -2896,6 +3570,9 @@ export default function SettingsPage({ params: { locale } }: SettingsPageProps) 
           </div>
         </div>
       )}
+      
+      {/* 모바일 하단 네비게이션 */}
+      {isMobile && <MobileBottomNav locale={locale} />}
     </div>
   );
 }

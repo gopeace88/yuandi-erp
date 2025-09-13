@@ -6,6 +6,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { MobileBottomNav } from '@/components/Navigation';
 import { exportToExcel } from '@/lib/utils/excel';
@@ -34,6 +35,22 @@ interface Transaction {
   createdBy: string;
 }
 
+interface OrderDetail {
+  orderNumber: string;
+  customerName: string;
+  phoneNumber: string;
+  address: string;
+  trackingNumber?: string;
+  products: {
+    name: string;
+    model: string;
+    category: string;
+    brand: string;
+    color: string;
+    quantity: number;
+  }[];
+}
+
 interface TransactionType {
   id: string;
   name: { ko: string; 'zh-CN': string };
@@ -46,11 +63,13 @@ interface TransactionType {
 const MOCK_TRANSACTIONS: Transaction[] = [];
 
 export default function CashbookPage({ params: { locale } }: CashbookPageProps) {
+  const [supabase] = useState(() => createClient());
   const [transactions, setTransactions] = useState<Transaction[]>(MOCK_TRANSACTIONS);
   const [filteredTransactions, setFilteredTransactions] = useState<Transaction[]>(MOCK_TRANSACTIONS);
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [orderDetail, setOrderDetail] = useState<OrderDetail | null>(null);
   const [dateRange, setDateRange] = useState({
     startDate: '2025-01-01',
     endDate: '2025-12-31'
@@ -87,13 +106,12 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
       to: '~',
       filter: '필터',
       search: '검색',
-      searchPlaceholder: '설명, 참조번호, 메모 검색...',
+      searchPlaceholder: '설명, 메모 검색...',
       addTransaction: '거래 추가',
       // Table Headers
       date: '날짜',
       type: '유형',
       description: '설명',
-      reference: '참조',
       amountIn: '입금',
       amountOut: '출금',
       balance: '잔액',
@@ -121,16 +139,16 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
       close: '닫기',
       viewDetail: '상세',
       // Summary
-      totalIn: '총 입금',
-      totalOut: '총 출금',
-      netAmount: '순액',
+      totalIn: '수입',
+      totalOut: '지출',
+      netAmount: '잔액',
       transactionCount: '거래 건수',
       noTransactions: '거래 내역이 없습니다.',
       // Others
       createdAt: '등록일시',
-      refNo: '참조번호',
-      refType: '참조유형',
-      selectType: '유형 선택'
+      selectType: '유형 선택',
+      bank: '은행',
+      account: '계좌번호'
     },
     'zh-CN': {
       title: '现金日记账',
@@ -138,13 +156,12 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
       to: '~',
       filter: '筛选',
       search: '搜索',
-      searchPlaceholder: '搜索描述、参考号、备注...',
+      searchPlaceholder: '搜索描述、备注...',
       addTransaction: '添加交易',
       // Table Headers
       date: '日期',
       type: '类型',
       description: '描述',
-      reference: '参考',
       amountIn: '收入',
       amountOut: '支出',
       balance: '余额',
@@ -179,9 +196,9 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
       noTransactions: '没有交易记录。',
       // Others
       createdAt: '创建时间',
-      refNo: '参考号',
-      refType: '参考类型',
-      selectType: '选择类型'
+      selectType: '选择类型',
+      bank: '银行',
+      account: '账号'
     }
   };
 
@@ -251,6 +268,108 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
+  // 주문 관련 상세 정보 로드
+  const loadOrderDetail = async (refId: string, category: string) => {
+    console.log('🔍 loadOrderDetail 호출:', { refId, category });
+    try {
+      // 컴포넌트 레벨 supabase 클라이언트 재사용
+      
+      // 주문 관련 거래인 경우만 주문 정보 조회 (sale, shipping, refund)
+      if (['sale', 'shipping', 'refund'].includes(category)) {
+        console.log('📦 주문 정보 조회 시작:', refId);
+        const { data: orderData, error } = await supabase
+          .from('orders')
+          .select(`
+            id,
+            order_number,
+            customer_name,
+            customer_phone,
+            shipping_address_line1,
+            shipping_address_line2,
+            shipping_postal_code,
+            order_items (
+              quantity,
+              products (
+                name_ko,
+                name_zh,
+                model,
+                category_id,
+                brand_ko,
+                brand_zh,
+                color_ko,
+                color_zh,
+                categories (
+                  name_ko,
+                  name_zh
+                )
+              )
+            ),
+            shipments (
+              korea_tracking_number,
+              china_tracking_number,
+              tracking_number
+            )
+          `)
+          .eq('id', refId)
+          .single();
+        
+        if (error) {
+          console.error('❌ 주문 정보 로드 실패:', error);
+          return;
+        }
+        
+        console.log('✅ 주문 데이터 조회 성공:', orderData);
+        
+        if (orderData) {
+          // 송장번호 처리
+          let trackingNumber = '';
+          if (orderData.shipments && orderData.shipments.length > 0) {
+            const shipment = orderData.shipments[0];
+            // korea_tracking_number, china_tracking_number, 또는 tracking_number 중 하나 사용
+            trackingNumber = shipment.korea_tracking_number || 
+                           shipment.china_tracking_number || 
+                           shipment.tracking_number || '';
+          }
+          
+          // 주소 조합
+          const address = [
+            orderData.shipping_address_line1,
+            orderData.shipping_address_line2,
+            orderData.shipping_postal_code
+          ].filter(Boolean).join(' ');
+          
+          const detail: OrderDetail = {
+            orderNumber: orderData.order_number,
+            customerName: orderData.customer_name,
+            phoneNumber: orderData.customer_phone,
+            address: address,
+            trackingNumber: trackingNumber || undefined,
+            products: orderData.order_items.map((item: any) => ({
+              name: locale === 'ko' ? item.products.name_ko : item.products.name_zh,
+              model: item.products.model || '',
+              category: locale === 'ko' ? 
+                item.products.categories?.name_ko || '' : 
+                item.products.categories?.name_zh || '',
+              brand: locale === 'ko' ? 
+                item.products.brand_ko || '' : 
+                item.products.brand_zh || '',
+              color: locale === 'ko' ? 
+                item.products.color_ko || '' : 
+                item.products.color_zh || '',
+              quantity: item.quantity
+            }))
+          };
+          setOrderDetail(detail);
+          console.log('📝 주문 상세 정보 설정 완료:', detail);
+        }
+      } else {
+        console.log('ℹ️ 주문 관련 거래가 아님:', category);
+      }
+    } catch (error) {
+      console.error('❌ 주문 상세 정보 로드 오류:', error);
+    }
+  };
+
   // 거래 카테고리별 색상
   const getCategoryColor = (category: string) => {
     const transType = transactionTypes.find(t => t.id === category);
@@ -311,8 +430,7 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
     console.log('💰 출납장부 데이터 로드 시작...');
     try {
       // Supabase 직접 호출
-      const { createClient } = await import('@/lib/supabase/client');
-      const supabase = createClient();
+      // 컴포넌트 레벨 supabase 클라이언트 재사용
       
       console.log('💳 Supabase 클라이언트 생성 완료');
       
@@ -349,7 +467,12 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
           description: t.description || '',
           note: t.note || '',
           createdAt: t.created_at,
-          createdBy: t.created_by || 'Unknown'
+          createdBy: (
+            // UUID 패턴 확인 (8-4-4-4-12 형식)
+            /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(t.created_by)
+              ? '-'
+              : t.created_by || 'Unknown'
+          )
         }));
         
         console.log('💾 포맷된 거래 데이터:', formattedTransactions.length + '개');
@@ -405,7 +528,6 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
         const search = searchTerm.toLowerCase();
         return (
           transaction.description.toLowerCase().includes(search) ||
-          (transaction.refNo && transaction.refNo.toLowerCase().includes(search)) ||
           (transaction.note && transaction.note.toLowerCase().includes(search))
         );
       }
@@ -464,8 +586,7 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
 
     try {
       // Supabase에 거래 저장
-      const { createClient } = await import('@/lib/supabase/client');
-      const supabase = createClient();
+      // 컴포넌트 레벨 supabase 클라이언트 재사용
 
       // 선택된 거래 유형에서 type 가져오기
       const transactionType = selectedCashbookType?.dbType || 'adjustment';
@@ -533,7 +654,7 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
   };
 
   return (
-    <div style={{ padding: '2rem', paddingBottom: '5rem', maxWidth: '1400px', margin: '0 auto' }}>
+    <div style={{ padding: '2rem', paddingBottom: isMobile ? '100px' : '5rem', maxWidth: '1400px', margin: '0 auto' }}>
       {/* 헤더 */}
       <div style={{ marginBottom: '2rem' }}>
         <h1 style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '1rem' }}>
@@ -633,48 +754,48 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
       {/* 요약 카드 */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-        gap: '1rem',
+        gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fit, minmax(200px, 1fr))',
+        gap: isMobile ? '0.5rem' : '1rem',
         marginBottom: '2rem'
       }}>
         <div style={{
-          padding: '1rem',
+          padding: isMobile ? '0.75rem' : '1rem',
           backgroundColor: '#dcfce7',
           borderRadius: '0.5rem'
         }}>
-          <div style={{ fontSize: '0.875rem', color: '#166534', marginBottom: '0.5rem' }}>
+          <div style={{ fontSize: isMobile ? '0.75rem' : '0.875rem', color: '#166534', marginBottom: isMobile ? '0.25rem' : '0.5rem' }}>
             {t.totalIn}
           </div>
-          <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#166534' }}>
+          <div style={{ fontSize: isMobile ? '1.125rem' : '1.5rem', fontWeight: 'bold', color: '#166534' }}>
             ₩{summary.totalIn.toLocaleString()}
           </div>
         </div>
         <div style={{
-          padding: '1rem',
+          padding: isMobile ? '0.75rem' : '1rem',
           backgroundColor: '#fee2e2',
           borderRadius: '0.5rem'
         }}>
-          <div style={{ fontSize: '0.875rem', color: '#dc2626', marginBottom: '0.5rem' }}>
+          <div style={{ fontSize: isMobile ? '0.75rem' : '0.875rem', color: '#dc2626', marginBottom: isMobile ? '0.25rem' : '0.5rem' }}>
             {t.totalOut}
           </div>
-          <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#dc2626' }}>
+          <div style={{ fontSize: isMobile ? '1.125rem' : '1.5rem', fontWeight: 'bold', color: '#dc2626' }}>
             ₩{summary.totalOut.toLocaleString()}
           </div>
         </div>
         <div style={{
-          padding: '1rem',
+          padding: isMobile ? '0.75rem' : '1rem',
           backgroundColor: summary.netAmount >= 0 ? '#dbeafe' : '#fef3c7',
           borderRadius: '0.5rem'
         }}>
           <div style={{ 
-            fontSize: '0.875rem', 
+            fontSize: isMobile ? '0.75rem' : '0.875rem', 
             color: summary.netAmount >= 0 ? '#1e40af' : '#92400e', 
-            marginBottom: '0.5rem' 
+            marginBottom: isMobile ? '0.25rem' : '0.5rem' 
           }}>
             {t.netAmount}
           </div>
           <div style={{ 
-            fontSize: '1.5rem', 
+            fontSize: isMobile ? '1.125rem' : '1.5rem', 
             fontWeight: 'bold', 
             color: summary.netAmount >= 0 ? '#1e40af' : '#92400e'
           }}>
@@ -682,14 +803,14 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
           </div>
         </div>
         <div style={{
-          padding: '1rem',
+          padding: isMobile ? '0.75rem' : '1rem',
           backgroundColor: '#f3f4f6',
           borderRadius: '0.5rem'
         }}>
-          <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.5rem' }}>
+          <div style={{ fontSize: isMobile ? '0.75rem' : '0.875rem', color: '#6b7280', marginBottom: isMobile ? '0.25rem' : '0.5rem' }}>
             {t.transactionCount}
           </div>
-          <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#374151' }}>
+          <div style={{ fontSize: isMobile ? '1.125rem' : '1.5rem', fontWeight: 'bold', color: '#374151' }}>
             {summary.count}
           </div>
         </div>
@@ -712,7 +833,6 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
                 { key: 'transactionDate', header: t.date },
                 { key: 'categoryLabel', header: t.type },
                 { key: 'description', header: t.description },
-                { key: 'refNo', header: t.reference },
                 { key: 'amountIn', header: t.amountIn },
                 { key: 'amountOut', header: t.amountOut },
                 { key: 'note', header: t.note },
@@ -745,14 +865,93 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
           {t.noTransactions}
         </div>
       ) : (
-        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '900px' }}>
+        <>
+          {/* 모바일 카드 뷰 */}
+          {isMobile ? (
+            <div style={{ marginBottom: '1rem' }}>
+              {paginatedTransactions.map((transaction, index) => {
+                const categoryColor = getCategoryColor(transaction.category);
+                const actualIndex = startIndex + index;
+                const balance = calculateBalance(actualIndex);
+                
+                return (
+                  <div
+                    key={transaction.id}
+                    style={{
+                      backgroundColor: 'white',
+                      borderRadius: '0.5rem',
+                      padding: '1rem',
+                      marginBottom: '0.75rem',
+                      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+                      cursor: 'pointer'
+                    }}
+                    onClick={async () => {
+                      setSelectedTransaction(transaction);
+                      setShowDetailModal(true);
+                      // 주문 관련 거래인 경우 주문 상세 정보 로드
+                      console.log('🔍 거래 클릭:', { category: transaction.category });
+                      if (transaction.refNo && ['sale', 'shipping', 'refund'].includes(transaction.category)) {
+                        await loadOrderDetail(transaction.refNo, transaction.category);
+                      }
+                    }}
+                  >
+                    {/* 상단 헤더 */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
+                      <div>
+                        <div style={{ fontWeight: '600', fontSize: '0.875rem', marginBottom: '0.25rem' }}>
+                          {transaction.transactionDate}
+                        </div>
+                        <span style={{
+                          padding: '0.25rem 0.5rem',
+                          borderRadius: '9999px',
+                          fontSize: '0.75rem',
+                          fontWeight: '500',
+                          backgroundColor: categoryColor.bg,
+                          color: categoryColor.text
+                        }}>
+                          {getCategoryLabel(transaction.category)}
+                        </span>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        {transaction.amountKrw > 0 ? (
+                          <div style={{ color: '#166534', fontWeight: '600', fontSize: '1rem' }}>
+                            +₩{transaction.amountKrw.toLocaleString()}
+                          </div>
+                        ) : (
+                          <div style={{ color: '#dc2626', fontWeight: '600', fontSize: '1rem' }}>
+                            -₩{Math.abs(transaction.amountKrw).toLocaleString()}
+                          </div>
+                        )}
+                        <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.125rem' }}>
+                          {t.balance}: ₩{balance.toLocaleString()}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* 설명 */}
+                    <div style={{ fontSize: '0.875rem', color: '#374151', marginBottom: '0.25rem' }}>
+                      {getLocalizedDescription(transaction.description)}
+                    </div>
+                    
+                    {/* 메모 */}
+                    {transaction.note && (
+                      <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                        {transaction.note}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            /* 데스크탑 테이블 뷰 */
+            <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '900px' }}>
             <thead>
               <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
                 <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>{t.date}</th>
                 <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>{t.type}</th>
                 <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>{t.description}</th>
-                <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>{t.reference}</th>
                 <th style={{ padding: '0.75rem', textAlign: 'right', fontWeight: '600' }}>{t.amountIn}</th>
                 <th style={{ padding: '0.75rem', textAlign: 'right', fontWeight: '600' }}>{t.amountOut}</th>
                 <th style={{ padding: '0.75rem', textAlign: 'right', fontWeight: '600' }}>{t.balance}</th>
@@ -779,9 +978,14 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
                     onMouseLeave={(e) => {
                       e.currentTarget.style.backgroundColor = 'transparent';
                     }}
-                    onClick={() => {
+                    onClick={async () => {
                       setSelectedTransaction(transaction);
                       setShowDetailModal(true);
+                      // 주문 관련 거래인 경우 주문 상세 정보 로드
+                      console.log('🔍 거래 클릭:', { category: transaction.category });
+                      if (transaction.refNo && ['sale', 'shipping', 'refund'].includes(transaction.category)) {
+                        await loadOrderDetail(transaction.refNo, transaction.category);
+                      }
                     }}>
                     <td style={{ padding: '0.75rem' }}>{transaction.transactionDate}</td>
                     <td style={{ padding: '0.75rem' }}>
@@ -804,9 +1008,6 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
                         </div>
                       )}
                     </td>
-                    <td style={{ padding: '0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>
-                      {transaction.refNo || '-'}
-                    </td>
                     <td style={{ padding: '0.75rem', textAlign: 'right', color: '#166534' }}>
                       {transaction.amountKrw > 0 ? `₩${transaction.amountKrw.toLocaleString()}` : '-'}
                     </td>
@@ -825,20 +1026,24 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
                 );
               })}
             </tbody>
-          </table>
-        </div>
+              </table>
+            </div>
+          )}
+        </>
       )}
         
       {/* 페이지네이션 */}
       {filteredTransactions.length > itemsPerPage && (
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={setCurrentPage}
-          totalItems={filteredTransactions.length}
-          itemsPerPage={itemsPerPage}
-          locale={locale}
-        />
+        <div style={{ marginBottom: isMobile ? '20px' : '0' }}>
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            totalItems={filteredTransactions.length}
+            itemsPerPage={itemsPerPage}
+            locale={locale}
+          />
+        </div>
       )}
 
       {/* 거래 추가 모달 */}
@@ -1155,25 +1360,6 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
                 </div>
               </div>
 
-              {/* 참조 정보 */}
-              {(selectedTransaction.refType || selectedTransaction.refNo) && (
-                <div style={{
-                  padding: '1rem',
-                  backgroundColor: '#f9fafb',
-                  borderRadius: '0.375rem'
-                }}>
-                  {selectedTransaction.refType && (
-                    <div style={{ marginBottom: '0.5rem' }}>
-                      <strong>{t.refType}:</strong> {selectedTransaction.refType}
-                    </div>
-                  )}
-                  {selectedTransaction.refNo && (
-                    <div>
-                      <strong>{t.refNo}:</strong> {selectedTransaction.refNo}
-                    </div>
-                  )}
-                </div>
-              )}
 
               {/* 은행 정보 */}
               {(selectedTransaction.bankName || selectedTransaction.accountNo) && (
@@ -1195,14 +1381,65 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
                 </div>
               )}
 
-              {/* 메모 */}
-              {selectedTransaction.note && (
+              {/* 메모 및 주문 정보 */}
+              {(selectedTransaction.note || orderDetail) && (
                 <div style={{
                   padding: '1rem',
                   backgroundColor: '#fef3c7',
                   borderRadius: '0.375rem'
                 }}>
-                  <strong>{t.note}:</strong> {selectedTransaction.note}
+                  <strong>{t.note}:</strong>
+                  {/* 주문 관련 거래인 경우 note에서 주문번호 부분 제거 */}
+                  {(() => {
+                    if (!selectedTransaction.note) return null;
+                    
+                    const processedNote = orderDetail ? 
+                      // 주문번호 패턴 제거 ("주문번호: XXX" 또는 "订单号: XXX" 제거)
+                      selectedTransaction.note
+                        .replace(/주문번호:\s*[^,\s]+[,\s]*/g, '')
+                        .replace(/订单号:\s*[^,\s]+[,\s]*/g, '')
+                        .trim()
+                      : selectedTransaction.note;
+                    
+                    // 처리된 note가 비어있으면 null 반환
+                    if (!processedNote) return null;
+                    
+                    return (
+                      <div style={{ marginTop: '0.5rem' }}>
+                        {processedNote}
+                      </div>
+                    );
+                  })()}
+                  {orderDetail && (
+                    <div style={{ marginTop: '0.5rem' }}>
+                      <div style={{ marginBottom: '0.5rem' }}>
+                        <strong>{locale === 'ko' ? '주문번호' : '订单号'}:</strong> {orderDetail.orderNumber}
+                      </div>
+                      {orderDetail.trackingNumber && (
+                        <div style={{ marginBottom: '0.5rem' }}>
+                          <strong>{locale === 'ko' ? '송장번호' : '快递单号'}:</strong> {orderDetail.trackingNumber}
+                        </div>
+                      )}
+                      <div style={{ marginBottom: '0.5rem' }}>
+                        <strong>{locale === 'ko' ? '고객정보' : '客户信息'}:</strong> {orderDetail.customerName} / {orderDetail.phoneNumber}
+                      </div>
+                      <div style={{ marginBottom: '0.5rem' }}>
+                        <strong>{locale === 'ko' ? '주소' : '地址'}:</strong> {orderDetail.address}
+                      </div>
+                      <div>
+                        <strong>{locale === 'ko' ? '상품정보' : '产品信息'}:</strong>
+                        {orderDetail.products.map((product, idx) => (
+                          <div key={idx} style={{ marginLeft: '1rem', marginTop: '0.25rem' }}>
+                            • {product.name} {product.model ? `/ ${product.model}` : ''}
+                            {product.category && ` (${product.category})`}
+                            {product.brand && ` - ${product.brand}`}
+                            {product.color && ` - ${product.color}`}
+                            {` ×${product.quantity}`}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1215,7 +1452,12 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
                 color: '#6b7280'
               }}>
                 <div style={{ marginBottom: '0.5rem' }}>
-                  <strong>{t.createdBy}:</strong> {selectedTransaction.createdBy}
+                  <strong>{t.createdBy}:</strong> {
+                    // UUID 패턴 확인 (8-4-4-4-12 형식)
+                    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(selectedTransaction.createdBy)
+                      ? '-'
+                      : selectedTransaction.createdBy
+                  }
                 </div>
                 <div>
                   <strong>{t.createdAt}:</strong> {new Date(selectedTransaction.createdAt).toLocaleString()}
@@ -1229,6 +1471,7 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
                 onClick={() => {
                   setShowDetailModal(false);
                   setSelectedTransaction(null);
+                  setOrderDetail(null);
                 }}
                 style={{
                   padding: '0.5rem 1rem',

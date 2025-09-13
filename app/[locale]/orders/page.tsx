@@ -10,6 +10,9 @@ import { useRouter } from 'next/navigation';
 import api from '@/lib/api/client';
 import { exportToExcel } from '@/lib/utils/excel';
 import Pagination from '@/components/common/Pagination';
+import { MobileBottomNav } from '@/components/Navigation';
+import { OrdersTable } from '@/components/orders/OrdersTable';
+import { createClient } from '@/lib/supabase/client';
 
 interface OrdersPageProps {
   params: { locale: string };
@@ -28,6 +31,15 @@ interface Product {
   image_url?: string;
 }
 
+interface OrderItem {
+  id: string;
+  productName: string;
+  productSku: string;
+  model?: string;
+  quantity: number;
+  price: number;
+}
+
 interface Order {
   id: string;
   orderNo: string;
@@ -44,10 +56,12 @@ interface Order {
   productName: string;
   productSku: string;
   quantity: number;
+  items?: OrderItem[];
 }
 
 export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
   const router = useRouter();
+  const [supabase] = useState(() => createClient());
   
   // 페이지네이션 상태
   const [currentPage, setCurrentPage] = useState(1);
@@ -62,6 +76,7 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [isMobile, setIsMobile] = useState(false);
   
   // 새 주문 폼 상태
   const [newOrder, setNewOrder] = useState({
@@ -91,6 +106,7 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
       phone: '전화번호',
       address: '배송지',
       items: '상품',
+      model: '모델명',
       status: '상태',
       actions: '작업',
       search: '검색',
@@ -143,6 +159,7 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
       phone: '电话',
       address: '配送地址',
       items: '商品',
+      model: '型号',
       status: '状态',
       actions: '操作',
       search: '搜索',
@@ -208,6 +225,18 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
     loadOrders();
     loadProducts();
   }, []);
+  
+  // 모바일 감지
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Daum 우편번호 API 스크립트 로드
   useEffect(() => {
@@ -224,8 +253,6 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
   const loadOrders = async () => {
     try {
       // Supabase 직접 호출
-      const { createClient } = await import('@/lib/supabase/client');
-      const supabase = createClient();
       
       console.log('🔄 주문 데이터 로드 시작...');
       
@@ -239,7 +266,8 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
               id,
               name_ko,
               name_zh,
-              sku
+              sku,
+              model
             )
           )
         `)
@@ -272,6 +300,33 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
       if (Array.isArray(orders)) {
         for (const order of orders) {
           try {
+            const items: OrderItem[] = order.order_items?.map((item: any) => {
+              // 제품 정보 우선순위: products 테이블 정보 우선 사용
+              const productName = (locale === 'ko' ? item.products?.name_ko : item.products?.name_zh) || item.product_name || '';
+              const model = item.products?.model || item.model || '';
+              
+              console.log('📦 상품 정보:', {
+                item_id: item.id,
+                product_name: item.product_name,
+                products: item.products,
+                model_from_products: item.products?.model,
+                model_from_item: item.model,
+                final_model: model,
+                productName: productName,
+                sku: item.sku,
+                products_sku: item.products?.sku
+              });
+              
+              return {
+                id: item.id,
+                productName: productName,
+                productSku: item.sku || item.products?.sku || '',
+                model: model,
+                quantity: item.quantity || 0,
+                price: item.price || 0
+              };
+            }) || [];
+            
             transformedOrders.push({
               id: order.id || '',
               orderNo: order.order_number || '',
@@ -285,9 +340,10 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
               zipCode: order.shipping_postal_code || '',
               status: (order.status?.toLowerCase() || 'paid') as Order['status'],
               totalAmount: order.total_krw || 0,
-              productName: order.order_items?.[0]?.product_name || order.order_items?.[0]?.products?.name_ko || order.order_items?.[0]?.products?.name_zh || '',
-              productSku: order.order_items?.[0]?.sku || order.order_items?.[0]?.products?.sku || '',
-              quantity: order.order_items?.[0]?.quantity || 0,
+              productName: items[0]?.productName || '',
+              productSku: items[0]?.productSku || '',
+              quantity: items[0]?.quantity || 0,
+              items: items
             });
           } catch (itemError) {
             console.error('❌ 개별 주문 변환 오류:', itemError, order);
@@ -298,6 +354,9 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
       }
       
       console.log('✅ 변환된 주문 데이터:', transformedOrders.length + '개');
+      if (transformedOrders.length > 0) {
+        console.log('📋 첫 번째 주문 items:', transformedOrders[0].items);
+      }
       setOrders(transformedOrders);
     } catch (error) {
       console.error('❌ 주문 로드 실패 (catch):', error);
@@ -313,8 +372,6 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
   const loadProducts = async () => {
     try {
       // Supabase 직접 호출
-      const { createClient } = await import('@/lib/supabase/client');
-      const supabase = createClient();
       
       const { data: products, error: productsError } = await supabase
         .from('products')
@@ -379,7 +436,8 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
     console.log('📦 로드된 제품 데이터:', {
       count: products?.length,
       isArray: Array.isArray(products),
-      type: typeof products
+      type: typeof products,
+      firstFew: products?.slice(0, 3)
     });
     
     // 데이터 변환 - 더 안전한 처리
@@ -388,18 +446,38 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
     if (Array.isArray(products)) {
       for (const product of products) {
         try {
-          transformedProducts.push({
+          const transformedProduct = {
             id: product.id || '',
             sku: product.sku || '',
-            name: product.name || '',
-            category: product.category || '',  // products 테이블의 category 컬럼 직접 사용
+            name: locale === 'ko' ? product.name_ko || '' : product.name_zh || '',
+            category: product.categories ? (locale === 'ko' ? product.categories.name_ko : product.categories.name_zh) || '' : '',  // categories 테이블 조인 결과 사용
             model: product.model || '',
-            color: product.color || '',
-            brand: product.brand || '',
-            onHand: product.on_hand || 0,  // products 테이블에서 직접 가져옴
+            color: locale === 'ko' ? product.color_ko || '' : product.color_zh || '',
+            brand: locale === 'ko' ? product.brand_ko || '' : product.brand_zh || '',
+            onHand: product.on_hand || 0,
             salePrice: product.price_krw || (product.cost_cny ? product.cost_cny * 180 : 0),
             image_url: product.image_url || ''
-          });
+          };
+          
+          // 처음 3개 상품만 로그 출력
+          if (transformedProducts.length < 3) {
+            console.log(`📦 변환된 상품 ${transformedProducts.length + 1}:`, {
+              original: {
+                id: product.id,
+                name_ko: product.name_ko,
+                name_zh: product.name_zh,
+                model: product.model,
+                categories: product.categories,
+                color_ko: product.color_ko,
+                brand_ko: product.brand_ko,
+                on_hand: product.on_hand,
+                price_krw: product.price_krw
+              },
+              transformed: transformedProduct
+            });
+          }
+          
+          transformedProducts.push(transformedProduct);
         } catch (itemError) {
           console.error('❌ 개별 제품 변환 오류:', itemError, product);
         }
@@ -427,8 +505,9 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
       return;
     }
 
-    const selectedProduct = products.find(p => p.id === Number(newOrder.productId));
-    if (!selectedProduct) {
+    // productId를 숫자로 변환하여 비교
+    const selectedProduct = products.find(p => p.id === parseInt(newOrder.productId));
+    if (!selectedProduct || !newOrder.productId) {
       alert(locale === 'ko' ? '상품을 선택해주세요.' : '请选择商品');
       return;
     }
@@ -540,8 +619,6 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
       }
       
       // Supabase 직접 호출
-      const { createClient } = await import('@/lib/supabase/client');
-      const supabase = createClient();
       
       // 상태를 소문자로 변환 (DB는 소문자 사용)
       const dbStatus = newStatus.toLowerCase();
@@ -632,6 +709,8 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
     }
   };
 
+
+  // 상태별 색상 헬퍼 함수
   const getStatusColor = (status: Order['status']) => {
     const colors = {
       paid: '#3b82f6',
@@ -644,6 +723,7 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
     return colors[status] || '#6b7280';
   };
 
+  // 상태 텍스트 헬퍼 함수
   const getStatusText = (status: Order['status']) => {
     const statusTexts = {
       paid: texts.paid,
@@ -696,7 +776,7 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
 
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-100" style={{ paddingBottom: isMobile ? '80px' : '0' }}>
       {/* 헤더 */}
       <div className="bg-white border-b border-gray-200 px-4 py-3 md:px-6 md:py-4">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
@@ -773,119 +853,47 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
               {texts.noOrders}
             </div>
           ) : (
-            <>
-              {/* 모바일 카드 뷰 */}
-              <div className="md:hidden">
-                {paginatedOrders.map((order) => (
-                  <div 
-                    key={order.id}
-                    onClick={() => handleOrderClick(order)}
-                    style={{
-                      padding: '1rem',
-                      borderBottom: '1px solid #e5e7eb',
-                      cursor: 'pointer',
-                      transition: 'background-color 0.2s'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#f9fafb';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = 'transparent';
-                    }}
-                  >
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <div className="font-semibold text-sm">{order.orderNo}</div>
-                        <div className="text-xs text-gray-500">{order.customerName}</div>
-                      </div>
-                      <span className={`px-2 py-1 text-xs font-semibold rounded-full`}
-                        style={{
-                          backgroundColor: `${getStatusColor(order.status)}20`,
-                          color: getStatusColor(order.status)
-                        }}>
-                        {getStatusText(order.status)}
-                      </span>
-                    </div>
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">{order.customerName}</span>
-                        <span className="font-semibold">₩{order.totalAmount.toLocaleString()}</span>
-                      </div>
-                      <div className="text-xs text-gray-500">{order.customerPhone}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* 데스크톱 테이블 뷰 */}
-              <div className="hidden md:block overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50 border-b border-gray-200">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{texts.orderNo}</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{texts.customer}</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{texts.phone}</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{texts.address}</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{texts.items}</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{texts.status}</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {paginatedOrders.map((order) => (
-                      <tr 
-                        key={order.id} 
-                        onClick={() => handleOrderClick(order)}
-                        style={{
-                          cursor: 'pointer',
-                          transition: 'background-color 0.2s'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = '#f9fafb';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = 'transparent';
-                        }}
-                      >
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          {order.orderNo}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">{order.customerName}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">{order.customerPhone}</td>
-                        <td className="px-6 py-4 text-sm">
-                          {order.shippingAddress} {order.shippingAddressDetail || ''}
-                        </td>
-                        <td className="px-6 py-4 text-sm">
-                          {order.productName} {order.quantity > 1 ? `×${order.quantity}` : ''}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
-                            style={{
-                              backgroundColor: `${getStatusColor(order.status)}20`,
-                              color: getStatusColor(order.status)
-                            }}>
-                            {getStatusText(order.status)}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
+            <OrdersTable
+              orders={paginatedOrders.map(order => ({
+                ...order,
+                order_number: order.orderNo,
+                name: order.customerName,
+                phone: order.customerPhone,
+                shippingAddress: order.shippingAddress,
+                model: order.items && order.items.length > 0 
+                  ? order.items[0].model 
+                  : undefined,
+                product: order.items && order.items.length > 0 
+                  ? order.items.map(item => item.productName).join(', ')
+                  : order.productName,
+                items: order.items ? order.items.map(item => ({
+                  ...item,
+                  productModel: item.model,
+                  quantity: item.quantity
+                })) : undefined
+              }))}
+              locale={locale}
+              isMobile={isMobile}
+              currentPage={1}
+              itemsPerPage={paginatedOrders.length}
+              onOrderClick={handleOrderClick}
+            />
           )}
         </div>
 
         {/* 페이지네이션 */}
         {filteredOrders.length > itemsPerPage && (
-          <Pagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-            totalItems={filteredOrders.length}
-            itemsPerPage={itemsPerPage}
-            locale={locale}
-            className="mt-4"
-          />
+          <div style={{ marginBottom: isMobile ? '20px' : '0' }}>
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              totalItems={filteredOrders.length}
+              itemsPerPage={itemsPerPage}
+              locale={locale}
+              className="mt-4"
+            />
+          </div>
         )}
       </div>
 
@@ -964,8 +972,10 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
                   <input
                     type="text"
                     value={newOrder.pcccCode}
-                    onChange={(e) => {
+                    onChange={async (e) => {
                       const value = e.target.value.toUpperCase();
+                      console.log('PCCC 입력:', value, 'Length:', value.length);
+                      
                       // P로 시작하지 않으면 P를 앞에 추가
                       if (!value.startsWith('P')) {
                         return;
@@ -974,6 +984,51 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
                       const numbers = value.slice(1);
                       if (numbers === '' || (/^\d{0,11}$/.test(numbers))) {
                         setNewOrder({ ...newOrder, pcccCode: value });
+                        
+                        // PCCC가 12자리(P + 11자리)가 되면 자동으로 고객 정보 조회
+                        if (value.length === 12) {
+                          console.log('PCCC 12자리 입력됨, API 호출 시작');
+                          try {
+                            // 수정된 API 엔드포인트 사용 (orders API에 pccc 파라미터 추가)
+                            const apiUrl = `/api/orders?pccc=${encodeURIComponent(value)}`;
+                            console.log('API URL:', apiUrl);
+                            const response = await fetch(apiUrl);
+                            console.log('API Response status:', response.status);
+                            
+                            if (response.ok) {
+                              const data = await response.json();
+                              console.log('API Response data:', data);
+                              
+                              if (data.found && data.customer) {
+                                // 기존 고객 정보로 폼 자동 채우기
+                                setNewOrder(prev => ({
+                                  ...prev,
+                                  customerName: data.customer.customer_name || prev.customerName,
+                                  customerPhone: data.customer.customer_phone || prev.customerPhone,
+                                  customerEmail: data.customer.customer_email || prev.customerEmail,
+                                  kakaoId: data.customer.customer_messenger_id || prev.kakaoId,
+                                  shippingAddress: data.customer.shipping_address_line1 || prev.shippingAddress,
+                                  shippingAddressDetail: data.customer.shipping_address_line2 || prev.shippingAddressDetail,
+                                  zipCode: data.customer.shipping_postal_code || prev.zipCode
+                                }));
+                                
+                                // 고객 정보 알림
+                                if (data.customer.order_count > 0) {
+                                  const message = locale === 'ko' 
+                                    ? `기존 고객입니다. (총 ${data.customer.order_count}회 주문)`
+                                    : `现有客户 (共 ${data.customer.order_count} 次订单)`;
+                                  alert(message);
+                                }
+                              } else {
+                                console.log('고객 정보 없음');
+                              }
+                            } else {
+                              console.error('API 응답 오류:', response.status);
+                            }
+                          } catch (error) {
+                            console.error('Error fetching customer by PCCC:', error);
+                          }
+                        }
                       }
                     }}
                     maxLength={12}
@@ -1058,10 +1113,10 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
                 <select
                   value={newOrder.productId}
                   onChange={(e) => {
-                    const selectedProduct = products.find(p => p.id === parseInt(e.target.value));
+                    const selectedProduct = products.find(p => p.id.toString() === e.target.value);
                     setNewOrder({ 
                       ...newOrder, 
-                      productId: parseInt(e.target.value),
+                      productId: e.target.value,
                       customPrice: selectedProduct ? selectedProduct.salePrice : 0
                     });
                   }}
@@ -1073,7 +1128,7 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
                     .sort((a, b) => (a.model || '').localeCompare(b.model || ''))
                     .map((product) => (
                       <option key={product.id} value={product.id}>
-                        {product.model}, {product.name}, {product.category}, {texts.stock}: {product.onHand}, ₩{product.salePrice.toLocaleString()}
+                        {product.model}, {product.name}, {product.category}, {texts.stock}: {product.onHand}, ₩{product.salePrice?.toLocaleString() || 0}
                       </option>
                     ))}
                 </select>
@@ -1612,7 +1667,9 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
           </div>
         </div>
       )}
-
+      
+      {/* 모바일 하단 네비게이션 */}
+      {isMobile && <MobileBottomNav locale={locale} />}
     </div>
   );
 }

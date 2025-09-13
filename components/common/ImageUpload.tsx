@@ -6,12 +6,7 @@
 'use client';
 
 import { useState, useRef, DragEvent, ChangeEvent } from 'react';
-import { createClient } from '@supabase/supabase-js';
-
-// Supabase 클라이언트 초기화
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_API_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+import { createClient } from '@/lib/supabase/client';
 
 interface ImageUploadProps {
   label: string;
@@ -111,6 +106,7 @@ export default function ImageUpload({
       const filePath = `${folder}/${fileName}`;
       
       // Supabase Storage에 업로드
+      const supabase = createClient();
       const { data, error } = await supabase.storage
         .from('images')
         .upload(filePath, file, {

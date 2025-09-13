@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  reactStrictMode: false, // Multiple GoTrueClient 경고 방지
   experimental: {
     optimizePackageImports: ['lucide-react'],
   },

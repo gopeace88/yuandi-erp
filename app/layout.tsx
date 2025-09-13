@@ -9,10 +9,17 @@ export const metadata: Metadata = {
   description: 'YUANDI Collection 통합 관리 시스템',
   keywords: 'Collection, ERP, 재고관리, 주문관리, 배송관리',
   manifest: '/manifest.json',
+  icons: {
+    icon: '/favicon.svg',
+    apple: '/icon-192x192.svg',
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
     title: 'YUANDI ERP',
+  },
+  other: {
+    'mobile-web-app-capable': 'yes',
   },
   formatDetection: {
     telephone: false,

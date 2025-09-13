@@ -27,9 +27,11 @@ interface OrderAddModalProps {
 export function OrderAddModal({ locale, onClose, onSuccess }: OrderAddModalProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [loadingProducts, setLoadingProducts] = useState(false)
+  const [loadingCustomer, setLoadingCustomer] = useState(false)
   const [availableProducts, setAvailableProducts] = useState<Product[]>([])
   const [allProducts, setAllProducts] = useState<Product[]>([])
   const [productSearch, setProductSearch] = useState('')
+  const [customerInfo, setCustomerInfo] = useState<any>(null)
   const [formData, setFormData] = useState({
     customerName: '',
     customerPhone: '',
@@ -69,6 +71,48 @@ export function OrderAddModal({ locale, onClose, onSuccess }: OrderAddModalProps
       )
     }
   }, [productSearch, allProducts])
+
+  // PCCC로 고객 정보 조회
+  const fetchCustomerByPCCC = async (pccc: string) => {
+    if (!pccc || pccc.length < 5) return // 최소 5자 이상 입력 시 조회
+    
+    setLoadingCustomer(true)
+    try {
+      const response = await fetch(`/api/customers/by-pccc?pccc=${encodeURIComponent(pccc)}`)
+      if (!response.ok) throw new Error('Failed to fetch customer')
+      
+      const data = await response.json()
+      
+      if (data.found && data.customer) {
+        // 기존 고객 정보로 폼 자동 채우기
+        setCustomerInfo(data.customer)
+        setFormData(prev => ({
+          ...prev,
+          customerName: data.customer.customer_name || prev.customerName,
+          customerPhone: data.customer.customer_phone || prev.customerPhone,
+          customerEmail: data.customer.customer_email || prev.customerEmail,
+          shippingAddress: data.customer.shipping_address_line1 || prev.shippingAddress,
+          shippingAddressDetail: data.customer.shipping_address_line2 || prev.shippingAddressDetail,
+          zipCode: data.customer.shipping_postal_code || prev.zipCode,
+          customerMemo: data.customer.customer_memo || prev.customerMemo
+        }))
+        
+        // 고객 정보 알림
+        if (data.customer.order_count > 0) {
+          const message = locale === 'ko' 
+            ? `기존 고객입니다. (총 ${data.customer.order_count}회 주문)`
+            : `现有客户 (共 ${data.customer.order_count} 次订单)`
+          alert(message)
+        }
+      } else {
+        setCustomerInfo(null)
+      }
+    } catch (error) {
+      console.error('Error fetching customer:', error)
+    } finally {
+      setLoadingCustomer(false)
+    }
+  }
 
   const fetchProducts = async () => {
     setLoadingProducts(true)
@@ -227,15 +271,43 @@ export function OrderAddModal({ locale, onClose, onSuccess }: OrderAddModalProps
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   {t('orders.pcccCode')} *
+                  {loadingCustomer && (
+                    <span className="ml-2 text-sm text-blue-600">
+                      {locale === 'ko' ? '고객 정보 조회 중...' : '正在查询客户信息...'}
+                    </span>
+                  )}
+                  {customerInfo && (
+                    <span className="ml-2 text-sm text-green-600">
+                      {locale === 'ko' 
+                        ? `✓ 기존 고객 (${customerInfo.order_count}회 주문)` 
+                        : `✓ 现有客户 (${customerInfo.order_count}次订单)`}
+                    </span>
+                  )}
                 </label>
                 <input
                   type="text"
                   required
                   placeholder="P123456789012"
                   value={formData.pcccCode}
-                  onChange={(e) => setFormData({ ...formData, pcccCode: e.target.value })}
+                  onChange={(e) => {
+                    const newPccc = e.target.value
+                    setFormData({ ...formData, pcccCode: newPccc })
+                    // PCCC가 일정 길이 이상일 때 자동 조회
+                    if (newPccc.length >= 5) {
+                      fetchCustomerByPCCC(newPccc)
+                    } else {
+                      setCustomerInfo(null)
+                    }
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
+                {customerInfo && customerInfo.is_repeat_customer && (
+                  <p className="mt-1 text-sm text-amber-600">
+                    {locale === 'ko' 
+                      ? '⭐ 단골 고객입니다' 
+                      : '⭐ 常客'}
+                  </p>
+                )}
               </div>
             </div>
           </div>

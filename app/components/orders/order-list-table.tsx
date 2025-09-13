@@ -13,6 +13,7 @@ interface Order {
   order_no: string
   customer_name: string
   customer_phone: string
+  pccc?: string
   total_amount: number
   final_amount: number
   status: string

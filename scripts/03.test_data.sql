@@ -1,8 +1,8 @@
 -- =====================================================
 -- YUANDI ERP - BULK TEST DATA (대용량 테스트 데이터)
--- 상품 100개 이상, 주문 200개 이상 생성
--- 다양한 주문 상태 포함 (paid, shipped, done, cancelled, refunded)
--- Updated: 2025-01-11 - Fixed all field names
+-- 상품 120개, 주문 400개 생성
+-- 다양한 주문 상태 포함 (paid, shipped, done, refunded)
+-- Updated: 2025-01-13 - Increased to 400 orders with PCCC
 -- =====================================================
 
 -- 기존 데이터 삭제 (CASCADE로 연관 데이터도 삭제)
@@ -146,7 +146,6 @@ DECLARE
         'paid'::order_status, 
         'shipped'::order_status, 
         'done'::order_status, 
-        'cancelled'::order_status, 
         'refunded'::order_status
     ];
     v_payment_options payment_method[] := ARRAY[
@@ -154,9 +153,17 @@ DECLARE
         'transfer'::payment_method,
         'cash'::payment_method
     ];
+    -- PCCC는 동적으로 생성 (더 이상 배열 사용하지 않음)
+    -- 총 140명의 고객 생성:
+    -- - 최고 단골: 10명 (각 10회 주문)
+    -- - 일반 단골: 20명 (각 6회 주문)
+    -- - 가끔 고객: 20명 (각 3회 주문)
+    -- - 재구매 고객: 30명 (각 2회 주문)
+    -- - 신규 고객: 60명 (각 1회 주문)
     v_order_number TEXT;
     v_customer_name TEXT;
     v_customer_phone TEXT;
+    v_customer_pccc TEXT;
     v_status order_status;
     v_payment payment_method;
     v_subtotal NUMERIC;
@@ -165,11 +172,12 @@ BEGIN
     -- 관리자 ID 가져오기
     SELECT id INTO v_admin_id FROM user_profiles WHERE role = 'admin' LIMIT 1;
     
-    -- 250개 주문 생성 (최근 60일간의 주문)
-    FOR i IN 1..250 LOOP
-        -- 날짜 설정 (과거 60일부터 오늘까지 분산)
+    -- 400개 주문 생성 (과거 90일 ~ 10일 전까지의 주문 데이터)
+    FOR i IN 1..400 LOOP
+        -- 날짜 설정 (과거 90일 전부터 10일 전까지 분산)
         v_date_counter := FLOOR(i / 5);  -- 날짜당 약 5개 주문
-        v_order_date := CURRENT_DATE - INTERVAL '60 days' + (v_date_counter || ' days')::INTERVAL;
+        -- 90일 전부터 시작하되, 최대 80일까지만 더해서 10일 전까지만 데이터 생성
+        v_order_date := CURRENT_DATE - INTERVAL '90 days' + (LEAST(v_date_counter, 80) || ' days')::INTERVAL;
         
         -- 주문번호 생성 (날짜별 일련번호)
         v_order_number := TO_CHAR(v_order_date, 'YYMMDD') || '-' || 
@@ -180,17 +188,39 @@ BEGIN
         v_customer_phone := '010-' || LPAD(((1000 + i * 7) % 9000 + 1000)::TEXT, 4, '0') || 
                            '-' || LPAD(((i * 13) % 9000 + 1000)::TEXT, 4, '0');
         
-        -- 주문 상태 설정 (분포: paid 30%, shipped 25%, done 30%, cancelled 10%, refunded 5%)
-        IF i <= 75 THEN
-            v_status := 'paid'::order_status;  -- 30%
-        ELSIF i <= 138 THEN
-            v_status := 'shipped'::order_status;  -- 25%
-        ELSIF i <= 213 THEN
-            v_status := 'done'::order_status;  -- 30%
-        ELSIF i <= 238 THEN
-            v_status := 'cancelled'::order_status;  -- 10%
+        -- PCCC 할당 (현실적인 고객 분포)
+        -- 처음 50개 주문: PCCC 1-5번을 10번씩 사용 (각 고객당 10회 주문 = 최고 단골 5명)
+        -- 다음 50개 주문: PCCC 6-10번을 10번씩 사용 (각 고객당 10회 주문 = 최고 단골 5명)
+        -- 다음 60개 주문: PCCC 11-20번을 6번씩 사용 (각 고객당 6회 주문 = 일반 단골 10명)
+        -- 다음 60개 주문: PCCC 21-30번을 6번씩 사용 (각 고객당 6회 주문 = 일반 단골 10명)
+        -- 다음 60개 주문: PCCC 31-50번을 3번씩 사용 (각 고객당 3회 주문 = 가끔 오는 고객 20명)
+        -- 다음 60개 주문: PCCC 51-80번을 2번씩 사용 (각 고객당 2회 주문 = 재구매 고객 30명)
+        -- 나머지 60개 주문: PCCC 81-140번을 1번씩 사용 (각 고객당 1회 주문 = 신규 고객 60명)
+        IF i <= 50 THEN
+            v_customer_pccc := 'P' || LPAD(((i - 1) / 10 + 1)::TEXT, 11, '0');  -- PCCC 1-5
+        ELSIF i <= 100 THEN
+            v_customer_pccc := 'P' || LPAD(((i - 51) / 10 + 6)::TEXT, 11, '0');  -- PCCC 6-10
+        ELSIF i <= 160 THEN
+            v_customer_pccc := 'P' || LPAD(((i - 101) / 6 + 11)::TEXT, 11, '0');  -- PCCC 11-20
+        ELSIF i <= 220 THEN
+            v_customer_pccc := 'P' || LPAD(((i - 161) / 6 + 21)::TEXT, 11, '0');  -- PCCC 21-30
+        ELSIF i <= 280 THEN
+            v_customer_pccc := 'P' || LPAD(((i - 221) / 3 + 31)::TEXT, 11, '0');  -- PCCC 31-50
+        ELSIF i <= 340 THEN
+            v_customer_pccc := 'P' || LPAD(((i - 281) / 2 + 51)::TEXT, 11, '0');  -- PCCC 51-80
         ELSE
-            v_status := 'refunded'::order_status;  -- 5%
+            v_customer_pccc := 'P' || LPAD((i - 340 + 80)::TEXT, 11, '0');  -- PCCC 81-140
+        END IF;
+        
+        -- 주문 상태 설정 (분포: paid 25%, shipped 25%, done 35%, refunded 15%)
+        IF i <= 100 THEN
+            v_status := 'paid'::order_status;  -- 25% (100건)
+        ELSIF i <= 200 THEN
+            v_status := 'shipped'::order_status;  -- 25% (100건)
+        ELSIF i <= 340 THEN
+            v_status := 'done'::order_status;  -- 35% (140건)
+        ELSE
+            v_status := 'refunded'::order_status;  -- 15% (60건)
         END IF;
         
         -- 결제 방법 랜덤 선택
@@ -224,14 +254,19 @@ BEGIN
             v_customer_phone,
             v_customer_name || '@example.com',  -- customer_email
             'kakao_' || SUBSTR(v_customer_phone, 4, 8),  -- customer_messenger_id
-            CASE (i % 5)
+            CASE (i % 10)
                 WHEN 0 THEN '빠른 배송 부탁드립니다'
                 WHEN 1 THEN '선물포장 해주세요'
                 WHEN 2 THEN '오후에 배송 부탁드립니다'
                 WHEN 3 THEN '안전하게 포장해주세요'
+                WHEN 4 THEN '문 앞에 놓아주세요'
+                WHEN 5 THEN '경비실에 맡겨주세요'
+                WHEN 6 THEN '주말 배송 가능한가요?'
+                WHEN 7 THEN '배송 전 연락 부탁드립니다'
+                WHEN 8 THEN '선물용이니 가격표 제거 부탁드립니다'
                 ELSE NULL
             END,  -- customer_memo
-            'P' || LPAD(FLOOR(RANDOM() * 99999999999 + 1)::TEXT, 11, '0'),  -- pccc
+            v_customer_pccc,  -- pccc (단골 고객 생성을 위해 중복 사용)
             '서울시 강남구 테헤란로 ' || (i % 100 + 1) || '길 ' || (i % 50 + 1),  -- shipping_address_line1
             (i % 10 + 1) || '층 ' || (i % 20 + 101) || '호',  -- shipping_address_line2
             LPAD(((i % 900) + 100)::TEXT, 3, '0') || LPAD(((i % 900) + 100)::TEXT, 3, '0'),  -- shipping_postal_code
@@ -241,16 +276,21 @@ BEGIN
             v_subtotal,
             v_payment,
             v_order_date + INTERVAL '1 hour',  -- paid_at
-            CASE (i % 10)
+            CASE (i % 15)
                 WHEN 0 THEN 'VIP 고객, 빠른 배송 요청'
                 WHEN 1 THEN '선물 포장 요청'
-                WHEN 2 THEN '도매 구매'
-                WHEN 3 THEN '재구매 고객'
-                WHEN 4 THEN '신규 고객'
-                WHEN 5 THEN '생일 선물용'
-                WHEN 6 THEN '급한 배송 요청'
+                WHEN 2 THEN '도매 구매 고객'
+                WHEN 3 THEN '재구매 고객 - 할인 적용'
+                WHEN 4 THEN '신규 고객 - 이벤트 쿠폰 사용'
+                WHEN 5 THEN '생일 선물용 구매'
+                WHEN 6 THEN '급한 배송 요청 - 항공 배송'
                 WHEN 7 THEN '세금계산서 발행 요청'
-                WHEN 8 THEN '해외 배송 문의'
+                WHEN 8 THEN '해외 배송 문의 - 일본'
+                WHEN 9 THEN '대량 구매 고객'
+                WHEN 10 THEN '품절 후 재입고 알림 요청'
+                WHEN 11 THEN '카카오톡 상담 후 구매'
+                WHEN 12 THEN '인스타그램 광고 보고 구매'
+                WHEN 13 THEN '친구 추천으로 구매'
                 ELSE NULL
             END,
             v_admin_id
@@ -259,66 +299,54 @@ BEGIN
 END $$;
 
 -- =====================================================
--- 3. ORDER ITEMS 생성 (주문당 1-5개 상품)
+-- 3. ORDER ITEMS 생성 (주문당 1개 상품만)
 -- =====================================================
 
 DO $$
 DECLARE
     v_order RECORD;
     v_product RECORD;
-    v_num_items INTEGER;
     v_quantity INTEGER;
     v_unit_price NUMERIC;
     v_total_price NUMERIC;
-    v_items_total NUMERIC;
-    v_product_count INTEGER;
 BEGIN
-    -- 각 주문에 대해 상품 추가
+    -- 각 주문에 대해 상품 1개만 추가
     FOR v_order IN (SELECT id, total_krw FROM orders) LOOP
-        -- 주문당 상품 개수 (1-5개)
-        v_num_items := FLOOR(RANDOM() * 5 + 1)::INTEGER;
-        v_items_total := 0;
-        v_product_count := 0;
+        -- 랜덤하게 상품 1개 선택
+        SELECT id, price_krw, on_hand 
+        INTO v_product
+        FROM products 
+        WHERE is_active = true 
+        ORDER BY RANDOM() 
+        LIMIT 1;
         
-        -- 랜덤하게 상품 선택하여 추가
-        FOR v_product IN (
-            SELECT id, price_krw, on_hand 
-            FROM products 
-            WHERE is_active = true 
-            ORDER BY RANDOM() 
-            LIMIT v_num_items
-        ) LOOP
-            -- 수량 설정 (1-3개)
-            v_quantity := FLOOR(RANDOM() * 3 + 1)::INTEGER;
-            
-            -- 가격 계산
-            v_unit_price := v_product.price_krw;
-            v_total_price := v_unit_price * v_quantity;
-            v_items_total := v_items_total + v_total_price;
-            v_product_count := v_product_count + 1;
-            
-            INSERT INTO order_items (
-                order_id,
-                product_id,
-                quantity,
-                price_krw,
-                total_price_krw
-            ) VALUES (
-                v_order.id,
-                v_product.id,
-                v_quantity,
-                v_unit_price,
-                v_total_price
-            );
-        END LOOP;
+        -- 수량은 항상 1개로 설정
+        v_quantity := 1;
         
-        -- 주문 총액 업데이트 (실제 상품 총액으로)
-        IF v_product_count > 0 THEN
-            UPDATE orders 
-            SET subtotal_krw = v_items_total,
-                total_krw = v_items_total
-            WHERE id = v_order.id;
-        END IF;
+        -- 가격 계산
+        v_unit_price := v_product.price_krw;
+        v_total_price := v_unit_price * v_quantity;
+        
+        -- 주문 아이템 추가 (주문당 1개만)
+        INSERT INTO order_items (
+            order_id,
+            product_id,
+            quantity,
+            price_krw,
+            total_price_krw
+        ) VALUES (
+            v_order.id,
+            v_product.id,
+            v_quantity,
+            v_unit_price,
+            v_total_price
+        );
+        
+        -- 주문 총액 업데이트 (상품 1개 가격으로)
+        UPDATE orders 
+        SET subtotal_krw = v_total_price,
+            total_krw = v_total_price
+        WHERE id = v_order.id;
     END LOOP;
 END $$;
 
@@ -351,31 +379,20 @@ INSERT INTO shipments (
 )
 SELECT 
     o.id,
-    -- shipping_address
-    CASE (o.id % 5)
-        WHEN 0 THEN '서울시 강남구 청담동 ' || (o.id % 100 + 1) || '-' || (o.id % 50 + 1)
-        WHEN 1 THEN '서울시 송파구 잠실동 ' || (o.id % 100 + 1) || '-' || (o.id % 50 + 1)
-        WHEN 2 THEN '부산시 해운대구 우동 ' || (o.id % 100 + 1) || '-' || (o.id % 50 + 1)
-        WHEN 3 THEN '경기도 성남시 분당구 ' || (o.id % 100 + 1) || '-' || (o.id % 50 + 1)
-        ELSE '인천시 연수구 송도동 ' || (o.id % 100 + 1) || '-' || (o.id % 50 + 1)
-    END,
-    -- shipping_address_line1
-    CASE (o.id % 5)
-        WHEN 0 THEN '서울시 강남구 청담동'
-        WHEN 1 THEN '서울시 송파구 잠실동'
-        WHEN 2 THEN '부산시 해운대구 우동'
-        WHEN 3 THEN '경기도 성남시 분당구'
-        ELSE '인천시 연수구 송도동'
-    END,
-    -- shipping_address_line2
-    (o.id % 100 + 1)::TEXT || '-' || (o.id % 50 + 1)::TEXT,
-    -- shipping_postal_code
-    LPAD(((o.id % 90000) + 10000)::TEXT, 5, '0'),
-    -- shipping_method
+    -- shipping_address (주문의 배송 주소와 동일하게 설정)
+    o.shipping_address_line1 || ' ' || o.shipping_address_line2,
+    -- shipping_address_line1 (주문에서 가져오기)
+    o.shipping_address_line1,
+    -- shipping_address_line2 (주문에서 가져오기)
+    o.shipping_address_line2,
+    -- shipping_postal_code (주문에서 가져오기)
+    o.shipping_postal_code,
+    -- shipping_method (주문 상태에 따라 적절히 분배)
     CASE 
-        WHEN RANDOM() < 0.3 THEN 'express'::shipping_method
-        WHEN RANDOM() < 0.6 THEN 'standard'::shipping_method
-        ELSE 'international'::shipping_method
+        WHEN o.status = 'done' AND RANDOM() < 0.3 THEN 'express'::shipping_method
+        WHEN o.status = 'done' THEN 'standard'::shipping_method
+        WHEN RANDOM() < 0.5 THEN 'express'::shipping_method
+        ELSE 'standard'::shipping_method
     END,
     -- courier (중국 택배사 기준)
     CASE FLOOR(RANDOM() * 3)::INTEGER
@@ -461,7 +478,7 @@ SELECT
     (SELECT id FROM user_profiles WHERE role = 'admin' LIMIT 1)
 FROM products p;
 
--- 판매로 인한 재고 이동 (주문 상태가 cancelled, refunded가 아닌 경우)
+-- 판매로 인한 재고 이동 (주문 상태가 refunded가 아닌 경우)
 INSERT INTO inventory_movements (
     product_id,
     movement_type,
@@ -488,7 +505,7 @@ SELECT
 FROM order_items oi
 JOIN orders o ON o.id = oi.order_id
 JOIN products p ON p.id = oi.product_id
-WHERE o.status NOT IN ('cancelled', 'refunded');
+WHERE o.status NOT IN ('refunded');
 
 -- =====================================================
 -- 6. CASHBOOK TRANSACTIONS 생성
@@ -607,7 +624,7 @@ SELECT
 FROM orders o
 WHERE o.status = 'refunded';
 
--- 운영비 (월별)
+-- 운영비 (월별) - 과거 3개월분 임대료만
 INSERT INTO cashbook_transactions (
     transaction_date,
     type,
@@ -621,17 +638,41 @@ INSERT INTO cashbook_transactions (
     created_by
 )
 SELECT 
-    DATE_TRUNC('month', CURRENT_DATE - (n || ' days')::INTERVAL) + INTERVAL '25 days',
+    -- 과거 각 월의 25일로 고정 (미래 날짜 없음)
+    CURRENT_DATE - INTERVAL '1 month' - INTERVAL '5 days',  -- 전달 25일 정도
     'expense',
-    'operation_cost',  -- 운영비 출납유형
-    3500000,  -- 지출은 양수
+    'operation_cost',
+    3500000,
     3500000,
     'KRW',
     1.0,
-    TO_CHAR(CURRENT_DATE - (n || ' days')::INTERVAL, 'MM') || '월 사무실 임대료',
+    TO_CHAR(CURRENT_DATE - INTERVAL '1 month', 'MM') || '월 사무실 임대료',
     '강남 사무실',
     (SELECT id FROM user_profiles WHERE role = 'admin' LIMIT 1)
-FROM generate_series(0, 60, 30) AS n;  -- 30일마다
+UNION ALL
+SELECT 
+    CURRENT_DATE - INTERVAL '2 month' - INTERVAL '5 days',  -- 전전달 25일 정도
+    'expense',
+    'operation_cost',
+    3500000,
+    3500000,
+    'KRW',
+    1.0,
+    TO_CHAR(CURRENT_DATE - INTERVAL '2 month', 'MM') || '월 사무실 임대료',
+    '강남 사무실',
+    (SELECT id FROM user_profiles WHERE role = 'admin' LIMIT 1)
+UNION ALL
+SELECT 
+    CURRENT_DATE - INTERVAL '3 month' - INTERVAL '5 days',  -- 3달전 25일 정도
+    'expense',
+    'operation_cost',
+    3500000,
+    3500000,
+    'KRW',
+    1.0,
+    TO_CHAR(CURRENT_DATE - INTERVAL '3 month', 'MM') || '월 사무실 임대료',
+    '강남 사무실',
+    (SELECT id FROM user_profiles WHERE role = 'admin' LIMIT 1);
 
 -- 기타 운영비
 INSERT INTO cashbook_transactions (
@@ -650,8 +691,8 @@ VALUES
     (CURRENT_DATE - INTERVAL '45 days', 'expense', 'other_expense', 2500000, 2500000, 'KRW', 1.0, '온라인 광고비', 'SNS 마케팅', (SELECT id FROM user_profiles WHERE role = 'admin' LIMIT 1)),
     (CURRENT_DATE - INTERVAL '30 days', 'expense', 'shipping_fee', 1850000, 1850000, 'KRW', 1.0, '국제배송 정산', 'EMS/DHL', (SELECT id FROM user_profiles WHERE role = 'admin' LIMIT 1)),
     (CURRENT_DATE - INTERVAL '20 days', 'expense', 'operation_cost', 8500000, 8500000, 'KRW', 1.0, '직원 급여', '3명 급여', (SELECT id FROM user_profiles WHERE role = 'admin' LIMIT 1)),
-    (CURRENT_DATE - INTERVAL '10 days', 'expense', 'other_expense', 4200000, 4200000, 'KRW', 1.0, '부가세 납부', '3분기 부가세', (SELECT id FROM user_profiles WHERE role = 'admin' LIMIT 1)),
-    (CURRENT_DATE - INTERVAL '5 days', 'expense', 'other_expense', 850000, 850000, 'KRW', 1.0, '카드 수수료', '월 카드 수수료', (SELECT id FROM user_profiles WHERE role = 'admin' LIMIT 1));
+    (CURRENT_DATE - INTERVAL '15 days', 'expense', 'other_expense', 4200000, 4200000, 'KRW', 1.0, '부가세 납부', '3분기 부가세', (SELECT id FROM user_profiles WHERE role = 'admin' LIMIT 1)),
+    (CURRENT_DATE - INTERVAL '12 days', 'expense', 'other_expense', 850000, 850000, 'KRW', 1.0, '카드 수수료', '월 카드 수수료', (SELECT id FROM user_profiles WHERE role = 'admin' LIMIT 1));
 
 -- =====================================================
 -- 7. 최종 데이터 확인
@@ -672,8 +713,6 @@ SELECT '  - Shipped: ' || COUNT(*)::TEXT FROM orders WHERE status = 'shipped'
 UNION ALL
 SELECT '  - Done: ' || COUNT(*)::TEXT FROM orders WHERE status = 'done'
 UNION ALL
-SELECT '  - Cancelled: ' || COUNT(*)::TEXT FROM orders WHERE status = 'cancelled'
-UNION ALL
 SELECT '  - Refunded: ' || COUNT(*)::TEXT FROM orders WHERE status = 'refunded'
 UNION ALL
 SELECT 'Order Items: ' || COUNT(*)::TEXT FROM order_items
@@ -683,4 +722,25 @@ UNION ALL
 SELECT 'Inventory Movements: ' || COUNT(*)::TEXT FROM inventory_movements
 UNION ALL
 SELECT 'Cashbook Transactions: ' || COUNT(*)::TEXT FROM cashbook_transactions
+UNION ALL
+SELECT '===================' as line2
+UNION ALL
+SELECT 'Customer Statistics (PCCC):' as result
+UNION ALL
+SELECT '  - Total Customers: ' || COUNT(DISTINCT pccc)::TEXT FROM orders WHERE pccc IS NOT NULL
+UNION ALL
+SELECT '  - Repeat Customers (2+ orders): ' || COUNT(*)::TEXT FROM (
+    SELECT pccc, COUNT(*) as order_count 
+    FROM orders 
+    WHERE pccc IS NOT NULL 
+    GROUP BY pccc 
+    HAVING COUNT(*) >= 2
+) AS repeat_customers
+UNION ALL
+SELECT '  - Top Customer Orders: ' || MAX(order_count)::TEXT FROM (
+    SELECT pccc, COUNT(*) as order_count 
+    FROM orders 
+    WHERE pccc IS NOT NULL 
+    GROUP BY pccc
+) AS customer_orders
 ORDER BY 1;

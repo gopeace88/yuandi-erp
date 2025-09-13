@@ -7,7 +7,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { MobileBottomNav } from '@/components/Navigation';
-import { exportToExcel } from '@/lib/utils/excel';
+import { createClient } from '@/lib/supabase/client';
 import './dashboard.css';
 
 interface DashboardPageProps {
@@ -16,6 +16,7 @@ interface DashboardPageProps {
 
 export default function DashboardPage({ params: { locale } }: DashboardPageProps) {
   const router = useRouter();
+  const [supabase] = useState(() => createClient());
   const [currentTime, setCurrentTime] = useState('');
   const [isMobile, setIsMobile] = useState(false);
   const [stats, setStats] = useState({
@@ -26,9 +27,14 @@ export default function DashboardPage({ params: { locale } }: DashboardPageProps
     todayOrdersCount: '0건',
     totalOrdersCount: '0건',
     inventoryCount: '0개',
-    revenueAmount: '₩0'
+    revenueAmount: '₩0',
+    shippingReadyCount: '0건',
+    shippingInProgressCount: '0건', 
+    shippingCompletedCount: '0건',
+    refundedCount: '0건',
+    totalCustomersCount: '0명',
+    repeatCustomersCount: '0명'
   });
-  const [recentOrders, setRecentOrders] = useState<any[]>([]);
 
   useEffect(() => {
     // 클라이언트 사이드에서만 시간 설정
@@ -57,9 +63,7 @@ export default function DashboardPage({ params: { locale } }: DashboardPageProps
 
   const loadDashboardStats = async () => {
     try {
-      // Supabase 직접 호출
-      const { createClient } = await import('@/lib/supabase/client');
-      const supabase = createClient();
+      // Supabase 직접 호출 (컴포넌트 레벨 클라이언트 재사용)
       
       // 주문 데이터 가져오기 (order_items와 products 조인)
       const { data: orders, error: ordersError } = await supabase
@@ -70,7 +74,8 @@ export default function DashboardPage({ params: { locale } }: DashboardPageProps
             quantity,
             products (
               name_ko,
-              name_zh
+              name_zh,
+              model
             )
           )
         `)
@@ -95,36 +100,35 @@ export default function DashboardPage({ params: { locale } }: DashboardPageProps
       const totalRevenue = orders?.reduce((sum: number, order: any) => 
         sum + (order.total_krw || 0), 0) || 0;
 
-      // 최근 주문 20건 설정
-      const sortedOrders = (orders || [])
-        .slice(0, 20)
-        .map((order: any) => {
-          // order_items 데이터를 상품 문자열로 변환
-          const productText = order.order_items && order.order_items.length > 0
-            ? order.order_items.map((item: any) => {
-                const productName = locale === 'ko' 
-                  ? item.products?.name_ko 
-                  : item.products?.name_zh;
-                return `${productName || '상품'}(${item.quantity})`;
-              }).join(', ')
-            : '-';
-          
-          return {
-            id: order.id,
-            order_number: order.order_number,
-            date: order.created_at.split('T')[0],
-            name: order.customer_name,
-            phone: order.customer_phone || '',
-            product: productText,
-            status: order.status || 'paid',
-            amount: locale === 'ko' 
-              ? `₩${(order.total_krw || 0).toLocaleString()}` 
-              : `¥${Math.floor((order.total_krw || 0) / 180).toLocaleString()}`,
-            total_krw: order.total_krw || 0
-          };
-        });
+      // 배송 현황 카운트
+      const shippingReady = orders?.filter((order: any) => order.status === 'paid') || [];
+      const shippingInProgress = orders?.filter((order: any) => order.status === 'shipped') || [];
+      const shippingCompleted = orders?.filter((order: any) => 
+        order.status === 'done' || order.status === 'delivered') || [];
+      // cancelled와 refunded를 모두 환불/취소로 통합
+      const refunded = orders?.filter((order: any) => 
+        order.status === 'refunded' || order.status === 'cancelled') || [];
       
-      setRecentOrders(sortedOrders);
+      // 고객 통계 계산 (PCCC 기반)
+      const pcccMap = new Map<string, number>();
+      orders?.forEach((order: any) => {
+        if (order.pccc) {
+          const count = pcccMap.get(order.pccc) || 0;
+          pcccMap.set(order.pccc, count + 1);
+        }
+      });
+      
+      const totalCustomers = pcccMap.size;  // 전체 고객 수
+      const repeatCustomers = Array.from(pcccMap.values()).filter(count => count >= 2).length;  // 2번 이상 주문한 고객
+      
+      console.log('고객 통계:', { 
+        totalOrders: orders?.length,
+        pcccMap: pcccMap.size,
+        totalCustomers,
+        repeatCustomers,
+        samplePCCC: orders?.[0]?.pccc 
+      });
+      
       
       setStats({
         todayOrders: locale === 'ko' ? '오늘 주문' : '今日订单',
@@ -136,7 +140,13 @@ export default function DashboardPage({ params: { locale } }: DashboardPageProps
         inventoryCount: locale === 'ko' ? `${totalInventory}개` : `${totalInventory}个`,
         revenueAmount: locale === 'ko' 
           ? `₩${totalRevenue.toLocaleString()}` 
-          : `¥${Math.floor(totalRevenue / 180).toLocaleString()}`
+          : `¥${Math.floor(totalRevenue / 180).toLocaleString()}`,
+        shippingReadyCount: locale === 'ko' ? `${shippingReady.length}건` : `${shippingReady.length}单`,
+        shippingInProgressCount: locale === 'ko' ? `${shippingInProgress.length}건` : `${shippingInProgress.length}单`,
+        shippingCompletedCount: locale === 'ko' ? `${shippingCompleted.length}건` : `${shippingCompleted.length}单`,
+        refundedCount: locale === 'ko' ? `${refunded.length}건` : `${refunded.length}单`,
+        totalCustomersCount: locale === 'ko' ? `${totalCustomers}명` : `${totalCustomers}人`,
+        repeatCustomersCount: locale === 'ko' ? `${repeatCustomers}명` : `${repeatCustomers}人`
       });
     } catch (error) {
       console.error('대시보드 통계 로드 실패:', error);
@@ -253,6 +263,119 @@ export default function DashboardPage({ params: { locale } }: DashboardPageProps
           </div>
         </div>
 
+        {/* 배송 현황 요약 - 2x2 그리드 */}
+        <div className="stats-grid" style={{ marginBottom: '2rem' }}>
+          {/* 배송 준비 */}
+          <div className="stat-card" style={{
+            backgroundColor: 'white',
+            borderRadius: '0.5rem',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+          }}>
+            <div className="stat-label" style={{ color: '#6b7280' }}>
+              {locale === 'ko' ? '배송 준비' : '待发货'}
+            </div>
+            <div className="stat-value-large" style={{ 
+              fontWeight: 'bold', 
+              color: '#3b82f6' 
+            }}>
+              {stats.shippingReadyCount}
+            </div>
+          </div>
+
+          {/* 배송 중 */}
+          <div className="stat-card" style={{
+            backgroundColor: 'white',
+            borderRadius: '0.5rem',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+          }}>
+            <div className="stat-label" style={{ color: '#6b7280' }}>
+              {locale === 'ko' ? '배송 중' : '配送中'}
+            </div>
+            <div className="stat-value-large" style={{ 
+              fontWeight: 'bold', 
+              color: '#f59e0b' 
+            }}>
+              {stats.shippingInProgressCount}
+            </div>
+          </div>
+
+          {/* 배송 완료 */}
+          <div className="stat-card" style={{
+            backgroundColor: 'white',
+            borderRadius: '0.5rem',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+          }}>
+            <div className="stat-label" style={{ color: '#6b7280' }}>
+              {locale === 'ko' ? '배송 완료' : '已完成'}
+            </div>
+            <div className="stat-value-large" style={{ 
+              fontWeight: 'bold', 
+              color: '#10b981' 
+            }}>
+              {stats.shippingCompletedCount}
+            </div>
+          </div>
+
+          {/* 환불/취소 통합 */}
+          <div className="stat-card" style={{
+            backgroundColor: 'white',
+            borderRadius: '0.5rem',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+          }}>
+            <div className="stat-label" style={{ color: '#6b7280' }}>
+              {locale === 'ko' ? '환불/취소' : '退款/取消'}
+            </div>
+            <div className="stat-value-large" style={{ 
+              fontWeight: 'bold', 
+              color: '#ef4444' 
+            }}>
+              {stats.refundedCount}
+            </div>
+          </div>
+        </div>
+
+        {/* 고객 현황 - 2x1 그리드 */}
+        <div style={{ 
+          display: 'grid',
+          gridTemplateColumns: 'repeat(2, 1fr)',
+          gap: '1rem',
+          marginBottom: '2rem'
+        }}>
+          {/* 전체 고객 수 */}
+          <div className="stat-card" style={{
+            backgroundColor: 'white',
+            borderRadius: '0.5rem',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+          }}>
+            <div className="stat-label" style={{ color: '#6b7280' }}>
+              {locale === 'ko' ? '전체 고객' : '总客户'}
+            </div>
+            <div className="stat-value-large" style={{ 
+              fontWeight: 'bold', 
+              color: '#7c3aed' 
+            }}>
+              {stats.totalCustomersCount}
+            </div>
+          </div>
+
+          {/* 단골 고객 수 */}
+          <div className="stat-card" style={{
+            backgroundColor: 'white',
+            borderRadius: '0.5rem',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+          }}>
+            <div className="stat-label" style={{ color: '#6b7280' }}>
+              {locale === 'ko' ? '단골 고객' : '常客'}
+            </div>
+            <div className="stat-value-large" style={{ 
+              fontWeight: 'bold', 
+              color: '#ec4899' 
+            }}>
+              {stats.repeatCustomersCount}
+            </div>
+          </div>
+        </div>
+
         {/* Quick Actions - 제거됨 (사용자 요청)
         <div style={{
           backgroundColor: 'white',
@@ -332,165 +455,6 @@ export default function DashboardPage({ params: { locale } }: DashboardPageProps
           </div>
         </div> */}
 
-        {/* Recent Orders - Updated */}
-        <div style={{
-          backgroundColor: 'white',
-          padding: '2rem',
-          borderRadius: '0.5rem',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>
-              {locale === 'ko' ? '최근 주문' : locale === 'zh-CN' ? '最近订单' : 'Recent Orders'}
-            </h2>
-            <button
-              onClick={() => {
-                const orders = recentOrders.length > 0 ? recentOrders : [
-                  { date: new Date().toISOString().split('T')[0], name: locale === 'ko' ? '데이터 없음' : '无数据', status: 'paid', amount: '₩0' }
-                ];
-                
-                const columns = [
-                  { header: locale === 'ko' ? '주문번호' : locale === 'zh-CN' ? '订单号' : 'Order No', key: 'order_number', width: 15 },
-                  { header: locale === 'ko' ? '이름' : locale === 'zh-CN' ? '姓名' : 'Name', key: 'name', width: 15 },
-                  { header: locale === 'ko' ? '전화번호' : locale === 'zh-CN' ? '电话' : 'Phone', key: 'phone', width: 15 },
-                  { header: locale === 'ko' ? '상품' : locale === 'zh-CN' ? '商品' : 'Product', key: 'product', width: 30 },
-                  { header: locale === 'ko' ? '상태' : locale === 'zh-CN' ? '状态' : 'Status', key: 'status', width: 10 },
-                  { header: locale === 'ko' ? '금액' : locale === 'zh-CN' ? '金额' : 'Amount', key: 'amount', width: 15 }
-                ];
-                
-                exportToExcel({
-                  data: orders,
-                  columns,
-                  fileName: locale === 'ko' ? '최근주문' : 'recent_orders',
-                  sheetName: locale === 'ko' ? '최근주문' : 'Recent Orders'
-                });
-              }}
-              style={{
-                padding: '0.5rem 1rem',
-                backgroundColor: '#10b981',
-                color: 'white',
-                border: 'none',
-                borderRadius: '0.375rem',
-                fontSize: '0.875rem',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}
-            >
-              📥 {locale === 'ko' ? '엑셀 저장' : locale === 'zh-CN' ? '导出Excel' : 'Export Excel'}
-            </button>
-          </div>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#374151' }}>
-                    {locale === 'ko' ? '주문번호' : locale === 'zh-CN' ? '订单号' : 'Order No'}
-                  </th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#374151' }}>
-                    {locale === 'ko' ? '이름' : locale === 'zh-CN' ? '姓名' : 'Name'}
-                  </th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#374151' }}>
-                    {locale === 'ko' ? '전화번호' : locale === 'zh-CN' ? '电话' : 'Phone'}
-                  </th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#374151' }}>
-                    {locale === 'ko' ? '상품' : locale === 'zh-CN' ? '商品' : 'Product'}
-                  </th>
-                  <th style={{ padding: '0.75rem', textAlign: 'center', fontSize: '0.875rem', fontWeight: '600', color: '#374151' }}>
-                    {locale === 'ko' ? '상태' : locale === 'zh-CN' ? '状态' : 'Status'}
-                  </th>
-                  <th style={{ padding: '0.75rem', textAlign: 'right', fontSize: '0.875rem', fontWeight: '600', color: '#374151' }}>
-                    {locale === 'ko' ? '금액' : locale === 'zh-CN' ? '金额' : 'Amount'}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {/* 최근 주문 표시 */}
-                {recentOrders.map((order, index) => {
-                  const statusColors = {
-                    'paid': { bg: '#dbeafe', color: '#1e40af', text: locale === 'ko' ? '결제완료' : locale === 'zh-CN' ? '已付款' : 'Paid' },
-                    'shipped': { bg: '#fef3c7', color: '#92400e', text: locale === 'ko' ? '배송중' : locale === 'zh-CN' ? '配送中' : 'Shipping' },
-                    'done': { bg: '#d1fae5', color: '#065f46', text: locale === 'ko' ? '배송완료' : locale === 'zh-CN' ? '配送完成' : 'Completed' },
-                    'delivered': { bg: '#d1fae5', color: '#065f46', text: locale === 'ko' ? '배송완료' : locale === 'zh-CN' ? '配送完成' : 'Completed' },
-                    'refunded': { bg: '#fee2e2', color: '#991b1b', text: locale === 'ko' ? '환불' : locale === 'zh-CN' ? '已退款' : 'Refunded' }
-                  };
-                  
-                  const status = statusColors[order.status as keyof typeof statusColors] || 
-                    { bg: '#f3f4f6', color: '#374151', text: order.status || 'Unknown' };
-                  
-                  return (
-                    <tr 
-                      key={index} 
-                      style={{ 
-                        borderBottom: '1px solid #e5e7eb',
-                        cursor: 'pointer',
-                        transition: 'background-color 0.2s'
-                      }}
-                      onClick={() => {
-                        // 상태별로 적절한 탭과 액션 설정
-                        let tab = '';
-                        let action = '';
-                        
-                        switch(order.status) {
-                          case 'paid':
-                            tab = 'ready';
-                            action = 'register';
-                            break;
-                          case 'shipped':
-                            tab = 'shipping';
-                            action = 'update';
-                            break;
-                          case 'done':
-                          case 'delivered':
-                            tab = 'completed';
-                            action = 'view';
-                            break;
-                          case 'refunded':
-                            tab = 'refunded';
-                            action = 'view';
-                            break;
-                          default:
-                            tab = 'ready';
-                            action = 'view';
-                        }
-                        
-                        // 배송관리 페이지로 이동하면서 주문 정보와 탭 정보 전달
-                        router.push(`/${locale}/shipments?orderId=${order.id}&tab=${tab}&action=${action}`);
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = '#f9fafb';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'transparent';
-                      }}
-                    >
-                      <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>{order.order_number}</td>
-                      <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>{order.name}</td>
-                      <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>{order.phone}</td>
-                      <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>{order.product}</td>
-                      <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                        <span style={{
-                          padding: '0.25rem 0.5rem',
-                          backgroundColor: status.bg,
-                          color: status.color,
-                          borderRadius: '0.25rem',
-                          fontSize: '0.75rem',
-                          fontWeight: '500'
-                        }}>
-                          {status.text}
-                        </span>
-                      </td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right', fontSize: '0.875rem', fontWeight: '500' }}>
-                        {order.amount}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
       </div>
 
       {/* 모바일에서만 하단 네비게이션 표시 */}

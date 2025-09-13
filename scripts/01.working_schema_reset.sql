@@ -33,7 +33,7 @@ SELECT 'Types dropped successfully' as status;
 -- 3. 타입 생성
 CREATE TYPE user_role AS ENUM ('admin', 'order_manager', 'ship_manager');
 CREATE TYPE user_language AS ENUM ('ko', 'zh', 'en');
-CREATE TYPE order_status AS ENUM ('paid', 'shipped', 'done', 'refunded', 'cancelled');
+CREATE TYPE order_status AS ENUM ('paid', 'shipped', 'done', 'refunded');
 CREATE TYPE payment_method AS ENUM ('card', 'cash', 'transfer', 'alipay', 'wechat', 'other');
 CREATE TYPE shipping_method AS ENUM ('standard', 'express', 'pickup', 'international');
 CREATE TYPE movement_type AS ENUM ('inbound', 'sale', 'adjustment', 'disposal');
@@ -397,7 +397,28 @@ CREATE TRIGGER trigger_record_inventory_movement
 SELECT 'Functions and triggers created successfully' as status;
 
 -- =====================================================
--- 8. SEED DATA
+-- 8. INDEXES
+-- =====================================================
+
+-- PCCC 인덱스 (고객 식별 및 통계 분석용)
+CREATE INDEX idx_orders_customer_pccc ON orders(customer_pccc) WHERE customer_pccc IS NOT NULL;
+CREATE INDEX idx_orders_pccc_status ON orders(customer_pccc, status) WHERE customer_pccc IS NOT NULL;
+CREATE INDEX idx_orders_pccc_date ON orders(customer_pccc, order_date) WHERE customer_pccc IS NOT NULL;
+
+-- 기타 유용한 인덱스
+CREATE INDEX idx_orders_status ON orders(status);
+CREATE INDEX idx_orders_order_date ON orders(order_date);
+CREATE INDEX idx_order_items_order_id ON order_items(order_id);
+CREATE INDEX idx_order_items_product_id ON order_items(product_id);
+CREATE INDEX idx_products_sku ON products(sku);
+CREATE INDEX idx_products_is_active ON products(is_active);
+CREATE INDEX idx_shipments_order_id ON shipments(order_id);
+CREATE INDEX idx_inventory_movements_product_id ON inventory_movements(product_id);
+
+SELECT 'Indexes created successfully' as status;
+
+-- =====================================================
+-- 9. SEED DATA
 -- =====================================================
 
 -- 기본 카테고리 (브랜드 기반)

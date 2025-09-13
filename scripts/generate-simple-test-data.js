@@ -80,7 +80,7 @@ async function generateTestData() {
     
     const orders = [];
     const customerNames = ['김민수', '이영희', '박철수', '최지영', '정대호'];
-    const statuses = ['paid', 'shipped', 'done', 'cancelled', 'refunded'];
+    const statuses = ['paid', 'shipped', 'done', 'refunded'];
     const paymentMethods = ['card', 'cash', 'transfer'];
     
     for (let i = 1; i <= 50; i++) {

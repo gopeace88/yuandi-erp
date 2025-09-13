@@ -12,6 +12,8 @@ import api from '@/lib/api/client';
 import { exportToExcel } from '@/lib/utils/excel';
 import ImageUpload from '@/components/common/ImageUpload';
 import Pagination from '@/components/common/Pagination';
+import { MobileBottomNav } from '@/components/Navigation';
+import { createClient } from '@/lib/supabase/client';
 
 interface InventoryPageProps {
   params: { locale: string };
@@ -43,6 +45,7 @@ interface StockMovement {
   productName: string;
   productModel?: string;
   productColor?: string;
+  productBrand?: string;
   productCategory?: string;
   type: 'inbound' | 'sale' | 'adjustment';
   quantity: number;
@@ -56,6 +59,7 @@ interface StockMovement {
 
 export default function InventoryPage({ params: { locale } }: InventoryPageProps) {
   const router = useRouter();
+  const [supabase] = useState(() => createClient());
   const [products, setProducts] = useState<Product[]>([]);
   const [movements, setMovements] = useState<StockMovement[]>([]);
   const [showInboundModal, setShowInboundModal] = useState(false);
@@ -72,11 +76,28 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
   // 페이지네이션 상태
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20; // 페이지당 20개 항목 표시
+  
+  // 재고이동 내역 페이지네이션 상태
+  const [movementPage, setMovementPage] = useState(1);
+  const movementsPerPage = 10; // 페이지당 10개 항목 표시
+  
+  // 재고이동 상세보기 모달 상태
+  const [selectedMovement, setSelectedMovement] = useState<StockMovement | null>(null);
+  const [showMovementDetailModal, setShowMovementDetailModal] = useState(false);
+  
+  // 모바일 감지
+  const [isMobile, setIsMobile] = useState(false);
 
   // 상품 상세 클릭 핸들러
   const handleProductClick = (product: Product) => {
     setSelectedProduct(product);
     setShowDetailModal(true);
+  };
+  
+  // 재고이동 상세 클릭 핸들러
+  const handleMovementClick = (movement: StockMovement) => {
+    setSelectedMovement(movement);
+    setShowMovementDetailModal(true);
   };
 
 
@@ -286,6 +307,18 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
     loadCategories();
     loadSystemSettings();
   }, []);
+  
+  // 모바일 감지
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // 시스템 설정 로드
   const loadSystemSettings = async () => {
@@ -309,8 +342,6 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
   const loadProducts = async () => {
     try {
       // Supabase 직접 호출
-      const { createClient } = await import('@/lib/supabase/client');
-      const supabase = createClient();
       
       const { data: products, error } = await supabase
         .from('products')
@@ -360,8 +391,6 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
   const loadMovements = async () => {
     try {
       // Supabase 직접 호출
-      const { createClient } = await import('@/lib/supabase/client');
-      const supabase = createClient();
       
       const { data: movements, error } = await supabase
         .from('inventory_movements')
@@ -374,7 +403,12 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
             model,
             color_ko,
             color_zh,
+            brand_ko,
+            brand_zh,
             category_id
+          ),
+          user_profiles!inventory_movements_created_by_fkey (
+            name
           )
         `)
         .order('created_at', { ascending: false })
@@ -393,6 +427,7 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
         productName: locale === 'ko' ? movement.products?.name_ko : movement.products?.name_zh || '',
         productModel: movement.products?.model || '',
         productColor: locale === 'ko' ? movement.products?.color_ko : movement.products?.color_zh || '',
+        productBrand: locale === 'ko' ? movement.products?.brand_ko : movement.products?.brand_zh || '',
         productCategory: movement.products?.category_id || '',
         type: movement.movement_type,
         quantity: movement.quantity,
@@ -401,7 +436,10 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
         unitCost: movement.cost_per_unit_cny,
         note: movement.notes,
         date: movement.created_at,
-        createdBy: movement.created_by || 'System'
+        // UUID 형식이면 사용자를 찾지 못한 것이므로 '-'로 표시
+        createdBy: movement.user_profiles?.name || 
+                  (movement.created_by && movement.created_by.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i) ? '-' : movement.created_by) || 
+                  '-'
       })) || [];
       
       setMovements(transformedMovements);
@@ -619,8 +657,6 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
 
     try {
       // Supabase에 재고 조정 저장
-      const { createClient } = await import('@/lib/supabase/client');
-      const supabase = createClient();
 
       // 재고 조정 트랜잭션
       const newQuantity = Math.max(0, product.onHand + quantity);
@@ -631,7 +667,7 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
         .update({ 
           on_hand: newQuantity,
           updated_at: new Date().toISOString()
-        })
+        } as any)
         .eq('id', productId);
 
       if (inventoryError) {
@@ -652,7 +688,7 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
           note: reason,
           movement_date: new Date().toISOString(),
           created_by: '00000000-0000-0000-0000-000000000000' // 임시 UUID, 실제로는 사용자 ID 필요
-        });
+        } as any);
 
       if (movementError) {
         console.error('재고 이동 내역 기록 실패:', movementError);
@@ -751,7 +787,7 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
 
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-100" style={{ paddingBottom: isMobile ? '80px' : '0' }}>
       {/* 헤더 */}
       <div className="bg-white border-b border-gray-200 px-4 py-3 md:px-6 md:py-4">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
@@ -859,7 +895,7 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
                 exportToExcel({
                   data: filteredProducts.map(p => ({
                     ...p,
-                    active: p.active ? texts.active : texts.inactive
+                    active: (p as any).active ? texts.active : texts.inactive
                   })),
                   columns,
                   fileName: locale === 'ko' ? '재고현황' : 'inventory',
@@ -913,27 +949,64 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
                         {product.imageUrl && (
                           <img
                             src={product.imageUrl}
-                            alt={product.name}
-                            className="w-12 h-12 object-cover rounded"
+                            alt={locale === 'ko' ? product.name_ko : product.name_zh}
+                            className="w-16 h-16 object-cover rounded flex-shrink-0"
                           />
                         )}
-                        <div className="flex-1">
-                          <div className="font-semibold text-sm">{product.name}</div>
-                          <div className="text-xs text-gray-500 mt-1">
-                            {product.sku}
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            {product.category} | {locale === 'ko' ? product.brand_ko : product.brand_zh}
-                          </div>
-                          <div className="flex justify-between items-center mt-2">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-semibold">재고: {product.onHand}</span>
-                              <span className="text-xs px-2 py-0.5 rounded" 
-                                style={{ backgroundColor: stockStatus.bgColor, color: stockStatus.color }}>
-                                {stockStatus.text}
-                              </span>
+                        <div className="flex-1 min-w-0">
+                          {/* 날짜 표시 - 우상단 */}
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              {/* 첫번째 줄: 상품명 + 모델명 */}
+                              <div className="flex flex-wrap items-baseline gap-2">
+                                <span className="font-semibold text-sm">{locale === 'ko' ? product.name_ko : product.name_zh}</span>
+                                <span className="text-xs text-gray-600">{product.model}</span>
+                              </div>
                             </div>
-                            <div className="text-sm font-semibold text-blue-600">
+                            {/* 날짜 */}
+                            <span className="text-xs text-gray-400 ml-2">
+                              {new Date().toLocaleDateString('ko-KR', { 
+                                year: '2-digit', 
+                                month: '2-digit', 
+                                day: '2-digit' 
+                              }).replace(/\. /g, '-').replace(/\./g, '')}
+                            </span>
+                          </div>
+                          
+                          {/* 두번째 줄: 카테고리 */}
+                          <div className="text-xs text-gray-500 mt-1">
+                            {product.category}
+                          </div>
+                          
+                          {/* 세번째 줄: 브랜드 + 색상 */}
+                          <div className="text-xs text-gray-500 mt-0.5">
+                            {locale === 'ko' ? product.brand_ko : product.brand_zh}
+                            {(product.color_ko || product.color_zh) && (
+                              <span> • {locale === 'ko' ? product.color_ko : product.color_zh}</span>
+                            )}
+                          </div>
+                          
+                          {/* 네번째 줄: 재고 + 원가 + 판매가 */}
+                          <div className="flex justify-between items-center mt-2">
+                            <div className="flex items-center gap-3">
+                              <div className="flex items-center gap-1">
+                                <span className="text-sm font-medium">{texts.stock}: {product.onHand}</span>
+                                <span 
+                                  className="text-xs px-1.5 py-0.5 rounded" 
+                                  style={{ 
+                                    backgroundColor: `${stockStatus.color}20`,
+                                    color: stockStatus.color,
+                                    border: `1px solid ${stockStatus.color}40`
+                                  }}
+                                >
+                                  {stockStatus.text}
+                                </span>
+                              </div>
+                              <div className="text-sm font-bold text-gray-700">
+                                ¥{product.costCny}
+                              </div>
+                            </div>
+                            <div className="text-sm font-bold text-blue-600">
                               ₩{product.salePriceKrw.toLocaleString()}
                             </div>
                           </div>
@@ -952,6 +1025,7 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{texts.date}</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{texts.productName}</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{texts.model}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{texts.brand}</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{texts.color}</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{texts.category}</th>
                       <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">{texts.stock}</th>
@@ -985,15 +1059,16 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
                               {product.imageUrl && (
                                 <img
                                   src={product.imageUrl}
-                                  alt={product.name}
+                                  alt={locale === 'ko' ? product.name_ko : product.name_zh}
                                   className="w-10 h-10 object-cover rounded"
                                 />
                               )}
-                              <p className="text-sm font-medium">{product.name}</p>
+                              <p className="text-sm font-medium">{locale === 'ko' ? product.name_ko : product.name_zh}</p>
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">{product.model}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm">{product.color || '-'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">{locale === 'ko' ? product.brand_ko : product.brand_zh || '-'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">{locale === 'ko' ? product.color_ko : product.color_zh || '-'}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">{product.category}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-center">
                             <div>
@@ -1020,15 +1095,17 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
           
           {/* 페이지네이션 */}
           {filteredProducts.length > itemsPerPage && (
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={setCurrentPage}
-              totalItems={filteredProducts.length}
-              itemsPerPage={itemsPerPage}
-              locale={locale}
-              className="mt-4 px-4 pb-4"
-            />
+            <div style={{ marginBottom: isMobile ? '20px' : '0' }}>
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+                totalItems={filteredProducts.length}
+                itemsPerPage={itemsPerPage}
+                locale={locale}
+                className="mt-4 px-4 pb-4"
+              />
+            </div>
           )}
           </div>
         </div>
@@ -1075,8 +1152,109 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
               📥 {locale === 'ko' ? '엑셀 저장' : locale === 'zh-CN' ? '导出Excel' : 'Export'}
             </button>
           </div>
-          <div style={{ backgroundColor: 'white', borderRadius: '0.5rem', overflow: 'hidden' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          {/* 페이지네이션 계산 */}
+          {(() => {
+            const totalMovementPages = Math.ceil(movements.length / movementsPerPage);
+            const startIndex = (movementPage - 1) * movementsPerPage;
+            const endIndex = startIndex + movementsPerPage;
+            const paginatedMovements = movements.slice(startIndex, endIndex);
+            
+            return (
+              <>
+                <div style={{ backgroundColor: 'white', borderRadius: '0.5rem', overflow: 'hidden' }}>
+                  {/* 모바일 카드 뷰 */}
+                  <div className="md:hidden">
+                    {paginatedMovements.map((movement) => {
+                // 상품 정보 찾기 - 카테고리명 가져오기
+                const product = products.find(p => p.id === movement.productId);
+                const categoryName = product?.category || 
+                  categories.find(c => c.id === movement.productCategory)?.name_ko || 
+                  movement.productCategory || '-';
+                
+                return (
+                  <div 
+                    key={movement.id}
+                    onClick={() => handleMovementClick(movement)}
+                    style={{
+                      padding: '1rem',
+                      borderBottom: '1px solid #e5e7eb',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      {/* 날짜 */}
+                      <span className="text-xs text-gray-500">
+                        {new Date(movement.date).toLocaleDateString('ko-KR', { 
+                          year: '2-digit', 
+                          month: '2-digit', 
+                          day: '2-digit' 
+                        }).replace(/\. /g, '-').replace(/\./g, '')}
+                      </span>
+                      {/* 유형 */}
+                      <span className={`text-xs px-2 py-0.5 rounded ${
+                        movement.type === 'inbound' ? 'bg-blue-100 text-blue-700' :
+                        movement.type === 'sale' ? 'bg-green-100 text-green-700' :
+                        'bg-gray-100 text-gray-700'
+                      }`}>
+                        {movement.type === 'inbound' ? texts.inboundType : 
+                         movement.type === 'sale' ? texts.saleType : 
+                         texts.adjustmentType}
+                      </span>
+                    </div>
+                    
+                    {/* 상품명 + 모델 */}
+                    <div className="font-semibold text-sm mb-1">
+                      {movement.productName}
+                      {movement.productModel && (
+                        <span className="text-xs text-gray-600 ml-2">{movement.productModel}</span>
+                      )}
+                    </div>
+                    
+                    {/* 카테고리 + 브랜드 + 색상 */}
+                    <div className="text-xs text-gray-500 mb-2">
+                      {locale === 'ko' ? 
+                        categories.find(c => c.id === movement.productCategory)?.name_ko || categoryName :
+                        categories.find(c => c.id === movement.productCategory)?.name_zh || categoryName
+                      }
+                      {movement.productBrand && (
+                        <span> • {movement.productBrand}</span>
+                      )}
+                      {movement.productColor && (
+                        <span> • {movement.productColor}</span>
+                      )}
+                    </div>
+                    
+                    {/* 수량 변화 + 잔량 */}
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-3">
+                        <span className={`text-sm font-bold ${
+                          movement.quantity > 0 ? 'text-green-600' : 'text-red-600'
+                        }`}>
+                          {movement.quantity > 0 ? '+' : ''}{movement.quantity}
+                        </span>
+                        <span className="text-xs text-gray-400">→</span>
+                        <span className="text-sm font-medium">
+                          {texts.balance}: {movement.balanceAfter}
+                        </span>
+                      </div>
+                      <span className="text-xs text-gray-500">
+                        {movement.createdBy}
+                      </span>
+                    </div>
+                    
+                    {/* 메모 (있을 경우) */}
+                    {movement.note && (
+                      <div className="text-xs text-gray-500 mt-2 italic">
+                        {movement.note}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* 데스크톱 테이블 뷰 */}
+            <table className="hidden md:table" style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ backgroundColor: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
                   <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600' }}>
@@ -1087,6 +1265,9 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
                   </th>
                   <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600' }}>
                     {texts.model}
+                  </th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600' }}>
+                    {texts.brand}
                   </th>
                   <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600' }}>
                     {texts.color}
@@ -1106,36 +1287,88 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
                 </tr>
               </thead>
               <tbody>
-                {movements.slice(0, 10).map((movement) => (
-                  <tr key={movement.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                    <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>
-                      {new Date(movement.date).toLocaleDateString('ko-KR', { year: '2-digit', month: '2-digit', day: '2-digit' }).replace(/\. /g, '-').replace(/\./g, '')}
-                    </td>
-                    <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>{movement.productName}</td>
-                    <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>{movement.productModel || '-'}</td>
-                    <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>{movement.productColor || '-'}</td>
-                    <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>{movement.productCategory || '-'}</td>
-                    <td style={{ 
-                      padding: '0.75rem', 
-                      textAlign: 'right', 
-                      fontSize: '0.875rem',
-                      color: movement.quantity > 0 ? '#10b981' : '#ef4444',
-                      fontWeight: '600'
-                    }}>
-                      {movement.quantity > 0 ? '+' : ''}{movement.quantity}
-                    </td>
-                    <td style={{ padding: '0.75rem', textAlign: 'right', fontSize: '0.875rem' }}>
-                      {movement.balanceAfter}
-                    </td>
-                    <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>{movement.createdBy}</td>
-                  </tr>
-                ))}
+                {paginatedMovements.map((movement) => {
+                  // 카테고리명 찾기
+                  const product = products.find(p => p.id === movement.productId);
+                  const categoryName = product?.category || 
+                    categories.find(c => c.id === movement.productCategory)?.name_ko || 
+                    movement.productCategory || '-';
+                  
+                  return (
+                    <tr 
+                      key={movement.id} 
+                      onClick={() => handleMovementClick(movement)}
+                      style={{ 
+                        borderBottom: '1px solid #e5e7eb',
+                        cursor: 'pointer'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#f9fafb';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                      }}
+                    >
+                      <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>
+                        {new Date(movement.date).toLocaleDateString('ko-KR', { year: '2-digit', month: '2-digit', day: '2-digit' }).replace(/\. /g, '-').replace(/\./g, '')}
+                      </td>
+                      <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>{movement.productName}</td>
+                      <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>{movement.productModel || '-'}</td>
+                      <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>{movement.productBrand || '-'}</td>
+                      <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>{movement.productColor || '-'}</td>
+                      <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>
+                        {locale === 'ko' ? 
+                          categories.find(c => c.id === movement.productCategory)?.name_ko || categoryName :
+                          categories.find(c => c.id === movement.productCategory)?.name_zh || categoryName
+                        }
+                      </td>
+                      <td style={{ 
+                        padding: '0.75rem', 
+                        textAlign: 'right', 
+                        fontSize: '0.875rem',
+                        color: movement.quantity > 0 ? '#10b981' : '#ef4444',
+                        fontWeight: '600'
+                      }}>
+                        {movement.quantity > 0 ? '+' : ''}{movement.quantity}
+                      </td>
+                      <td style={{ padding: '0.75rem', textAlign: 'right', fontSize: '0.875rem' }}>
+                        {movement.balanceAfter}
+                      </td>
+                      <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>{movement.createdBy}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
-          </div>
+                </div>
+                
+                {/* 페이지네이션 버튼 */}
+                {totalMovementPages > 1 && (
+                  <div className="flex justify-center items-center gap-2 mt-4">
+                    <button
+                      onClick={() => setMovementPage(prev => Math.max(1, prev - 1))}
+                      disabled={movementPage === 1}
+                      className="px-3 py-1 border rounded disabled:opacity-50"
+                    >
+                      {locale === 'ko' ? '이전' : '上一页'}
+                    </button>
+                    <span className="text-sm">
+                      {movementPage} / {totalMovementPages}
+                    </span>
+                    <button
+                      onClick={() => setMovementPage(prev => Math.min(totalMovementPages, prev + 1))}
+                      disabled={movementPage === totalMovementPages}
+                      className="px-3 py-1 border rounded disabled:opacity-50"
+                    >
+                      {locale === 'ko' ? '다음' : '下一页'}
+                    </button>
+                  </div>
+                )}
+              </>
+            );
+          })()}
         </div>
       </div>
-
 
       {/* 재고 입고 모달 */}
       {showInboundModal && (
@@ -1180,7 +1413,7 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
                   .sort((a, b) => (a.model || '').localeCompare(b.model || ''))
                   .map((product) => (
                     <option key={product.id} value={product.id}>
-                      {product.model} | {product.name} | {product.category} | {texts.stock}: {product.onHand}
+                      {product.model} | {locale === 'ko' ? product.name_ko : product.name_zh} | {product.category} | {texts.stock}: {product.onHand}
                     </option>
                   ))}
               </select>
@@ -1319,7 +1552,7 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
                   .sort((a, b) => (a.model || '').localeCompare(b.model || ''))
                   .map((product) => (
                     <option key={product.id} value={product.id}>
-                      {product.model} | {product.name} | {product.category} | {texts.stock}: {product.onHand}
+                      {product.model} | {locale === 'ko' ? product.name_ko : product.name_zh} | {product.category} | {texts.stock}: {product.onHand}
                     </option>
                   ))}
               </select>
@@ -1676,6 +1909,120 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
         </div>
       )}
 
+      {/* 재고이동 상세 모달 */}
+      {showMovementDetailModal && selectedMovement && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }} onClick={() => setShowMovementDetailModal(false)}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '0.5rem',
+            maxWidth: '500px',
+            width: '90%',
+            maxHeight: '80vh',
+            overflowY: 'auto',
+            padding: '2rem'
+          }} onClick={(e) => e.stopPropagation()}>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1.5rem' }}>
+              {texts.stockMovements} {locale === 'ko' ? '상세' : '详情'}
+            </h2>
+            
+            <div style={{ marginBottom: '1.5rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div>
+                  <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>{locale === 'ko' ? '날짜' : '日期'}</p>
+                  <p style={{ fontWeight: '600' }}>
+                    {new Date(selectedMovement.date).toLocaleDateString('ko-KR')}
+                  </p>
+                </div>
+                <div>
+                  <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>{locale === 'ko' ? '유형' : '类型'}</p>
+                  <p style={{ fontWeight: '600' }}>
+                    {selectedMovement.type === 'inbound' ? texts.inboundType : 
+                     selectedMovement.type === 'sale' ? texts.saleType : 
+                     texts.adjustmentType}
+                  </p>
+                </div>
+                <div>
+                  <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>{texts.productName}</p>
+                  <p style={{ fontWeight: '600' }}>{selectedMovement.productName}</p>
+                </div>
+                <div>
+                  <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>{texts.model}</p>
+                  <p style={{ fontWeight: '600' }}>{selectedMovement.productModel || '-'}</p>
+                </div>
+                <div>
+                  <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>{texts.brand}</p>
+                  <p style={{ fontWeight: '600' }}>{selectedMovement.productBrand || '-'}</p>
+                </div>
+                <div>
+                  <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>{texts.color}</p>
+                  <p style={{ fontWeight: '600' }}>{selectedMovement.productColor || '-'}</p>
+                </div>
+                <div>
+                  <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>{locale === 'ko' ? '수량' : '数量'}</p>
+                  <p style={{ 
+                    fontWeight: '600', 
+                    fontSize: '1.25rem',
+                    color: selectedMovement.quantity > 0 ? '#10b981' : '#ef4444'
+                  }}>
+                    {selectedMovement.quantity > 0 ? '+' : ''}{selectedMovement.quantity}
+                  </p>
+                </div>
+                <div>
+                  <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>{locale === 'ko' ? '잔량' : '余额'}</p>
+                  <p style={{ fontWeight: '600', fontSize: '1.25rem' }}>
+                    {selectedMovement.balanceAfter}
+                  </p>
+                </div>
+                {selectedMovement.unitCost && (
+                  <div>
+                    <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>{locale === 'ko' ? '단가' : '单价'}</p>
+                    <p style={{ fontWeight: '600' }}>¥{selectedMovement.unitCost}</p>
+                  </div>
+                )}
+                <div>
+                  <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>{locale === 'ko' ? '담당자' : '操作员'}</p>
+                  <p style={{ fontWeight: '600' }}>{selectedMovement.createdBy}</p>
+                </div>
+              </div>
+              
+              {selectedMovement.note && (
+                <div style={{ marginTop: '1rem' }}>
+                  <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>{locale === 'ko' ? '메모' : '备注'}</p>
+                  <p style={{ marginTop: '0.25rem' }}>{selectedMovement.note}</p>
+                </div>
+              )}
+            </div>
+            
+            <button
+              onClick={() => setShowMovementDetailModal(false)}
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                backgroundColor: '#6b7280',
+                color: 'white',
+                border: 'none',
+                borderRadius: '0.375rem',
+                fontSize: '0.875rem',
+                cursor: 'pointer'
+              }}
+            >
+              {texts.close}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 상품 상세 모달 */}
       {showDetailModal && selectedProduct && (
         <div style={{
@@ -1718,8 +2065,8 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
             <div style={{ marginBottom: '1.5rem' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div>
-                  <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>SKU</p>
-                  <p style={{ fontWeight: '600', fontFamily: 'monospace', fontSize: '0.875rem' }}>{selectedProduct.sku}</p>
+                  <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>{texts.productName}</p>
+                  <p style={{ fontWeight: '600' }}>{locale === 'ko' ? selectedProduct.name_ko : selectedProduct.name_zh}</p>
                 </div>
                 <div>
                   <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>{texts.category}</p>
@@ -1780,6 +2127,9 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
           </div>
         </div>
       )}
+      
+      {/* 모바일 하단 네비게이션 */}
+      {isMobile && <MobileBottomNav locale={locale} />}
     </div>
   );
 }

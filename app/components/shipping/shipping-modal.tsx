@@ -8,6 +8,7 @@ interface Order {
   id: string
   order_number: string
   customer_name: string
+  pccc?: string
   status: string
   final_amount: number
 }
@@ -110,6 +111,12 @@ export function ShippingModal({ order, isOpen, onClose, onSuccess }: ShippingMod
               <span className="text-sm text-gray-600">고객명</span>
               <span className="font-medium">{order.customer_name}</span>
             </div>
+            {order.pccc && (
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-600">PCCC</span>
+                <span className="font-medium">{order.pccc}</span>
+              </div>
+            )}
             <div className="flex justify-between">
               <span className="text-sm text-gray-600">주문금액</span>
               <span className="font-medium">
