@@ -90,6 +90,7 @@ export default function LoginPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="pl-12 h-12 text-base border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    data-testid="login-email"
                     required
                   />
                 </div>
@@ -108,6 +109,7 @@ export default function LoginPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="pl-12 pr-12 h-12 text-base border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    data-testid="login-password"
                     required
                   />
                   <button
@@ -130,6 +132,7 @@ export default function LoginPage() {
               <Button
                 type="submit"
                 className="w-full h-12 text-base font-medium bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors duration-200 shadow-lg hover:shadow-xl"
+                data-testid="login-submit"
                 disabled={loading}
               >
                 {loading ? (

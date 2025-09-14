@@ -1,36 +1,34 @@
 import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
-  testDir: './e2e',
+  testDir: './tests/e2e',
+  timeout: 60000, // 60초 타임아웃
+  expect: { timeout: 10000 },
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: 1,
-  reporter: 'html',
+  workers: 1, // 단일 워커로 실행
+  reporter: [['line'], ['html']],
+  
   use: {
-    baseURL: 'http://172.25.186.113:3000',
+    headless: false, // 브라우저 UI 표시
+    baseURL: 'https://00-yuandi-erp.vercel.app',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
+    actionTimeout: 10000,
+    navigationTimeout: 30000,
   },
 
   projects: [
     {
       name: 'chromium',
-      use: {
+      use: { 
         ...devices['Desktop Chrome'],
-        // Windows Chrome 사용
-        channel: 'chrome', // Windows Chrome 채널 사용
-        // 또는 직접 경로 지정
-        // executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+        // Playwright의 번들된 Chromium 사용
       },
     },
   ],
-
-  webServer: {
-    command: 'pnpm dev',
-    url: 'http://172.25.186.113:3000',
-    reuseExistingServer: true,
-    timeout: 120 * 1000,
-  },
+  
+  // 웹서버 설정 제거 (외부 배포 사이트 테스트)
 });

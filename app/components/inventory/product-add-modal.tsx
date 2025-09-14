@@ -111,6 +111,7 @@ export function ProductAddModal({ locale, onClose, onSuccess }: ProductAddModalP
                 value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                data-testid="product-category"
               >
                 <option value="">{t('common.select')}</option>
                 <option value="electronics">{t('products.categories.electronics')}</option>
@@ -134,6 +135,7 @@ export function ProductAddModal({ locale, onClose, onSuccess }: ProductAddModalP
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                data-testid="product-name"
               />
             </div>
 
@@ -147,6 +149,7 @@ export function ProductAddModal({ locale, onClose, onSuccess }: ProductAddModalP
                 value={formData.model}
                 onChange={(e) => setFormData({ ...formData, model: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                data-testid="product-model"
               />
             </div>
 
@@ -160,6 +163,7 @@ export function ProductAddModal({ locale, onClose, onSuccess }: ProductAddModalP
                 value={formData.color}
                 onChange={(e) => setFormData({ ...formData, color: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                data-testid="product-color"
               />
             </div>
 
@@ -173,6 +177,7 @@ export function ProductAddModal({ locale, onClose, onSuccess }: ProductAddModalP
                 value={formData.brand}
                 onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                data-testid="product-brand"
               />
             </div>
 
@@ -188,6 +193,7 @@ export function ProductAddModal({ locale, onClose, onSuccess }: ProductAddModalP
                 value={formData.costCny}
                 onChange={(e) => setFormData({ ...formData, costCny: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                data-testid="product-cost-cny"
               />
             </div>
 
@@ -203,6 +209,7 @@ export function ProductAddModal({ locale, onClose, onSuccess }: ProductAddModalP
                 value={formData.salePriceKrw}
                 onChange={(e) => setFormData({ ...formData, salePriceKrw: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                data-testid="product-sale-price"
               />
             </div>
 
@@ -218,6 +225,7 @@ export function ProductAddModal({ locale, onClose, onSuccess }: ProductAddModalP
                 value={formData.initialStock}
                 onChange={(e) => setFormData({ ...formData, initialStock: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                data-testid="product-initial-stock"
               />
             </div>
 
@@ -232,6 +240,7 @@ export function ProductAddModal({ locale, onClose, onSuccess }: ProductAddModalP
                 value={formData.lowStockThreshold}
                 onChange={(e) => setFormData({ ...formData, lowStockThreshold: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                data-testid="product-safety-stock"
               />
             </div>
           </div>
@@ -241,6 +250,7 @@ export function ProductAddModal({ locale, onClose, onSuccess }: ProductAddModalP
               type="button"
               onClick={onClose}
               className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              data-testid="product-cancel-button"
             >
               {t('common.cancel')}
             </button>
@@ -248,6 +258,7 @@ export function ProductAddModal({ locale, onClose, onSuccess }: ProductAddModalP
               type="submit"
               disabled={isLoading}
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+              data-testid="product-submit-button"
             >
               {isLoading ? t('common.saving') : t('common.save')}
             </button>

@@ -106,7 +106,30 @@ export async function PATCH(
       );
     }
 
-    // 5. 이벤트 로그 기록
+    // 5. 출납장부에 배송비 기록 (있는 경우)
+    if (body.shipping_fee && body.shipping_fee > 0) {
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id || '78502b6d-13e7-4acc-94a7-23a797de3519'; // admin 사용자
+
+      const { error: cashbookError } = await supabase
+        .from('cashbook_transactions')
+        .insert({
+          transaction_date: new Date().toISOString().slice(0, 10),
+          type: 'expense',
+          description: `배송비 - ${order.order_number} (${order.customer_name})`,
+          amount: body.shipping_fee,
+          related_order_id: id,
+          created_by: userId
+        });
+
+      if (cashbookError) {
+        console.error('❌ 배송비 출납장부 기록 실패:', cashbookError);
+      } else {
+        console.log(`✅ 배송비 출납장부 기록 성공: ₩ ${body.shipping_fee}`);
+      }
+    }
+
+    // 6. 이벤트 로그 기록
     await supabase
       .from('event_logs')
       .insert({
@@ -116,6 +139,7 @@ export async function PATCH(
         details: {
           tracking_number: body.tracking_number,
           courier: body.courier,
+          shipping_fee: body.shipping_fee || null,
           previous_status: order.status,
           new_status: 'shipped'
         },

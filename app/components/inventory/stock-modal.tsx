@@ -101,6 +101,7 @@ export function StockModal({ locale, type, product, onClose, onSuccess }: StockM
               min={type === 'inbound' ? 1 : -product.stock}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder={type === 'inbound' ? '입고할 수량을 입력하세요' : '증감할 수량을 입력하세요 (음수 가능)'}
+              data-testid="stock-quantity-input"
             />
             {quantity !== 0 && (
               <div className={`mt-2 text-sm ${newStock < 0 ? 'text-red-600' : 'text-green-600'}`}>
@@ -119,6 +120,7 @@ export function StockModal({ locale, type, product, onClose, onSuccess }: StockM
               onChange={(e) => setNote(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder={type === 'inbound' ? '입고 사유를 입력하세요' : '조정 사유를 입력하세요'}
+              data-testid="stock-note-textarea"
             />
           </div>
 
@@ -127,6 +129,7 @@ export function StockModal({ locale, type, product, onClose, onSuccess }: StockM
               type="button"
               onClick={onClose}
               className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              data-testid="stock-cancel-button"
             >
               {t('common.cancel')}
             </button>
@@ -134,6 +137,7 @@ export function StockModal({ locale, type, product, onClose, onSuccess }: StockM
               type="submit"
               disabled={isLoading || quantity === 0 || newStock < 0}
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+              data-testid="stock-submit-button"
             >
               {isLoading ? '처리 중...' : t('common.confirm')}
             </button>

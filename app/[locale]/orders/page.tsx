@@ -9,7 +9,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api/client';
 import { exportToExcel } from '@/lib/utils/excel';
-import Pagination from '@/components/common/Pagination';
+import { Pagination } from '@/app/components/ui/pagination';
 import { MobileBottomNav } from '@/components/Navigation';
 import { OrdersTable } from '@/components/orders/OrdersTable';
 import { createClient } from '@/lib/supabase/client';
@@ -890,7 +890,7 @@ export default function OrdersPage({ params: { locale } }: OrdersPageProps) {
               onPageChange={setCurrentPage}
               totalItems={filteredOrders.length}
               itemsPerPage={itemsPerPage}
-              locale={locale}
+              showSummary={true}
               className="mt-4"
             />
           </div>

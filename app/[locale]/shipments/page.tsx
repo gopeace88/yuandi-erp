@@ -10,7 +10,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { MobileBottomNav } from '@/components/Navigation';
 import { exportToExcel } from '@/lib/utils/excel';
 import ImageUpload from '@/components/common/ImageUpload';
-import Pagination from '@/components/common/Pagination';
+import { Pagination } from '@/app/components/ui/pagination';
 import { OrdersTable } from '@/components/orders/OrdersTable';
 import { createClient } from '@/lib/supabase/client';
 
@@ -1163,7 +1163,7 @@ function ShipmentsPageContent({ locale }: { locale: string }) {
                 onPageChange={setCurrentPage}
                 totalItems={pendingOrders.length}
                 itemsPerPage={itemsPerPage}
-                locale={locale}
+                showSummary={true}
                 className="mt-4"
               />
             </div>

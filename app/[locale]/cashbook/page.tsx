@@ -10,7 +10,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { MobileBottomNav } from '@/components/Navigation';
 import { exportToExcel } from '@/lib/utils/excel';
-import Pagination from '@/components/common/Pagination';
+import { Pagination } from '@/app/components/ui/pagination';
 
 interface CashbookPageProps {
   params: { locale: string };
@@ -1041,7 +1041,7 @@ export default function CashbookPage({ params: { locale } }: CashbookPageProps) 
             onPageChange={setCurrentPage}
             totalItems={filteredTransactions.length}
             itemsPerPage={itemsPerPage}
-            locale={locale}
+            showSummary={true}
           />
         </div>
       )}

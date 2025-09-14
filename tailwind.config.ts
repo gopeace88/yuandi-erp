@@ -16,6 +16,15 @@ const config: Config = {
       },
     },
     extend: {
+      zIndex: {
+        'dropdown': '100',
+        'sticky': '200', 
+        'fixed': '300',
+        'modal-backdrop': '1000',
+        'modal': '1050',
+        'notification': '2000',
+        'tooltip': '3000'
+      },
       colors: {
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',

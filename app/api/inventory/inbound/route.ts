@@ -8,17 +8,38 @@ export async function POST(request: NextRequest) {
     
     console.log('🔥 API 입고 요청 받음:', body);
     
-    // 현재 사용자 정보 가져오기 (선택적)
+    // 현재 사용자 정보 가져오기
     const { data: { user } } = await supabase.auth.getUser();
-    const userId = user?.id || '00000000-0000-0000-0000-000000000000';
-    
-    // 사용자 이름 가져오기
+    let userId = user?.id;
     let userName = 'System';
-    if (user?.id) {
+
+    // 인증된 사용자가 없는 경우 (테스트 환경 등)
+    if (!userId) {
+      // admin@yuandi.com 사용자 찾기
+      const { data: adminProfile } = await supabase
+        .from('user_profiles')
+        .select('id, name')
+        .eq('email', 'admin@yuandi.com')
+        .single();
+
+      if (adminProfile) {
+        userId = adminProfile.id;
+        userName = adminProfile.name || 'Admin';
+        console.log('📋 테스트 환경: admin 사용자 사용', userId);
+      } else {
+        // admin 사용자도 없으면 에러
+        console.error('❌ No authenticated user and no admin user found');
+        return NextResponse.json(
+          { error: 'Authentication required' },
+          { status: 401 }
+        );
+      }
+    } else {
+      // 인증된 사용자가 있으면 프로필 가져오기
       const { data: profile } = await supabase
         .from('user_profiles')
         .select('name')
-        .eq('id', user.id)
+        .eq('id', userId)
         .single();
       userName = profile?.name || user.email?.split('@')[0] || 'User';
     }

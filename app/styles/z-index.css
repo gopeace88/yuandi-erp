@@ -1,0 +1,47 @@
+/* Z-Index 계층 구조 정의 */
+:root {
+  /* Base layers */
+  --z-base: 1;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-fixed: 300;
+  
+  /* Modal layers */
+  --z-modal-backdrop: 1000;
+  --z-modal: 1050;
+  
+  /* Notification & Tooltip */
+  --z-notification: 2000;
+  --z-tooltip: 3000;
+}
+
+/* 모달 백드롭 (오버레이) */
+.modal-backdrop {
+  z-index: var(--z-modal-backdrop);
+}
+
+/* 모달 컨텐츠 */
+.modal-content {
+  z-index: var(--z-modal);
+}
+
+/* 드롭다운 메뉴 */
+.dropdown-menu {
+  z-index: var(--z-dropdown);
+}
+
+/* 고정 헤더/사이드바 */
+.fixed-header,
+.fixed-sidebar {
+  z-index: var(--z-fixed);
+}
+
+/* 알림 토스트 */
+.notification-toast {
+  z-index: var(--z-notification);
+}
+
+/* 툴팁 */
+.tooltip {
+  z-index: var(--z-tooltip);
+}

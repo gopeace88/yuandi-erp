@@ -11,7 +11,7 @@ import { getLowStockThreshold, clearSystemSettingsCache } from '@/lib/utils/syst
 import api from '@/lib/api/client';
 import { exportToExcel } from '@/lib/utils/excel';
 import ImageUpload from '@/components/common/ImageUpload';
-import Pagination from '@/components/common/Pagination';
+import { Pagination } from '@/app/components/ui/pagination';
 import { MobileBottomNav } from '@/components/Navigation';
 import { createClient } from '@/lib/supabase/client';
 
@@ -1102,7 +1102,7 @@ export default function InventoryPage({ params: { locale } }: InventoryPageProps
                 onPageChange={setCurrentPage}
                 totalItems={filteredProducts.length}
                 itemsPerPage={itemsPerPage}
-                locale={locale}
+                showSummary={true}
                 className="mt-4 px-4 pb-4"
               />
             </div>

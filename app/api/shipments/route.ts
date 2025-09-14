@@ -170,7 +170,7 @@ export async function POST(request: NextRequest) {
           ref_type: 'shipment',
           ref_id: shipment.id.toString(),
           note: `주문번호: ${orderData?.order_number || ''}, 중국 운송장: ${body.trackingNumberCn || ''}`,
-          created_by: user?.id || '00000000-0000-0000-0000-000000000000'  // UUID 타입
+          created_by: user?.id || '78502b6d-13e7-4acc-94a7-23a797de3519'  // admin 사용자
         });
       
       if (cashbookError) {

@@ -265,9 +265,9 @@ export async function POST(request: NextRequest) {
           console.error('Product on_hand update error:', productError);
         }
         
-        // 사용자 ID 가져오기
+        // 사용자 ID 가져오기 - 테스트 환경에서는 admin 사용자 사용
         const { data: { user } } = await supabase.auth.getUser();
-        const userId = user?.id || '00000000-0000-0000-0000-000000000000';
+        const userId = user?.id || '78502b6d-13e7-4acc-94a7-23a797de3519'; // admin 사용자
         
         // 재고 이동 내역 기록 (판매) - 올바른 필드명 사용
         const { error: movementError } = await supabase
@@ -291,7 +291,7 @@ export async function POST(request: NextRequest) {
     
     // 현재 사용자 정보 가져오기
     const { data: { user: currentUser } } = await supabase.auth.getUser();
-    const cashbookUserId = currentUser?.id || '00000000-0000-0000-0000-000000000000';
+    const cashbookUserId = currentUser?.id || '78502b6d-13e7-4acc-94a7-23a797de3519';
     
     // 출납장부에 판매 수익 기록
     const cashbookData = {
@@ -427,7 +427,7 @@ export async function PATCH(request: NextRequest) {
                   new_quantity: newOnHand,
                   note: `주문 ${status === 'refunded' ? '환불' : '취소'} #${id}`,
                   movement_date: new Date().toISOString(),
-                  created_by: user?.id || '00000000-0000-0000-0000-000000000000'  // UUID 사용
+                  created_by: user?.id || '78502b6d-13e7-4acc-94a7-23a797de3519'  // admin 사용자
                 });
               
               if (movementError) {
@@ -449,7 +449,7 @@ export async function PATCH(request: NextRequest) {
           if (orderData) {
             // 현재 사용자 정보 가져오기
             const { data: { user } } = await supabase.auth.getUser();
-            const userId = user?.id || '00000000-0000-0000-0000-000000000000';
+            const userId = user?.id || '78502b6d-13e7-4acc-94a7-23a797de3519'; // admin 사용자
             
             const { error: cashbookError } = await supabase
               .from('cashbook_transactions')
