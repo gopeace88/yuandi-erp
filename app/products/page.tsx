@@ -238,8 +238,9 @@ export default function ProductsPage() {
         <ProductModal
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
-          onSave={handleSaveProduct}
+          onSubmit={handleSaveProduct}
           product={editingProduct}
+          mode={editingProduct ? 'edit' : 'create'}
         />
       )}
     </div>
