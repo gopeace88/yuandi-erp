@@ -87,8 +87,8 @@ BEGIN
             v_sku := 'PRD-' || LPAD(v_counter::TEXT, 4, '0') || '-' || 
                      SUBSTR(MD5(RANDOM()::TEXT), 1, 6);
             
-            -- 가격 생성 (판매가: 50만원 ~ 2000만원, 원가: 판매가의 60-80%)
-            v_price_krw := ROUND((RANDOM() * 19500000 + 500000) / 10000) * 10000;
+            -- 가격 생성 (판매가: 50만원 ~ 100만원, 원가: 판매가의 60-80%)
+            v_price_krw := ROUND((RANDOM() * 500000 + 500000) / 10000) * 10000;
             v_price_cny := ROUND(v_price_krw * (0.6 + RANDOM() * 0.2) / 190);  -- 원가는 판매가의 60-80%
             
             -- 재고 생성 (0 ~ 50개)
@@ -226,8 +226,8 @@ BEGIN
         -- 결제 방법 랜덤 선택
         v_payment := v_payment_options[((i - 1) % 3) + 1];
         
-        -- 주문 금액 생성 (50만원 ~ 5000만원)
-        v_subtotal := ROUND((RANDOM() * 49500000 + 500000) / 10000) * 10000;
+        -- 주문 금액 생성 (50만원 ~ 100만원)
+        v_subtotal := ROUND((RANDOM() * 500000 + 500000) / 10000) * 10000;
         
         INSERT INTO orders (
             order_number, 

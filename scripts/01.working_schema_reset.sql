@@ -401,19 +401,20 @@ SELECT 'Functions and triggers created successfully' as status;
 -- =====================================================
 
 -- PCCC 인덱스 (고객 식별 및 통계 분석용)
-CREATE INDEX idx_orders_customer_pccc ON orders(customer_pccc) WHERE customer_pccc IS NOT NULL;
-CREATE INDEX idx_orders_pccc_status ON orders(customer_pccc, status) WHERE customer_pccc IS NOT NULL;
-CREATE INDEX idx_orders_pccc_date ON orders(customer_pccc, order_date) WHERE customer_pccc IS NOT NULL;
+CREATE INDEX idx_orders_customer_pccc ON orders(pccc) WHERE pccc IS NOT NULL;
+CREATE INDEX idx_orders_pccc_status ON orders(pccc, status) WHERE pccc IS NOT NULL;
+CREATE INDEX idx_orders_pccc_date ON orders(pccc, order_date) WHERE pccc IS NOT NULL;
 
--- 기타 유용한 인덱스
-CREATE INDEX idx_orders_status ON orders(status);
-CREATE INDEX idx_orders_order_date ON orders(order_date);
-CREATE INDEX idx_order_items_order_id ON order_items(order_id);
-CREATE INDEX idx_order_items_product_id ON order_items(product_id);
-CREATE INDEX idx_products_sku ON products(sku);
-CREATE INDEX idx_products_is_active ON products(is_active);
-CREATE INDEX idx_shipments_order_id ON shipments(order_id);
-CREATE INDEX idx_inventory_movements_product_id ON inventory_movements(product_id);
+-- 기타 유용한 인덱스들은 이미 위에서 생성됨
+-- 중복 인덱스들 제거:
+-- idx_orders_status -> 270행에 이미 있음
+-- idx_orders_order_date -> idx_orders_date (271행)와 중복
+-- idx_order_items_order_id -> idx_order_items_order (275행)와 중복
+-- idx_order_items_product_id -> idx_order_items_product (276행)와 중복
+-- idx_products_sku -> 263행에 이미 있음
+-- idx_products_is_active -> idx_products_active (265행)와 중복
+-- idx_shipments_order_id -> idx_shipments_order (279행)와 중복
+-- idx_inventory_movements_product_id -> idx_inventory_movements_product (284행)와 중복
 
 SELECT 'Indexes created successfully' as status;
 

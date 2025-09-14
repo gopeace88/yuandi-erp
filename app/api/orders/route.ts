@@ -194,21 +194,21 @@ export async function POST(request: NextRequest) {
       .from('orders')
       .insert({
         order_number: orderNumber,
-        customer_name: body.customerName,
-        customer_phone: body.customerPhone,
-        customer_email: body.customerEmail,
-        customer_messenger_id: body.customerMessengerId || null,  // 메신저 ID 추가
-        pccc: body.pcccCode,
-        shipping_address_line1: body.shippingAddress,
-        shipping_address_line2: body.shippingAddressDetail,
-        shipping_postal_code: body.zipCode,
+        customer_name: body.customer_name || body.customerName,
+        customer_phone: body.customer_phone || body.customerPhone,
+        customer_email: body.customer_email || body.customerEmail,
+        customer_messenger_id: body.customer_messenger_id || body.customerMessengerId || null,
+        pccc: body.pccc_code || body.pcccCode,
+        shipping_address_line1: body.shipping_address || body.shippingAddress,
+        shipping_address_line2: body.shipping_address_detail || body.shippingAddressDetail,
+        shipping_postal_code: body.zip_code || body.zipCode,
         status: 'paid',
-        subtotal_krw: body.totalAmount,
-        total_krw: body.totalAmount,
+        subtotal_krw: body.total_amount || body.totalAmount,
+        total_krw: body.total_amount || body.totalAmount,
         payment_method: body.paymentMethod || 'card',
         paid_at: new Date().toISOString(),
-        customer_memo: body.customerMemo,
-        notes: body.notes
+        customer_memo: body.customer_memo || body.customerMemo,
+        notes: body.internal_memo || body.notes
       })
       .select()
       .single();
@@ -222,24 +222,39 @@ export async function POST(request: NextRequest) {
     }
     
     // 주문 아이템 생성
-    if (body.productId && body.quantity) {
+    const productId = body.product_id || body.productId;
+    const quantity = body.quantity;
+    const customPrice = body.custom_price || body.customPrice;
+
+    console.log('📦 Order item creation:', {
+      productId,
+      quantity,
+      body_quantity: body.quantity,
+      customPrice,
+      hasProductId: !!productId,
+      hasQuantity: !!quantity,
+      willProceed: !!(productId && quantity)
+    });
+
+    if (productId && quantity) {
+      console.log('✅ 주문 아이템 처리 시작');
       const { data: product } = await supabase
         .from('products')
         .select('*')
-        .eq('id', body.productId)
+        .eq('id', productId)
         .single();
       
       // 커스텀 가격이 있으면 사용, 없으면 상품의 기본 가격 사용
-      const unitPrice = body.customPrice || product?.price_krw || 0;
+      const unitPrice = customPrice || product?.price_krw || 0;
       
       const { error: itemError } = await supabase
         .from('order_items')
         .insert({
           order_id: order.id,
-          product_id: body.productId,
-          quantity: body.quantity,
+          product_id: productId,
+          quantity: quantity,
           price_krw: unitPrice,
-          total_price_krw: unitPrice * body.quantity
+          total_price_krw: unitPrice * quantity
         });
       
       if (itemError) {
@@ -247,45 +262,68 @@ export async function POST(request: NextRequest) {
       }
       
       // products 테이블의 on_hand 감소 (inventory 테이블은 없음)
-      const { data: currentProduct } = await supabase
+      const { data: currentProduct, error: fetchError } = await supabase
         .from('products')
         .select('on_hand')
-        .eq('id', body.productId)
+        .eq('id', productId)
         .single();
-      
-      if (currentProduct && currentProduct.on_hand >= body.quantity) {
-        const newOnHand = currentProduct.on_hand - body.quantity;
-        
+
+      console.log('🔍 재고 감소 체크:', {
+        productId,
+        quantity,
+        currentProduct,
+        fetchError,
+        hasProduct: !!currentProduct,
+        onHand: currentProduct?.on_hand,
+        condition: currentProduct && currentProduct.on_hand >= quantity
+      });
+
+      if (fetchError) {
+        console.error('❌ Product fetch error:', fetchError);
+      }
+
+      if (currentProduct && currentProduct.on_hand >= quantity) {
+        const newOnHand = currentProduct.on_hand - quantity;
+        console.log(`✅ 재고 감소 실행: ${currentProduct.on_hand} → ${newOnHand}`);
+
         const { error: productError } = await supabase
           .from('products')
           .update({ on_hand: newOnHand })
-          .eq('id', body.productId);
-        
+          .eq('id', productId);
+
         if (productError) {
-          console.error('Product on_hand update error:', productError);
+          console.error('❌ Product on_hand update error:', productError);
+        } else {
+          console.log('✅ 재고 업데이트 성공');
         }
-        
+
         // 사용자 ID 가져오기 - 테스트 환경에서는 admin 사용자 사용
         const { data: { user } } = await supabase.auth.getUser();
         const userId = user?.id || '78502b6d-13e7-4acc-94a7-23a797de3519'; // admin 사용자
-        
+
         // 재고 이동 내역 기록 (판매) - 올바른 필드명 사용
         const { error: movementError } = await supabase
           .from('inventory_movements')
           .insert({
-            product_id: body.productId,
+            product_id: productId,  // 이미 위에서 정의한 변수 사용
             movement_type: 'sale',
-            quantity: -body.quantity, // 판매는 음수로 기록
+            quantity: -quantity, // 판매는 음수로 기록
             previous_quantity: currentProduct.on_hand,
             new_quantity: newOnHand,
             note: `주문 #${orderNumber}`,
             movement_date: new Date().toISOString(),
             created_by: userId  // UUID 사용
           });
-        
+
         if (movementError) {
           console.error('Inventory movement creation error:', movementError);
         }
+      } else {
+        console.log('⚠️ 재고 감소 스킵:', {
+          reason: !currentProduct ? 'Product not found' : 'Insufficient stock',
+          currentStock: currentProduct?.on_hand,
+          requestedQuantity: quantity
+        });
       }
     }
     
@@ -302,7 +340,7 @@ export async function POST(request: NextRequest) {
       amount_krw: order.total_krw,  // 주문은 수입이므로 양수
       currency: 'KRW' as const,
       fx_rate: 1.0,
-      description: `[ORDER_SALE] ${orderNumber} (${body.customerName})`,
+      description: `[ORDER_SALE] ${orderNumber} (${order.customer_name})`,  // order에서 가져오기
       ref_type: 'order',
       ref_id: order.id,
       note: `주문번호: ${orderNumber}`,

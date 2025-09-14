@@ -114,9 +114,9 @@ test.describe('시나리오 1: 상품 등록 및 재고 입고 (localStorage 세
     await page.locator('input[type="text"]').nth(5).fill('테스트브랜드');
     await page.locator('input[type="text"]').nth(6).fill('测试品牌');
 
-    // 가격 (원가/판매가)
-    await page.locator('input[type="number"]').nth(0).fill('100');
-    await page.locator('input[type="number"]').nth(1).fill('20000');
+    // 가격 (원가/판매가) - 100만원 이하로 설정
+    await page.locator('input[type="number"]').nth(0).fill('2000');  // 원가: 2000위안 (약 36만원)
+    await page.locator('input[type="number"]').nth(1).fill('500000');  // 판매가: 50만원
 
     console.log('  - 모든 필드 입력 완료');
 

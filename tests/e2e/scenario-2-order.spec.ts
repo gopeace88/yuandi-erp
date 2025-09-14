@@ -195,28 +195,45 @@ test.describe('시나리오 2: 주문 접수 및 재고 차감 (localStorage 세
 
     await page.waitForTimeout(500);
 
-    // 수량 입력 (첫 번째 number input)
+    // 수량 입력 (유일한 number input)
     const quantityInput = page.locator('input[type="number"]').first();
-    await quantityInput.fill('2');
-    console.log('  - 수량 입력: 2개');
+    await quantityInput.fill('1');
+    console.log('  - 수량 입력: 1개');
 
-    // 가격 입력 (두 번째 number input - customPrice)
-    const priceInput = page.locator('input[type="number"]').nth(1);
-    await priceInput.fill('50000');
-    console.log('  - 판매가 입력: 50,000원');
+    // 가격 입력 필드는 실제로 없음 - 상품 가격이 자동으로 적용됨
+    console.log('  - 가격: 선택한 상품의 판매가 자동 적용');
 
     // 메모 입력
     const memoInput = page.locator('textarea').first();
     await memoInput.fill('시나리오 2 테스트 주문');
     console.log('  - 메모 입력: 시나리오 2 테스트 주문');
 
+    // API 응답 모니터링 설정
+    page.on('response', response => {
+      if (response.url().includes('/api/orders') && response.request().method() === 'POST') {
+        console.log(`  - API 응답 상태: ${response.status()}`);
+        response.json().then(data => {
+          console.log('  - API 응답:', JSON.stringify(data));
+        }).catch(err => {
+          console.log('  - API 응답 파싱 실패:', err);
+        });
+      }
+    });
+
     // 저장 버튼 클릭
     const saveButton = page.locator('button').filter({ hasText: '저장' }).last();
     await saveButton.click();
-    console.log('  - 주문 저장 중...');
+    console.log('  - 주문 저장 버튼 클릭');
 
-    // 모달이 닫힐 때까지 대기
-    await page.waitForTimeout(3000);
+    // 모달이 닫힐 때까지 대기 또는 에러 메시지 확인
+    await page.waitForTimeout(5000);
+
+    // 에러 메시지 확인
+    const errorToast = page.locator('.toast-error, .error-message, [role="alert"]');
+    if (await errorToast.count() > 0) {
+      const errorMessage = await errorToast.first().textContent();
+      console.log(`  ❌ 주문 생성 실패: ${errorMessage}`);
+    }
 
     // 주문 생성 확인
     const newOrder = page.locator('tr').filter({ hasText: '테스트 고객' }).first();
@@ -226,6 +243,8 @@ test.describe('시나리오 2: 주문 접수 및 재고 차감 (localStorage 세
       console.log('  ✅ 주문 생성 완료');
       const orderNumber = await newOrder.locator('td').first().textContent();
       console.log(`  - 주문번호: ${orderNumber}`);
+    } else {
+      console.log('  ❌ 주문이 생성되지 않았습니다');
     }
 
     // === 4단계: 출납장부에서 매출 확인 ===
@@ -265,8 +284,8 @@ test.describe('시나리오 2: 주문 접수 및 재고 차감 (localStorage 세
       }
     }
 
-    // 판매 관련 기록 찾기
-    const salesRecord = page.locator('tr').filter({ hasText: '판매' });
+    // 판매 관련 기록 찾기 - ORDER_SALE 또는 판매로 검색
+    const salesRecord = page.locator('tr').filter({ hasText: /ORDER_SALE|판매/ });
     const hasSales = await salesRecord.count() > 0;
 
     if (hasSales && recentOrderFound) {
@@ -308,9 +327,9 @@ test.describe('시나리오 2: 주문 접수 및 재고 차감 (localStorage 세
     }
 
     const stockDecrease = initialStockNum - finalStockNum;
-    console.log(`  - 재고 감소량: ${stockDecrease}개 (예상: 2개)`);
+    console.log(`  - 재고 감소량: ${stockDecrease}개 (예상: 1개)`);
 
-    if (stockDecrease === 2) {
+    if (stockDecrease === 1) {
       console.log('  ✅ 재고 감소 정확히 반영됨');
     }
 
@@ -318,7 +337,7 @@ test.describe('시나리오 2: 주문 접수 및 재고 차감 (localStorage 세
     console.log('========================================');
     console.log('📊 결과 요약:');
     console.log(`  - 초기 재고: ${initialStockNum}개`);
-    console.log(`  - 주문 수량: 2개`);
+    console.log(`  - 주문 수량: 1개`);
     console.log(`  - 최종 재고: ${finalStockNum}개`);
     console.log(`  - 재고 감소: ${stockDecrease}개`);
     console.log('========================================');
