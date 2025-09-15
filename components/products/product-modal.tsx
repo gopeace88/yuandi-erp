@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { X } from 'lucide-react';
 
@@ -108,12 +107,13 @@ export function ProductModal({ isOpen, onClose, onSubmit, product, mode = 'creat
 
           <div>
             <Label htmlFor="category">{locale === 'ko' ? '카테고리' : '分类'}</Label>
-            <Select
+            <select
               id="category"
               value={formData.category}
               onChange={(e) => handleChange('category', e.target.value)}
               disabled={isViewMode}
               required
+              className="flex h-10 w-full appearance-none rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <option value="">{locale === 'ko' ? '선택하세요' : '请选择'}</option>
               {categories.map(category => (
@@ -121,7 +121,7 @@ export function ProductModal({ isOpen, onClose, onSubmit, product, mode = 'creat
                   {locale === 'ko' ? category.name_ko : category.name_zh}
                 </option>
               ))}
-            </Select>
+            </select>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
