@@ -79,7 +79,8 @@ export async function GET(request: NextRequest) {
           *,
           products (
             id,
-            name,
+            name_ko,
+            name_zh,
             sku
           )
         )
@@ -140,7 +141,7 @@ export async function GET(request: NextRequest) {
       order_items: order.order_items?.map((item: any) => ({
         id: item.id,
         product_id: item.product_id,
-        product_name: item.products?.name || '',
+        product_name: item.products?.name_ko || item.products?.name_zh || '',
         sku: item.products?.sku || '',
         quantity: item.quantity,
         unit_price: item.price_krw,
