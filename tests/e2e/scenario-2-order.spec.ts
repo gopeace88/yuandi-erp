@@ -1,19 +1,21 @@
 import { test, expect } from '@playwright/test';
+import { getTestUrl, logTestEnvironment, TIMEOUTS, TEST_ACCOUNTS } from './test-config';
 
 test.describe('시나리오 2: 주문 접수 및 재고 차감 (localStorage 세션 유지)', () => {
   test('주문 생성 및 재고 차감 확인', async ({ page }) => {
 
     console.log('\n=== 시나리오 2: 주문 접수 및 재고 차감 시작 ===\n');
+    logTestEnvironment();
 
     // === 1단계: 로그인 및 세션 설정 ===
     console.log('📍 1단계: 로그인 및 세션 설정');
-    await page.goto('http://localhost:8081/ko');
+    await page.goto(getTestUrl('/ko'));
 
     // localStorage로 세션 정보 설정
     await page.evaluate(() => {
       const sessionData = {
         id: '78502b6d-13e7-4acc-94a7-23a797de3519',
-        email: 'admin@yuandi.com',
+        email: TEST_ACCOUNTS.admin.email,
         name: '관리자',
         role: 'admin',
         last_login: new Date().toISOString()
@@ -28,7 +30,7 @@ test.describe('시나리오 2: 주문 접수 및 재고 차감 (localStorage 세
 
     // === 2단계: 대시보드에서 초기 재고 확인 ===
     console.log('\n📍 2단계: 대시보드에서 초기 재고 확인');
-    await page.goto('http://localhost:8081/ko/dashboard');
+    await page.goto(getTestUrl('/ko/dashboard'));
     await page.waitForLoadState('networkidle');
 
     // 재고 현황 카드에서 숫자 추출
@@ -50,9 +52,9 @@ test.describe('시나리오 2: 주문 접수 및 재고 차감 (localStorage 세
 
     // === 3단계: 주문 관리에서 새 주문 생성 ===
     console.log('\n📍 3단계: 주문 관리에서 새 주문 생성');
-    await page.goto('http://localhost:8081/ko/orders');
+    await page.goto(getTestUrl('/ko/orders'));
     await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(3000);
+    await page.waitForTimeout(TIMEOUTS.medium);
 
     // 주문 추가 버튼 클릭 - 다양한 선택자 시도
     console.log('  - 주문 추가 버튼 찾기');
@@ -77,7 +79,7 @@ test.describe('시나리오 2: 주문 접수 및 재고 차감 (localStorage 세
       return;
     }
     console.log('  - 주문 추가 모달 열림');
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(TIMEOUTS.short);
 
     // 고객 정보 입력
     console.log('  - 고객 정보 입력');
@@ -159,7 +161,7 @@ test.describe('시나리오 2: 주문 접수 및 재고 차감 (localStorage 세
     }
 
     if (productSelect) {
-      await page.waitForTimeout(1000); // products 로드 대기
+      await page.waitForTimeout(TIMEOUTS.short); // products 로드 대기
 
       // 상품 옵션들 확인
       const productOptions = await productSelect.locator('option').all();
@@ -226,7 +228,7 @@ test.describe('시나리오 2: 주문 접수 및 재고 차감 (localStorage 세
     console.log('  - 주문 저장 버튼 클릭');
 
     // 모달이 닫힐 때까지 대기 또는 에러 메시지 확인
-    await page.waitForTimeout(5000);
+    await page.waitForTimeout(TIMEOUTS.long);
 
     // 에러 메시지 확인
     const errorToast = page.locator('.toast-error, .error-message, [role="alert"]');
@@ -252,8 +254,8 @@ test.describe('시나리오 2: 주문 접수 및 재고 차감 (localStorage 세
     const testStartTime = Date.now();
     console.log(`  - 테스트 시작 시간: ${new Date(testStartTime).toLocaleString()}`);
 
-    await page.goto('http://localhost:8081/ko/cashbook');
-    await page.waitForTimeout(3000);
+    await page.goto(getTestUrl('/ko/cashbook'));
+    await page.waitForTimeout(TIMEOUTS.medium);
 
     // 페이지의 모든 테이블 행 확인 (디버깅)
     const allRows = await page.locator('tbody tr').all();
@@ -306,7 +308,7 @@ test.describe('시나리오 2: 주문 접수 및 재고 차감 (localStorage 세
 
     // === 5단계: 대시보드에서 재고 감소 확인 ===
     console.log('\n📍 5단계: 대시보드에서 재고 감소 확인');
-    await page.goto('http://localhost:8081/ko/dashboard');
+    await page.goto(getTestUrl('/ko/dashboard'));
     await page.waitForLoadState('networkidle');
 
     // 최종 재고 확인

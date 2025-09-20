@@ -1,19 +1,21 @@
 import { test, expect } from '@playwright/test';
+import { getTestUrl, logTestEnvironment, TIMEOUTS, TEST_ACCOUNTS } from './test-config';
 
 test.describe('시나리오 3: 주문 배송 처리 (localStorage 세션 유지)', () => {
   test('배송 처리 및 상태 변경 확인', async ({ page }) => {
 
     console.log('\n=== 시나리오 3: 주문 배송 처리 시작 ===\n');
+    logTestEnvironment();
 
     // === 1단계: 로그인 및 세션 설정 ===
     console.log('📍 1단계: 로그인 및 세션 설정');
-    await page.goto('http://localhost:8081/ko');
+    await page.goto(getTestUrl('/ko'));
 
     // localStorage로 세션 정보 설정
     await page.evaluate(() => {
       const sessionData = {
         id: '78502b6d-13e7-4acc-94a7-23a797de3519',
-        email: 'admin@yuandi.com',
+        email: TEST_ACCOUNTS.admin.email,
         name: '관리자',
         role: 'admin',
         last_login: new Date().toISOString()
@@ -28,9 +30,9 @@ test.describe('시나리오 3: 주문 배송 처리 (localStorage 세션 유지)
 
     // === 2단계: 대시보드에서 초기 배송대기 주문 수 확인 ===
     console.log('\n📍 2단계: 대시보드에서 초기 배송대기 주문 수 확인');
-    await page.goto('http://localhost:8081/ko/dashboard');
+    await page.goto(getTestUrl('/ko/dashboard'));
     await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(TIMEOUTS.medium);
 
     // 배송대기 주문 수 확인
     let initialPendingNum = 0;
@@ -52,8 +54,8 @@ test.describe('시나리오 3: 주문 배송 처리 (localStorage 세션 유지)
 
     // === 3단계: 배송 관리에서 배송 처리 ===
     console.log('\n📍 3단계: 배송 관리에서 배송 처리');
-    await page.goto('http://localhost:8081/ko/shipments');
-    await page.waitForTimeout(2000);
+    await page.goto(getTestUrl('/ko/shipments'));
+    await page.waitForTimeout(TIMEOUTS.medium);
 
     // 배송대기 상태인 첫 번째 주문 찾기 (결제완료 상태)
     let pendingOrders = page.locator('tr').filter({ hasText: '결제완료' });
@@ -83,13 +85,13 @@ test.describe('시나리오 3: 주문 배송 처리 (localStorage 세션 유지)
     console.log(`  - 주문 ${orderNo} 행을 클릭하여 배송 모달 열기`);
     await firstPendingOrder.click();
     console.log('  - 배송 모달 열림');
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(TIMEOUTS.short);
 
     // 배송 정보 입력
     console.log('  - 배송 정보 입력');
 
     // 모달이 열린 후 약간 대기
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(TIMEOUTS.medium);
 
     // "운송장번호*" 레이블이 있는 입력 필드에 송장번호 입력
     const trackingNumber = 'TN' + Date.now();
@@ -157,11 +159,11 @@ test.describe('시나리오 3: 주문 배송 처리 (localStorage 세션 유지)
     console.log('  - 배송 처리 중...');
 
     // 처리 완료 대기
-    await page.waitForTimeout(3000);
+    await page.waitForTimeout(TIMEOUTS.medium);
 
     // 상태 변경 확인
     await page.reload();
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(TIMEOUTS.medium);
 
     const shippedOrder = page.locator('tr').filter({ hasText: orderNo || '주문' }).first();
     const statusElement = shippedOrder.locator('td').filter({ hasText: 'SHIPPED' });
@@ -176,8 +178,8 @@ test.describe('시나리오 3: 주문 배송 처리 (localStorage 세션 유지)
     const testStartTime = Date.now();
     console.log(`  - 테스트 시작 시간: ${new Date(testStartTime).toLocaleString()}`);
 
-    await page.goto('http://localhost:8081/ko/cashbook');
-    await page.waitForTimeout(3000);
+    await page.goto(getTestUrl('/ko/cashbook'));
+    await page.waitForTimeout(TIMEOUTS.medium);
 
     // 출납장부 전체 행 확인
     const allRows = await page.locator('tbody tr').all();
@@ -223,9 +225,9 @@ test.describe('시나리오 3: 주문 배송 처리 (localStorage 세션 유지)
 
     // === 5단계: 대시보드에서 배송대기 감소 확인 ===
     console.log('\n📍 5단계: 대시보드에서 배송대기 감소 확인');
-    await page.goto('http://localhost:8081/ko/dashboard');
+    await page.goto(getTestUrl('/ko/dashboard'));
     await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(TIMEOUTS.medium);
 
     // 최종 배송대기 주문 수 확인
     let finalPendingNum = 0;

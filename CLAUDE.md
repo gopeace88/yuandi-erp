@@ -5,14 +5,16 @@
 > **Status**: Active Development with Iterative Refinement
 > **Database**: Supabase MCP Server Connected - Always verify schema before SQL
 
+## 🔐 중요!!  작업이 진행될때마다 @Docs/(250907-v2.0)PRD.md 를 업데이트해줘 (업버전되면 파일이름이 바뀌었을수도 있음)
+
 ## 🎯 Quick Navigation
 
-| Document | Purpose | Priority |
-|----------|---------|----------|
-| 📘 **[PRD.md](./docs/(250907-v2.0)PRD.md)** | Product Requirements (중심 문서) | ⭐⭐⭐ |
-| 🔄 **[SCHEMA_CHANGE_PROCESS.md](./docs/SCHEMA_CHANGE_PROCESS.md)** | DB 스키마 변경 프로세스 | ⭐⭐⭐ |
-| 🚀 **[DEPLOYMENT_GUIDE.md](./docs/(250907-v1.0)DEPLOYMENT_GUIDE.md)** | Deployment Steps | ⭐⭐ |
-| 🛠️ **[SETUP_GUIDE.md](./docs/(250907-v1.0)SETUP_GUIDE.md)** | Local Setup | ⭐ |
+| Document                                                             | Purpose                          | Priority |
+| -------------------------------------------------------------------- | -------------------------------- | -------- |
+| 📘 **[PRD.md](./docs/(250907-v2.0)PRD.md)**                           | Product Requirements (중심 문서) | ⭐⭐⭐      |
+| 🔄 **[SCHEMA_CHANGE_PROCESS.md](./docs/SCHEMA_CHANGE_PROCESS.md)**    | DB 스키마 변경 프로세스          | ⭐⭐⭐      |
+| 🚀 **[DEPLOYMENT_GUIDE.md](./docs/(250907-v1.0)DEPLOYMENT_GUIDE.md)** | Deployment Steps                 | ⭐⭐       |
+| 🛠️ **[SETUP_GUIDE.md](./docs/(250907-v1.0)SETUP_GUIDE.md)**           | Local Setup                      | ⭐        |
 
 ## ⚠️ Critical Rules (MUST FOLLOW)
 
@@ -34,7 +36,7 @@ role: 'Admin'              // Some code uses capitalized
 
 // ✅ CORRECT - Database schema standard
 from('user_profiles')      // Correct table name
-from('cashbook_transactions')  // Correct table name  
+from('cashbook_transactions')  // Correct table name
 role: 'admin'              // Database uses: admin, order_manager, ship_manager
 ```
 
@@ -44,8 +46,15 @@ role: 'admin'              // Database uses: admin, order_manager, ship_manager
 3. **Use shipments table** → NOT orders table shipping fields
 4. **Test before complete** → Run pnpm test, pnpm typecheck
 5. **E2E Testing** → Use **Playwright** (preferred) or Puppeteer
-6. **Get user approval** → BEFORE git commit
-7. **Batch commits** → Multiple features in one commit
+6. **⚠️ CRITICAL: Test ALL code changes locally** → NEVER push untested code
+7. **Get user approval** → BEFORE git commit AND especially BEFORE git push
+8. **Batch commits** → Multiple features in one commit
+
+### 🚨 NEVER DO THIS (중대 실수 방지)
+- **❌ NEVER push code without testing** - 테스트 없이 코드를 절대 push하지 마세요
+- **❌ NEVER deploy without user approval** - 사용자 승인 없이 절대 배포하지 마세요
+- **❌ NEVER skip local testing** - 로컬 테스트를 절대 건너뛰지 마세요
+- **✅ ALWAYS test → get approval → then push** - 항상 테스트 → 승인 → push 순서를 지키세요
 
 ## 🏗️ Tech Stack & Commands
 
@@ -76,7 +85,7 @@ PORT=8081 pnpm dev
 
 # 2. Windows 브라우저에서 접속:
 # http://localhost:8081
-# 
+#
 # 3. .env.local 설정 확인:
 # NEXT_PUBLIC_APP_URL=http://localhost:8081
 ```
@@ -108,16 +117,16 @@ SUPABASE_API_KEY=xxx              # Server-side only
 ```
 
 ### Table Names (Use These)
-| Table | Purpose | Status |
-|-------|---------|--------|
-| `user_profiles` | User management | ✅ Primary |
-| `products` | Product catalog | ✅ Active |
-| `orders` | Order management | ✅ Active |
-| `order_items` | Order line items | ✅ Active |
-| `shipments` | Shipping info | ✅ Use this |
-| `inventory_movements` | Stock tracking | ✅ Active |
+| Table                   | Purpose           | Status        |
+| ----------------------- | ----------------- | ------------- |
+| `user_profiles`         | User management   | ✅ Primary     |
+| `products`              | Product catalog   | ✅ Active      |
+| `orders`                | Order management  | ✅ Active      |
+| `order_items`           | Order line items  | ✅ Active      |
+| `shipments`             | Shipping info     | ✅ Use this    |
+| `inventory_movements`   | Stock tracking    | ✅ Active      |
 | `cashbook_transactions` | Financial records | ⚠️ Mixed usage |
-| `event_logs` | Audit trail | ✅ Active |
+| `event_logs`            | Audit trail       | ✅ Active      |
 
 ### User Roles (Database Schema)
 ```typescript
@@ -156,14 +165,14 @@ psql $DATABASE_URL -f scripts/generate-test-data.sql
 
 ## 🔗 API Structure Map
 
-| Category | Endpoints | Auth |
-|----------|-----------|------|
-| **Dashboard** | `/api/dashboard/*` | Role-based |
-| **Orders** | `/api/orders/*` | admin, order_manager |
-| **Inventory** | `/api/inventory/*` | admin, order_manager |
-| **Shipping** | `/api/shipments/*` | admin, ship_manager |
-| **Customer** | `/api/track` | Public (name+phone) |
-| **Export** | `/api/export/*.xlsx` | admin only |
+| Category      | Endpoints            | Auth                 |
+| ------------- | -------------------- | -------------------- |
+| **Dashboard** | `/api/dashboard/*`   | Role-based           |
+| **Orders**    | `/api/orders/*`      | admin, order_manager |
+| **Inventory** | `/api/inventory/*`   | admin, order_manager |
+| **Shipping**  | `/api/shipments/*`   | admin, ship_manager  |
+| **Customer**  | `/api/track`         | Public (name+phone)  |
+| **Export**    | `/api/export/*.xlsx` | admin only           |
 
 ## 🎌 Internationalization
 - **Languages**: Korean (ko), Chinese (zh-CN)
@@ -186,11 +195,11 @@ psql $DATABASE_URL -f scripts/generate-test-data.sql
 ## 🚨 Current Issues
 
 ### Known Inconsistencies
-| Issue | Current State | Target State |
-|-------|--------------|--------------|
-| Table naming | Mixed `profiles`/`user_profiles` | → `user_profiles` |
-| Cashbook table | Mixed `cashbook`/`cashbook_transactions` | → `cashbook_transactions` |
-| User roles in docs | Says lowercase | → Use capitalized (as in code) |
+| Issue              | Current State                            | Target State                   |
+| ------------------ | ---------------------------------------- | ------------------------------ |
+| Table naming       | Mixed `profiles`/`user_profiles`         | → `user_profiles`              |
+| Cashbook table     | Mixed `cashbook`/`cashbook_transactions` | → `cashbook_transactions`      |
+| User roles in docs | Says lowercase                           | → Use capitalized (as in code) |
 
 ### Recently Fixed
 - **Foreign Key Constraints**: Added CASCADE DELETE to all user_profiles references (Migration 007)
@@ -219,3 +228,20 @@ node scripts/generate-business-flow-data.js
 
 ---
 **Remember**: PRD.md is the central document. This file is just a navigator.
+
+## 📦 MCP (Model Context Protocol) 설정
+
+MCP 서버를 설치하거나 설정해야 할 경우:
+→ **[MCP_INSTALLATION_GUIDE.md](./docs/MCP_INSTALLATION_GUIDE.md)** 참조
+
+**현재 프로젝트에서 사용 중인 MCP 서버들**:
+- **yuandi-supabase**: Supabase 데이터베이스 연결 및 관리
+- **context7**: 라이브러리 문서 검색
+- **playwright-stealth**: E2E 테스트 자동화
+- **magic**: UI 컴포넌트 생성 지원
+- **ide**: VSCode/IDE 통합 기능
+
+**Quick Info**:
+- WSL 환경 사용 중 (sudo 패스워드는 MCP 가이드 참조)
+- 모든 MCP는 user 스코프로 설치됨
+- 문제 발생 시 위 가이드 문서 참조

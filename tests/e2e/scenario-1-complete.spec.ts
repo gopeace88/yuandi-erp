@@ -1,10 +1,11 @@
 import { test, expect } from '@playwright/test';
+import { getTestUrl, logTestEnvironment, TIMEOUTS, TEST_ACCOUNTS } from './test-config';
 
 test.describe('시나리오 1: 상품 등록 및 재고 관리 통합 플로우', () => {
   // 테스트 계정
   const TEST_ADMIN = {
-    email: 'admin@yuandi.com',
-    password: 'yuandi123!'
+    email: TEST_ACCOUNTS.admin.email,
+    password: TEST_ACCOUNTS.admin.password
   };
 
   // 테스트 상품 정보
@@ -33,7 +34,7 @@ test.describe('시나리오 1: 상품 등록 및 재고 관리 통합 플로우'
     // 1단계: 로그인
     // ========================================
     console.log('📍 1단계: 로그인');
-    await page.goto('http://localhost:8081');
+    await page.goto('getTestUrl()');
     await page.waitForLoadState('networkidle');
 
     // 로그인 페이지로 리다이렉트 확인
@@ -62,7 +63,7 @@ test.describe('시나리오 1: 상품 등록 및 재고 관리 통합 플로우'
 
     // 대시보드 페이지로 이동
     if (!page.url().includes('dashboard')) {
-      await page.goto('http://localhost:8081/ko/dashboard');
+      await page.goto(getTestUrl('/ko/dashboard'));
       await page.waitForLoadState('networkidle');
     }
 
@@ -98,7 +99,7 @@ test.describe('시나리오 1: 상품 등록 및 재고 관리 통합 플로우'
       console.log('  - 설정 페이지 이동');
     } else {
       // URL로 직접 이동
-      await page.goto('http://localhost:8081/ko/settings');
+      await page.goto(getTestUrl('/ko/settings'));
       await page.waitForLoadState('networkidle');
       console.log('  - 설정 페이지 직접 이동');
     }
@@ -164,7 +165,7 @@ test.describe('시나리오 1: 상품 등록 및 재고 관리 통합 플로우'
     console.log('  ✅ 상품 추가 완료');
 
     // 잠시 대기 (상품 목록 갱신)
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(TIMEOUTS.medium);
 
     // ========================================
     // 4단계: 재고 관리에서 재고 입고
@@ -178,7 +179,7 @@ test.describe('시나리오 1: 상품 등록 및 재고 관리 통합 플로우'
       await page.waitForLoadState('networkidle');
       console.log('  - 재고 관리 페이지 이동');
     } else {
-      await page.goto('http://localhost:8081/ko/inventory');
+      await page.goto(getTestUrl('/ko/inventory'));
       await page.waitForLoadState('networkidle');
       console.log('  - 재고 관리 페이지 직접 이동');
     }
@@ -244,7 +245,7 @@ test.describe('시나리오 1: 상품 등록 및 재고 관리 통합 플로우'
       await page.waitForLoadState('networkidle');
       console.log('  - 출납장부 페이지 이동');
     } else {
-      await page.goto('http://localhost:8081/ko/cashbook');
+      await page.goto(getTestUrl('/ko/cashbook'));
       await page.waitForLoadState('networkidle');
       console.log('  - 출납장부 페이지 직접 이동');
     }
@@ -283,7 +284,7 @@ test.describe('시나리오 1: 상품 등록 및 재고 관리 통합 플로우'
       await page.waitForLoadState('networkidle');
       console.log('  - 대시보드 페이지 이동');
     } else {
-      await page.goto('http://localhost:8081/ko/dashboard');
+      await page.goto(getTestUrl('/ko/dashboard'));
       await page.waitForLoadState('networkidle');
       console.log('  - 대시보드 페이지 직접 이동');
     }

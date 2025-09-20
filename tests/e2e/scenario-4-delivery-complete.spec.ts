@@ -1,19 +1,21 @@
 import { test, expect } from '@playwright/test';
+import { getTestUrl, logTestEnvironment, TIMEOUTS, TEST_ACCOUNTS } from './test-config';
 
 test.describe('시나리오 4: 배송 완료 등록 및 환불 처리 (localStorage 세션 유지)', () => {
   test('배송 완료 및 환불 처리 확인', async ({ page }) => {
 
     console.log('\n=== 시나리오 4: 배송 완료 등록 및 환불 처리 시작 ===\n');
+    logTestEnvironment();
 
     // === 1단계: 로그인 및 세션 설정 ===
     console.log('📍 1단계: 로그인 및 세션 설정');
-    await page.goto('http://localhost:8081/ko');
+    await page.goto(getTestUrl('/ko'));
 
     // localStorage로 세션 정보 설정
     await page.evaluate(() => {
       const sessionData = {
         id: '78502b6d-13e7-4acc-94a7-23a797de3519',
-        email: 'admin@yuandi.com',
+        email: TEST_ACCOUNTS.admin.email,
         name: '관리자',
         role: 'admin',
         last_login: new Date().toISOString()
@@ -28,9 +30,9 @@ test.describe('시나리오 4: 배송 완료 등록 및 환불 처리 (localStor
 
     // === 2단계: 대시보드에서 초기 항목 확인 ===
     console.log('\n📍 2단계: 대시보드에서 초기 항목 확인');
-    await page.goto('http://localhost:8081/ko/dashboard');
+    await page.goto(getTestUrl('/ko/dashboard'));
     await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(TIMEOUTS.medium);
 
     // 초기 상태 기록
     let initialStats = {
@@ -110,8 +112,8 @@ test.describe('시나리오 4: 배송 완료 등록 및 환불 처리 (localStor
 
     // === 3단계: 배송 관리에서 배송 완료 처리 ===
     console.log('\n📍 3단계: 배송 관리에서 배송 완료 처리');
-    await page.goto('http://localhost:8081/ko/shipments');
-    await page.waitForTimeout(2000);
+    await page.goto(getTestUrl('/ko/shipments'));
+    await page.waitForTimeout(TIMEOUTS.medium);
 
     // '배송 중' 탭 클릭
     const shippingTab = page.locator('button, div').filter({ hasText: /^배송 중$/ });
@@ -148,7 +150,7 @@ test.describe('시나리오 4: 배송 완료 등록 및 환불 처리 (localStor
     console.log(`  - 주문 ${orderNo} 행을 클릭하여 배송 정보 모달 열기`);
     await firstShippingOrder.click();
     console.log('  - 배송 정보 모달 열림');
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(TIMEOUTS.medium);
 
     // 배송 완료 버튼 클릭
     console.log('  - 배송 완료 버튼 클릭');
@@ -156,14 +158,14 @@ test.describe('시나리오 4: 배송 완료 등록 및 환불 처리 (localStor
     if (await completeButton.count() > 0) {
       await completeButton.first().click();
       console.log('  - 배송 완료 처리 중...');
-      await page.waitForTimeout(3000);
+      await page.waitForTimeout(TIMEOUTS.medium);
     } else {
       console.log('  ❌ 배송 완료 버튼을 찾을 수 없습니다.');
     }
 
     // 페이지 새로고침 후 상태 확인
     await page.reload();
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(TIMEOUTS.medium);
 
     // === 4단계: 환불 처리 ===
     console.log('\n📍 4단계: 환불 처리');
@@ -195,7 +197,7 @@ test.describe('시나리오 4: 배송 완료 등록 및 환불 처리 (localStor
       console.log(`  - 주문 ${refundOrderNo} 행을 클릭하여 배송 정보 모달 열기`);
       await firstCompletedOrder.click();
       console.log('  - 배송 정보 모달 열림');
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(TIMEOUTS.medium);
 
       // 환불 처리 버튼 클릭
       console.log('  - 환불 처리 버튼 클릭');
@@ -209,7 +211,7 @@ test.describe('시나리오 4: 배송 완료 등록 및 환불 처리 (localStor
 
         await refundButton.first().click();
         console.log('  - 환불 처리 중...');
-        await page.waitForTimeout(3000);
+        await page.waitForTimeout(TIMEOUTS.medium);
       } else {
         console.log('  ❌ 환불 처리 버튼을 찾을 수 없습니다.');
       }
@@ -217,9 +219,9 @@ test.describe('시나리오 4: 배송 완료 등록 및 환불 처리 (localStor
 
     // === 5단계: 대시보드에서 최종 항목 확인 ===
     console.log('\n📍 5단계: 대시보드에서 최종 항목 확인');
-    await page.goto('http://localhost:8081/ko/dashboard');
+    await page.goto(getTestUrl('/ko/dashboard'));
     await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(TIMEOUTS.medium);
 
     // 최종 상태 기록
     let finalStats = {

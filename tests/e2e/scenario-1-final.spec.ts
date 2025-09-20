@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { getTestUrl, logTestEnvironment, TIMEOUTS, TEST_ACCOUNTS } from './test-config';
 
 test.describe('시나리오 1: 상품 등록 및 재고 입고 통합 플로우', () => {
   test('상품 등록부터 재고 입고까지 완전 테스트', async ({ page }) => {
@@ -8,7 +9,7 @@ test.describe('시나리오 1: 상품 등록 및 재고 입고 통합 플로우'
     // 1단계: 로그인
     // ========================================
     console.log('📍 1단계: 로그인');
-    await page.goto('http://localhost:8081/ko');
+    await page.goto(getTestUrl('/ko'));
     await page.waitForLoadState('networkidle');
 
     // 로그인이 필요한 경우
@@ -27,7 +28,7 @@ test.describe('시나리오 1: 상품 등록 및 재고 입고 통합 플로우'
 
     // 대시보드가 아니면 이동
     if (!page.url().includes('/dashboard')) {
-      await page.goto('http://localhost:8081/ko/dashboard');
+      await page.goto(getTestUrl('/ko/dashboard'));
       await page.waitForLoadState('networkidle');
     }
 
@@ -54,7 +55,7 @@ test.describe('시나리오 1: 상품 등록 및 재고 입고 통합 플로우'
     console.log('\n📍 3단계: 설정 > 상품 관리에서 상품 추가');
 
     // 설정 메뉴로 이동
-    await page.goto('http://localhost:8081/ko/settings');
+    await page.goto(getTestUrl('/ko/settings'));
     await page.waitForLoadState('networkidle');
     console.log('  - 설정 페이지 이동');
 
@@ -68,7 +69,7 @@ test.describe('시나리오 1: 상품 등록 및 재고 입고 통합 플로우'
     // 상품 추가 버튼 클릭
     const addProductBtn = page.locator('button:has-text("+ 상품 추가")').first();
     await addProductBtn.click();
-    await page.waitForTimeout(1000);  // 모달 애니메이션 대기
+    await page.waitForTimeout(TIMEOUTS.short);  // 모달 애니메이션 대기
     console.log('  - 상품 등록 모달 열림');
 
     // 상품 정보 입력
@@ -114,7 +115,7 @@ test.describe('시나리오 1: 상품 등록 및 재고 입고 통합 플로우'
 
     // 저장 버튼 클릭
     await page.click('button:has-text("저장")');
-    await page.waitForTimeout(2000);  // 저장 처리 대기
+    await page.waitForTimeout(TIMEOUTS.medium);  // 저장 처리 대기
     console.log('  ✅ 상품 추가 완료');
 
     // ========================================
@@ -130,7 +131,7 @@ test.describe('시나리오 1: 상품 등록 및 재고 입고 통합 플로우'
       console.log('  - 재고 관리 페이지 이동 (메뉴 클릭)');
     } else {
       // 링크가 없으면 직접 이동
-      await page.goto('http://localhost:8081/ko/inventory');
+      await page.goto(getTestUrl('/ko/inventory'));
       await page.waitForLoadState('networkidle');
       console.log('  - 재고 관리 페이지 이동 (직접)');
     }
@@ -146,7 +147,7 @@ test.describe('시나리오 1: 상품 등록 및 재고 입고 통합 플로우'
 
       // 재고 관리로 다시 이동
       if (!page.url().includes('/inventory')) {
-        await page.goto('http://localhost:8081/ko/inventory');
+        await page.goto(getTestUrl('/ko/inventory'));
         await page.waitForLoadState('networkidle');
       }
     }
@@ -176,7 +177,7 @@ test.describe('시나리오 1: 상품 등록 및 재고 입고 통합 플로우'
       return;
     }
 
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(TIMEOUTS.short);
     console.log('  - 재고 입고 모달 열림');
 
     // 상품 선택 (방금 추가한 상품)
@@ -221,7 +222,7 @@ test.describe('시나리오 1: 상품 등록 및 재고 입고 통합 플로우'
     // 저장 버튼 클릭
     const saveButtons = await page.locator('button:has-text("저장")').all();
     await saveButtons[saveButtons.length - 1].click();  // 마지막 저장 버튼
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(TIMEOUTS.medium);
     console.log('  ✅ 재고 입고 완료');
 
     // ========================================
@@ -230,7 +231,7 @@ test.describe('시나리오 1: 상품 등록 및 재고 입고 통합 플로우'
     console.log('\n📍 5단계: 출납장부에서 입고 내역 확인');
 
     // 출납장부로 이동
-    await page.goto('http://localhost:8081/ko/cashbook');
+    await page.goto(getTestUrl('/ko/cashbook'));
     await page.waitForLoadState('networkidle');
     console.log('  - 출납장부 페이지 이동');
 
@@ -256,7 +257,7 @@ test.describe('시나리오 1: 상품 등록 및 재고 입고 통합 플로우'
     console.log('\n📍 6단계: 대시보드에서 재고 현황 재확인');
 
     // 대시보드로 돌아가기
-    await page.goto('http://localhost:8081/ko/dashboard');
+    await page.goto(getTestUrl('/ko/dashboard'));
     await page.waitForLoadState('networkidle');
     console.log('  - 대시보드 페이지 이동');
 

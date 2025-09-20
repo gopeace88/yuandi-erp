@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { getTestUrl, logTestEnvironment, TIMEOUTS, TEST_ACCOUNTS } from './test-config';
 
 test.describe('시나리오 1: 상품 추가 및 재고 입고', () => {
   test('상품 등록부터 재고 입고까지 전체 플로우', async ({ page }) => {
@@ -8,7 +9,7 @@ test.describe('시나리오 1: 상품 추가 및 재고 입고', () => {
     // 1. 로그인 및 초기 상태 확인
     // ========================================
     console.log('📍 1단계: 로그인');
-    await page.goto('http://localhost:8081/ko');
+    await page.goto(getTestUrl('/ko'));
     await page.waitForLoadState('networkidle');
 
     // 로그인 필요시 처리
@@ -29,7 +30,7 @@ test.describe('시나리오 1: 상품 추가 및 재고 입고', () => {
 
     // 대시보드가 아니면 이동
     if (!page.url().includes('/dashboard')) {
-      await page.goto('http://localhost:8081/ko/dashboard');
+      await page.goto(getTestUrl('/ko/dashboard'));
       await page.waitForLoadState('networkidle');
     }
 
@@ -59,7 +60,7 @@ test.describe('시나리오 1: 상품 추가 및 재고 입고', () => {
     if (await settingsLink.count() > 0) {
       await settingsLink.click();
     } else {
-      await page.goto('http://localhost:8081/ko/settings');
+      await page.goto(getTestUrl('/ko/settings'));
     }
     await page.waitForLoadState('networkidle');
     console.log('  - 설정 페이지 이동');
@@ -76,7 +77,7 @@ test.describe('시나리오 1: 상품 추가 및 재고 입고', () => {
     await addProductBtn.click();
 
     // '상품 등록' 모달이 열릴 때까지 대기
-    await page.waitForTimeout(1000);  // 모달 애니메이션 대기
+    await page.waitForTimeout(TIMEOUTS.short);  // 모달 애니메이션 대기
     console.log('  - 상품 등록 모달 열림');
 
     // 상품 정보 입력
@@ -129,7 +130,7 @@ test.describe('시나리오 1: 상품 추가 및 재고 입고', () => {
 
     // 저장 버튼 클릭
     await page.click('button:has-text("저장")');
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(TIMEOUTS.short);
 
     console.log('  ✅ 상품 추가 완료');
 
@@ -143,7 +144,7 @@ test.describe('시나리오 1: 상품 추가 및 재고 입고', () => {
     if (await inventoryLink.count() > 0) {
       await inventoryLink.click();
     } else {
-      await page.goto('http://localhost:8081/ko/inventory');
+      await page.goto(getTestUrl('/ko/inventory'));
     }
     await page.waitForLoadState('networkidle');
     console.log('  - 재고관리 페이지 이동');
@@ -159,14 +160,14 @@ test.describe('시나리오 1: 상품 추가 및 재고 입고', () => {
     const inboundBtn = page.locator('button').filter({ hasText: /\+.*재고 입고/ }).first();
     if (await inboundBtn.count() > 0) {
       await inboundBtn.click();
-      await page.waitForTimeout(1000);  // 모달 열림 대기
+      await page.waitForTimeout(TIMEOUTS.short);  // 모달 열림 대기
       console.log('  - 재고 입고 모달 열림');
     } else {
       // 버튼을 못 찾으면 다른 방법 시도
       const altBtn = page.locator('button:has-text("재고 입고")').first();
       if (await altBtn.count() > 0) {
         await altBtn.click();
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(TIMEOUTS.short);
         console.log('  - 재고 입고 모달 열림');
       } else {
         console.log('  ❌ 재고 입고 버튼을 찾을 수 없음');
@@ -201,7 +202,7 @@ test.describe('시나리오 1: 상품 추가 및 재고 입고', () => {
     // 입고 처리 (저장 버튼 클릭)
     const saveButton = page.locator('button:has-text("저장")').last();  // 마지막 저장 버튼
     await saveButton.click();
-    await page.waitForTimeout(2000);  // 처리 대기
+    await page.waitForTimeout(TIMEOUTS.medium);  // 처리 대기
     console.log('  ✅ 재고 입고 완료');
 
     // ========================================
@@ -214,7 +215,7 @@ test.describe('시나리오 1: 상품 추가 및 재고 입고', () => {
     if (await cashbookLink.count() > 0) {
       await cashbookLink.click();
     } else {
-      await page.goto('http://localhost:8081/ko/cashbook');
+      await page.goto(getTestUrl('/ko/cashbook'));
     }
     await page.waitForLoadState('networkidle');
     console.log('  - 출납장부 페이지 이동');
@@ -245,7 +246,7 @@ test.describe('시나리오 1: 상품 추가 및 재고 입고', () => {
     if (await dashboardLink.count() > 0) {
       await dashboardLink.click();
     } else {
-      await page.goto('http://localhost:8081/ko/dashboard');
+      await page.goto(getTestUrl('/ko/dashboard'));
     }
     await page.waitForLoadState('networkidle');
     console.log('  - 대시보드 페이지 이동');

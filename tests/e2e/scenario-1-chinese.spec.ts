@@ -1,9 +1,10 @@
 import { test, expect } from '@playwright/test';
+import { getTestUrl, logTestEnvironment, TIMEOUTS, TEST_ACCOUNTS } from './test-config';
 
 // 测试账号
 const TEST_ADMIN = {
-  email: 'admin@yuandi.com',
-  password: 'yuandi123!'
+  email: TEST_ACCOUNTS.admin.email,
+  password: TEST_ACCOUNTS.admin.password
 };
 
 // 中文测试数据
@@ -30,7 +31,7 @@ test.describe('🇨🇳 场景 1: 中文版本测试', () => {
 
     // 1. 中文页面访问
     console.log('第1步: 中文页面访问和登录');
-    await page.goto('http://localhost:8081/zh-CN');
+    await page.goto(getTestUrl('/zh-CN'));
     await page.waitForLoadState('networkidle');
 
     // 如果重定向到登录页面，进行登录
@@ -72,7 +73,7 @@ test.describe('🇨🇳 场景 1: 中文版本测试', () => {
 
     // 2. 库存管理页面访问
     console.log('\n第2步: 产品注册');
-    await page.goto('http://localhost:8081/zh-CN/inventory');
+    await page.goto(getTestUrl('/zh-CN/inventory'));
     await page.waitForLoadState('networkidle');
 
     // 页面标题确认
@@ -181,7 +182,7 @@ test.describe('🇨🇳 场景 1: 中文版本测试', () => {
 
     // 5. 仪表板统计确认
     console.log('\n第5步: 仪表板统计确认');
-    await page.goto('http://localhost:8081/zh-CN/dashboard');
+    await page.goto(getTestUrl('/zh-CN/dashboard'));
     await page.waitForLoadState('networkidle');
 
     // 查找库存统计卡片
@@ -195,7 +196,7 @@ test.describe('🇨🇳 场景 1: 中文版本测试', () => {
 
     // 6. 现金簿确认
     console.log('\n第6步: 现金簿记录确认');
-    await page.goto('http://localhost:8081/zh-CN/cashbook');
+    await page.goto(getTestUrl('/zh-CN/cashbook'));
     await page.waitForLoadState('networkidle');
 
     // 查找入库记录
@@ -225,7 +226,7 @@ test.describe('🇨🇳 场景 1: 中文版本测试', () => {
 
     // 1. 从中文切换到韩文
     console.log('从中文切换到韩文');
-    await page.goto('http://localhost:8081/zh-CN/inventory');
+    await page.goto(getTestUrl('/zh-CN/inventory'));
     await page.waitForLoadState('networkidle');
 
     // 记录当前页面数据
@@ -233,7 +234,7 @@ test.describe('🇨🇳 场景 1: 中文版本测试', () => {
     console.log(`中文标题: ${chineseTitle}`);
 
     // 切换到韩文
-    await page.goto('http://localhost:8081/ko/inventory');
+    await page.goto(getTestUrl('/ko/inventory'));
     await page.waitForLoadState('networkidle');
 
     const koreanTitle = await page.locator('h1').first().textContent();
@@ -249,7 +250,7 @@ test.describe('🇨🇳 场景 1: 中文版本测试', () => {
 
     // 2. 从韩文切换回中文
     console.log('\n从韩文切换回中文');
-    await page.goto('http://localhost:8081/zh-CN/inventory');
+    await page.goto(getTestUrl('/zh-CN/inventory'));
     await page.waitForLoadState('networkidle');
 
     const chineseTitleAgain = await page.locator('h1').first().textContent();

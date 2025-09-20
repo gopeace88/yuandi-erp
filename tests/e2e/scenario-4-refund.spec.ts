@@ -1,19 +1,21 @@
 import { test, expect } from '@playwright/test';
+import { getTestUrl, logTestEnvironment, TIMEOUTS, TEST_ACCOUNTS } from './test-config';
 
 test.describe('시나리오 4: 반품 처리 (localStorage 세션 유지)', () => {
   test('반품 처리 및 재고 복구 확인', async ({ page }) => {
 
     console.log('\n=== 시나리오 4: 반품 처리 시작 ===\n');
+    logTestEnvironment();
 
     // === 1단계: 로그인 및 세션 설정 ===
     console.log('📍 1단계: 로그인 및 세션 설정');
-    await page.goto('http://localhost:8081/ko');
+    await page.goto(getTestUrl('/ko'));
 
     // localStorage로 세션 정보 설정
     await page.evaluate(() => {
       const sessionData = {
         id: '78502b6d-13e7-4acc-94a7-23a797de3519',
-        email: 'admin@yuandi.com',
+        email: TEST_ACCOUNTS.admin.email,
         name: '관리자',
         role: 'admin',
         last_login: new Date().toISOString()
@@ -28,9 +30,9 @@ test.describe('시나리오 4: 반품 처리 (localStorage 세션 유지)', () =
 
     // === 2단계: 대시보드에서 초기 재고 확인 ===
     console.log('\n📍 2단계: 대시보드에서 초기 재고 확인');
-    await page.goto('http://localhost:8081/ko/dashboard');
+    await page.goto(getTestUrl('/ko/dashboard'));
     await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(TIMEOUTS.medium);
 
     // 재고 정보 확인
     let initialStockNum = 0;
@@ -51,8 +53,8 @@ test.describe('시나리오 4: 반품 처리 (localStorage 세션 유지)', () =
 
     // === 3단계: 배송 완료된 주문 찾아서 반품 처리 ===
     console.log('\n📍 3단계: 배송 완료된 주문 반품 처리');
-    await page.goto('http://localhost:8081/ko/orders');
-    await page.waitForTimeout(2000);
+    await page.goto(getTestUrl('/ko/orders'));
+    await page.waitForTimeout(TIMEOUTS.medium);
 
     // SHIPPED 상태인 주문 찾기
     let shippedOrder = page.locator('tr').filter({ hasText: 'SHIPPED' }).first();
@@ -65,7 +67,7 @@ test.describe('시나리오 4: 반품 처리 (localStorage 세션 유지)', () =
       // 주문 생성 (정확한 버튼 텍스트 사용)
       const addOrderButton = page.locator('button').filter({ hasText: '새 주문' });
       await addOrderButton.click();
-      await page.waitForTimeout(1000);
+      await page.waitForTimeout(TIMEOUTS.short);
 
       // 고객 정보 입력
       await page.locator('input[placeholder*="고객명"]').or(
@@ -111,21 +113,21 @@ test.describe('시나리오 4: 반품 처리 (localStorage 세션 유지)', () =
       // 저장
       const saveButton = page.locator('button').filter({ hasText: '저장' }).last();
       await saveButton.click();
-      await page.waitForTimeout(3000);
+      await page.waitForTimeout(TIMEOUTS.medium);
 
       console.log('  ✅ 반품용 테스트 주문 생성 완료');
 
       // 주문 목록 새로고침
       await page.reload();
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(TIMEOUTS.medium);
 
       // 방금 생성한 주문을 배송 처리
       const newOrder = page.locator('tr').filter({ hasText: '반품테스트 고객' }).first();
       const orderNo = await newOrder.locator('td').first().textContent();
 
       // 배송 관리로 이동
-      await page.goto('http://localhost:8081/ko/shipments');
-      await page.waitForTimeout(2000);
+      await page.goto(getTestUrl('/ko/shipments'));
+      await page.waitForTimeout(TIMEOUTS.medium);
 
       // 해당 주문 찾아서 배송 처리
       const pendingOrder = page.locator('tr').filter({ hasText: orderNo || '' }).first();
@@ -133,7 +135,7 @@ test.describe('시나리오 4: 반품 처리 (localStorage 세션 유지)', () =
 
       if (await shipButton.count() > 0) {
         await shipButton.click();
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(TIMEOUTS.short);
 
         // 송장번호 입력
         await page.locator('input[placeholder*="한국 송장번호"]').or(
@@ -149,14 +151,14 @@ test.describe('시나리오 4: 반품 처리 (localStorage 세션 유지)', () =
           page.locator('button').filter({ hasText: '배송 처리' })
         ).last();
         await saveShipButton.click();
-        await page.waitForTimeout(3000);
+        await page.waitForTimeout(TIMEOUTS.medium);
 
         console.log('  ✅ 주문 배송 처리 완료');
       }
 
       // 주문 관리로 돌아가기
-      await page.goto('http://localhost:8081/ko/orders');
-      await page.waitForTimeout(2000);
+      await page.goto(getTestUrl('/ko/orders'));
+      await page.waitForTimeout(TIMEOUTS.medium);
     }
 
     // SHIPPED 상태 주문 다시 찾기
@@ -169,7 +171,7 @@ test.describe('시나리오 4: 반품 처리 (localStorage 세션 유지)', () =
     const refundButton = shippedOrder.locator('button').filter({ hasText: '반품' });
     await refundButton.click();
     console.log('  - 반품 확인 대화상자 표시');
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(TIMEOUTS.short);
 
     // 확인 버튼 클릭 (alert 처리)
     page.on('dialog', async dialog => {
@@ -179,11 +181,11 @@ test.describe('시나리오 4: 반품 처리 (localStorage 세션 유지)', () =
 
     // 반품 처리 실행
     await refundButton.click();
-    await page.waitForTimeout(3000);
+    await page.waitForTimeout(TIMEOUTS.medium);
 
     // 상태 변경 확인
     await page.reload();
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(TIMEOUTS.medium);
 
     const refundedOrder = page.locator('tr').filter({ hasText: orderNo || '' }).first();
     const statusElement = refundedOrder.locator('td').filter({ hasText: 'REFUNDED' });
@@ -195,8 +197,8 @@ test.describe('시나리오 4: 반품 처리 (localStorage 세션 유지)', () =
 
     // === 4단계: 출납장부에서 환불 내역 확인 ===
     console.log('\n📍 4단계: 출납장부에서 환불 내역 확인');
-    await page.goto('http://localhost:8081/ko/cashbook');
-    await page.waitForTimeout(2000);
+    await page.goto(getTestUrl('/ko/cashbook'));
+    await page.waitForTimeout(TIMEOUTS.medium);
 
     // 환불 기록 확인
     const refundRecord = page.locator('tr').filter({ hasText: '환불' });
@@ -210,9 +212,9 @@ test.describe('시나리오 4: 반품 처리 (localStorage 세션 유지)', () =
 
     // === 5단계: 대시보드에서 재고 복구 확인 ===
     console.log('\n📍 5단계: 대시보드에서 재고 복구 확인');
-    await page.goto('http://localhost:8081/ko/dashboard');
+    await page.goto(getTestUrl('/ko/dashboard'));
     await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(TIMEOUTS.medium);
 
     // 최종 재고 확인
     let finalStockNum = 0;

@@ -1,9 +1,10 @@
 import { test, expect } from '@playwright/test';
+import { getTestUrl, logTestEnvironment, TIMEOUTS, TEST_ACCOUNTS } from './test-config';
 
 // 테스트 계정
 const TEST_ADMIN = {
-  email: 'admin@yuandi.com',
-  password: 'yuandi123!'
+  email: TEST_ACCOUNTS.admin.email,
+  password: TEST_ACCOUNTS.admin.password
 };
 
 // 한국어 테스트 데이터
@@ -30,7 +31,7 @@ test.describe('🇰🇷 시나리오 1: 한국어 버전 테스트', () => {
 
     // 1. 한국어 페이지로 이동
     console.log('1단계: 한국어 페이지 접속 및 로그인');
-    await page.goto('http://localhost:8081/ko');
+    await page.goto(getTestUrl('/ko'));
     await page.waitForLoadState('networkidle');
 
     // 로그인 페이지로 리다이렉트되면 로그인 처리
@@ -71,7 +72,7 @@ test.describe('🇰🇷 시나리오 1: 한국어 버전 테스트', () => {
 
     // 2. 재고 관리 페이지로 이동
     console.log('\n2단계: 상품 등록');
-    await page.goto('http://localhost:8081/ko/inventory');
+    await page.goto(getTestUrl('/ko/inventory'));
     await page.waitForLoadState('networkidle');
 
     // 페이지 제목 확인
@@ -173,7 +174,7 @@ test.describe('🇰🇷 시나리오 1: 한국어 버전 테스트', () => {
 
     // 5. 대시보드 통계 확인
     console.log('\n5단계: 대시보드 통계 확인');
-    await page.goto('http://localhost:8081/ko/dashboard');
+    await page.goto(getTestUrl('/ko/dashboard'));
     await page.waitForLoadState('networkidle');
 
     // 재고 통계 카드 찾기

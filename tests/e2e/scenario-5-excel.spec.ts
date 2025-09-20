@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { getTestUrl, logTestEnvironment, TIMEOUTS, TEST_ACCOUNTS } from './test-config';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -6,16 +7,17 @@ test.describe('시나리오 5: 엑셀 다운로드 (localStorage 세션 유지)'
   test('각 화면에서 엑셀 다운로드 기능 확인', async ({ page }) => {
 
     console.log('\n=== 시나리오 5: 엑셀 다운로드 시작 ===\n');
+    logTestEnvironment();
 
     // === 1단계: 로그인 및 세션 설정 ===
     console.log('📍 1단계: 로그인 및 세션 설정');
-    await page.goto('http://localhost:8081/ko');
+    await page.goto(getTestUrl('/ko'));
 
     // localStorage로 세션 정보 설정
     await page.evaluate(() => {
       const sessionData = {
         id: '78502b6d-13e7-4acc-94a7-23a797de3519',
-        email: 'admin@yuandi.com',
+        email: TEST_ACCOUNTS.admin.email,
         name: '관리자',
         role: 'admin',
         last_login: new Date().toISOString()
@@ -36,8 +38,8 @@ test.describe('시나리오 5: 엑셀 다운로드 (localStorage 세션 유지)'
 
     // === 2단계: 주문 관리에서 엑셀 다운로드 ===
     console.log('\n📍 2단계: 주문 관리에서 엑셀 다운로드');
-    await page.goto('http://localhost:8081/ko/orders');
-    await page.waitForTimeout(2000);
+    await page.goto(getTestUrl('/ko/orders'));
+    await page.waitForTimeout(TIMEOUTS.medium);
 
     // 엑셀 다운로드 버튼 찾기
     const orderExcelButton = page.locator('button').filter({ hasText: '엑셀' }).or(
@@ -69,8 +71,8 @@ test.describe('시나리오 5: 엑셀 다운로드 (localStorage 세션 유지)'
 
     // === 3단계: 재고 관리에서 엑셀 다운로드 ===
     console.log('\n📍 3단계: 재고 관리에서 엑셀 다운로드');
-    await page.goto('http://localhost:8081/ko/inventory');
-    await page.waitForTimeout(2000);
+    await page.goto(getTestUrl('/ko/inventory'));
+    await page.waitForTimeout(TIMEOUTS.medium);
 
     // 엑셀 다운로드 버튼 찾기
     const inventoryExcelButton = page.locator('button').filter({ hasText: '엑셀' }).or(
@@ -102,8 +104,8 @@ test.describe('시나리오 5: 엑셀 다운로드 (localStorage 세션 유지)'
 
     // === 4단계: 출납장부에서 엑셀 다운로드 ===
     console.log('\n📍 4단계: 출납장부에서 엑셀 다운로드');
-    await page.goto('http://localhost:8081/ko/cashbook');
-    await page.waitForTimeout(2000);
+    await page.goto(getTestUrl('/ko/cashbook'));
+    await page.waitForTimeout(TIMEOUTS.medium);
 
     // 엑셀 다운로드 버튼 찾기
     const cashbookExcelButton = page.locator('button').filter({ hasText: '엑셀' }).or(
