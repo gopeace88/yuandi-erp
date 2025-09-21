@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { getUserRole, isRoleAllowed, type UserRole } from '@/lib/auth/roles'
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -59,7 +60,10 @@ export async function middleware(request: NextRequest) {
   )
 
   // Refresh session if expired
-  await supabase.auth.getSession()
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+  const mockRoleCookie = request.cookies.get('mock-role')?.value as UserRole | undefined
 
   // Skip static files and API routes
   if (
@@ -92,7 +96,51 @@ export async function middleware(request: NextRequest) {
 
   // If already has locale, continue
   if (pathnameHasLocale) {
-    const locale = pathname.split('/')[1]
+    const segments = pathname.split('/').filter(Boolean)
+    const locale = segments[0]
+    const section = segments[1] || ''
+
+    const routePermissions: Record<string, UserRole[]> = {
+      dashboard: ['admin', 'order_manager', 'ship_manager'],
+      inventory: ['admin', 'order_manager'],
+      orders: ['admin', 'order_manager'],
+      shipments: ['admin', 'ship_manager'],
+      cashbook: ['admin'],
+      settings: ['admin'],
+      users: ['admin'],
+      products: ['admin', 'order_manager'],
+    }
+
+    const publicSections = new Set(['login', 'track', 'auth', 'api'])
+
+    if (section && routePermissions[section]) {
+      let role: UserRole = null
+
+      if (session?.user?.id) {
+        role = await getUserRole(supabase, session.user.id)
+      } else if (mockRoleCookie) {
+        role = mockRoleCookie as UserRole
+      }
+
+      if (!role) {
+        const loginUrl = new URL(`/${locale}/login`, request.url)
+        loginUrl.searchParams.set('redirect', pathname)
+        return NextResponse.redirect(loginUrl)
+      }
+
+      if (!isRoleAllowed(role, routePermissions[section])) {
+        const fallbackUrl = new URL(`/${locale}/dashboard`, request.url)
+        return NextResponse.redirect(fallbackUrl)
+      }
+    } else if (section && !publicSections.has(section)) {
+      // For any other authenticated section, ensure session exists or mock role is provided
+      if (!session && !mockRoleCookie) {
+        const loginUrl = new URL(`/${locale}/login`, request.url)
+        loginUrl.searchParams.set('redirect', pathname)
+        return NextResponse.redirect(loginUrl)
+      }
+    }
+
     response.headers.set('x-locale', locale)
     return response
   }

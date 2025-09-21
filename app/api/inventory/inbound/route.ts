@@ -123,6 +123,43 @@ export async function POST(request: NextRequest) {
       );
     }
     
+    // 3-1. inventory 테이블 동기화 (존재하면 업데이트, 없으면 생성)
+    const { data: existingInventory, error: inventoryFetchError } = await supabase
+      .from('inventory')
+      .select('id, allocated')
+      .eq('product_id', product_id)
+      .maybeSingle();
+
+    if (inventoryFetchError && inventoryFetchError.code !== 'PGRST116') {
+      console.error('Inventory fetch error:', inventoryFetchError);
+    }
+
+    if (existingInventory?.id) {
+      const { error: inventoryUpdateError } = await supabase
+        .from('inventory')
+        .update({
+          on_hand: newOnHand,
+          // allocated는 기존 값 유지
+        })
+        .eq('id', existingInventory.id);
+
+      if (inventoryUpdateError) {
+        console.error('❌ Inventory sync update error:', inventoryUpdateError);
+      }
+    } else {
+      const { error: inventoryInsertError } = await supabase
+        .from('inventory')
+        .insert({
+          product_id,
+          on_hand: newOnHand,
+          allocated: 0,
+        });
+
+      if (inventoryInsertError) {
+        console.error('❌ Inventory sync insert error:', inventoryInsertError);
+      }
+    }
+    
     console.log('✅ 재고 업데이트 성공: product_id =', product_id, ', new on_hand =', newOnHand);
     
     // 4. 출납장부 기록 생성 (입고는 지출) - 실제 스키마에 맞춘 필드들

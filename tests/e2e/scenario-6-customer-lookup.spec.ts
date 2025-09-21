@@ -172,7 +172,7 @@ test.describe('시나리오 6: 고객 조회 테스트', () => {
     }
 
     // 중국어 버전
-    await page.goto(getTestUrl('/zh/track'));
+    await page.goto(getTestUrl('/zh-CN/track'));
     await page.waitForTimeout(TIMEOUTS.medium);
 
     const chinesePageContent = await page.locator('body').textContent();

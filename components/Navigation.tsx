@@ -106,19 +106,19 @@ export default function Navigation({ locale }: NavigationProps) {
       path: `/${locale}/shipments`,
       label: t.shipments,
       icon: '🚚',
-      roles: ['admin', 'order_manager', 'ship_manager']
+      roles: ['admin', 'ship_manager']
     },
     {
       path: `/${locale}/inventory`,
       label: t.inventory,
       icon: '📋',
-      roles: ['admin', 'order_manager', 'ship_manager']
+      roles: ['admin', 'order_manager']
     },
     {
       path: `/${locale}/cashbook`,
       label: t.cashbook,
       icon: '💰',
-      roles: ['admin', 'order_manager', 'ship_manager']
+      roles: ['admin']
     },
     {
       path: `/${locale}/users`,

@@ -190,7 +190,12 @@ export default function TrackPage({ params: { locale } }: TrackPageProps) {
         </div>
 
         {/* Search Form */}
-        <div style={{
+        <form
+          onSubmit={(event) => {
+            event.preventDefault()
+            handleSearch()
+          }}
+          style={{
           backgroundColor: 'white',
           padding: '1.5rem',
           borderRadius: '0.5rem',
@@ -205,6 +210,8 @@ export default function TrackPage({ params: { locale } }: TrackPageProps) {
               </label>
               <input
                 type="text"
+                name="customer_name"
+                placeholder={locale === 'ko' ? '예: 홍길동' : '例如: 张三'}
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
                 style={{
@@ -224,6 +231,7 @@ export default function TrackPage({ params: { locale } }: TrackPageProps) {
               </label>
               <input
                 type="tel"
+                name="phone"
                 value={phoneNumber}
                 onChange={(e) => setPhoneNumber(e.target.value)}
                 placeholder="010-1234-5678"
@@ -254,7 +262,7 @@ export default function TrackPage({ params: { locale } }: TrackPageProps) {
           )}
           
           <button
-            onClick={handleSearch}
+            type="submit"
             disabled={isLoading}
             style={{
               width: '100%',
@@ -272,7 +280,7 @@ export default function TrackPage({ params: { locale } }: TrackPageProps) {
               (locale === 'ko' ? '주문 조회' : '查询订单')
             }
           </button>
-        </div>
+        </form>
 
         {/* Search Results */}
         {searchPerformed && (

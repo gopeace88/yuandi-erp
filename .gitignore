@@ -110,7 +110,10 @@ nul
 # GitHub CLI binary
 gh
 
-# Test screenshots
-*.png
+# Test artifacts
+/screenshots/
 /test-screenshots/
+/test-results/
+/playwright-report/
 /my-puppeteer/*.png
+*.png

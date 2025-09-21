@@ -126,7 +126,7 @@ test.describe('시나리오 8: 다국어 테스트', () => {
     }
 
     // 주문 페이지로 이동하여 중국어 콘텐츠 확인
-    await page.goto(getTestUrl('/zh/orders'));
+    await page.goto(getTestUrl('/zh-CN/orders'));
     await page.waitForTimeout(TIMEOUTS.medium);
 
     const chineseOrderPageElements = {

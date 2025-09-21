@@ -12,10 +12,10 @@ test.describe('시나리오 3: 주문 배송 처리 (localStorage 세션 유지)
     await page.goto(getTestUrl('/ko'));
 
     // localStorage로 세션 정보 설정
-    await page.evaluate(() => {
+    await page.evaluate((testAccounts) => {
       const sessionData = {
         id: '78502b6d-13e7-4acc-94a7-23a797de3519',
-        email: TEST_ACCOUNTS.admin.email,
+        email: testAccounts.admin.email,
         name: '관리자',
         role: 'admin',
         last_login: new Date().toISOString()
@@ -24,7 +24,8 @@ test.describe('시나리오 3: 주문 배송 처리 (localStorage 세션 유지)
       localStorage.setItem('userSession', JSON.stringify(sessionData));
       localStorage.setItem('userRole', 'admin');
       localStorage.setItem('i18nextLng', 'ko');
-    });
+      document.cookie = 'mock-role=admin; path=/';
+    }, TEST_ACCOUNTS);
 
     console.log('  ✅ localStorage 세션 정보 설정 완료');
 
@@ -262,5 +263,9 @@ test.describe('시나리오 3: 주문 배송 처리 (localStorage 세션 유지)
     console.log(`  - 최종 배송대기: ${finalPendingNum}건`);
     console.log('========================================');
     console.log('✅ 모든 단계 성공적으로 완료');
+
+    await page.evaluate(() => {
+      document.cookie = 'mock-role=; Max-Age=0; path=/';
+    });
   });
 });

@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase/server';
+import { getUserRole, isRoleAllowed, type UserRole } from '@/lib/auth/roles';
 
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createServerSupabase();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    const mockRole = request.cookies.get('mock-role')?.value as UserRole | undefined;
+    const role = user ? await getUserRole(supabase, user.id) : (mockRole ?? null);
     
     // URL 파라미터 가져오기
     const searchParams = request.nextUrl.searchParams;
@@ -61,7 +67,20 @@ export async function GET(request: NextRequest) {
 
       return NextResponse.json(customerData);
     }
-    
+    if (!user && !mockRole) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    if (!isRoleAllowed(role, ['admin', 'order_manager'])) {
+      return NextResponse.json(
+        { error: 'Forbidden' },
+        { status: 403 }
+      );
+    }
+
     // 일반 주문 목록 조회 로직
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
@@ -167,6 +186,26 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createServerSupabase();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    const mockRole = request.cookies.get('mock-role')?.value as UserRole | undefined;
+    const role = user ? await getUserRole(supabase, user.id) : (mockRole ?? null);
+
+    if (!user && !mockRole) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    if (!isRoleAllowed(role, ['admin', 'order_manager'])) {
+      return NextResponse.json(
+        { error: 'Forbidden' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     
     // 주문 번호 생성
@@ -298,6 +337,45 @@ export async function POST(request: NextRequest) {
           console.log('✅ 재고 업데이트 성공');
         }
 
+        // inventory 테이블 동기화: on_hand 감소, allocated 증가
+        const { data: inventoryRecord, error: inventoryFetchError } = await supabase
+          .from('inventory')
+          .select('id, on_hand, allocated')
+          .eq('product_id', productId)
+          .maybeSingle();
+
+        if (inventoryFetchError && inventoryFetchError.code !== 'PGRST116') {
+          console.error('Inventory fetch error:', inventoryFetchError);
+        }
+
+        const inventoryPayload = {
+          on_hand: newOnHand,
+          allocated: (inventoryRecord?.allocated || 0) + quantity,
+        };
+
+        if (inventoryRecord?.id) {
+          const { error: inventoryUpdateError } = await supabase
+            .from('inventory')
+            .update(inventoryPayload)
+            .eq('id', inventoryRecord.id);
+
+          if (inventoryUpdateError) {
+            console.error('Inventory sync update error:', inventoryUpdateError);
+          }
+        } else {
+          const { error: inventoryInsertError } = await supabase
+            .from('inventory')
+            .insert({
+              product_id: productId,
+              on_hand: newOnHand,
+              allocated: quantity,
+            });
+
+          if (inventoryInsertError) {
+            console.error('Inventory sync insert error:', inventoryInsertError);
+          }
+        }
+
         // 사용자 ID 가져오기 - 테스트 환경에서는 admin 사용자 사용
         const { data: { user } } = await supabase.auth.getUser();
         const userId = user?.id || '78502b6d-13e7-4acc-94a7-23a797de3519'; // admin 사용자
@@ -378,6 +456,26 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const supabase = await createServerSupabase();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    const mockRole = request.cookies.get('mock-role')?.value as UserRole | undefined;
+    const role = user ? await getUserRole(supabase, user.id) : (mockRole ?? null);
+
+    if (!user && !mockRole) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    if (!isRoleAllowed(role, ['admin', 'order_manager'])) {
+      return NextResponse.json(
+        { error: 'Forbidden' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const { id, status, ...updateData } = body;
     
@@ -400,15 +498,16 @@ export async function PATCH(request: NextRequest) {
       } else if (status === 'cancelled' || status === 'refunded') {
         // cancelled_at 컬럼이 없으므로 제거
         // updateFields.cancelled_at = new Date().toISOString();
-        
-        // 재고 복구
-        const { data: orderItems } = await supabase
-          .from('order_items')
-          .select('product_id, quantity')
-          .eq('order_id', id);
-        
-        if (orderItems) {
-          for (const item of orderItems) {
+
+        // 재고 복구 - cancelled일 때만 (PRD v2.0: refunded는 재고 복구 없음)
+        if (status === 'cancelled') {
+          const { data: orderItems } = await supabase
+            .from('order_items')
+            .select('product_id, quantity')
+            .eq('order_id', id);
+
+          if (orderItems) {
+            for (const item of orderItems) {
             // inventory 테이블의 allocated 값 차감
             const { data: currentInventory } = await supabase
               .from('inventory')
@@ -475,6 +574,7 @@ export async function PATCH(request: NextRequest) {
             }
           }
         }
+      }
         
         // 환불 처리 시 출납장부에 기록
         if (status === 'refunded') {

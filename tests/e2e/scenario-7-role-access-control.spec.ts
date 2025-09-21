@@ -93,6 +93,7 @@ test.describe('시나리오 7: 권한별 접근 제어 테스트', () => {
       localStorage.setItem('userSession', JSON.stringify(sessionData));
       localStorage.setItem('userRole', 'order_manager');
       localStorage.setItem('i18nextLng', 'ko');
+      document.cookie = 'mock-role=order_manager; path=/';
     });
 
     console.log('  ✅ 주문 관리자 세션 설정 완료');
@@ -122,6 +123,7 @@ test.describe('시나리오 7: 권한별 접근 제어 테스트', () => {
     // 세션 클리어
     await page.evaluate(() => {
       localStorage.clear();
+      document.cookie = 'mock-role=; Max-Age=0; path=/';
     });
 
     // === 3단계: 배송 관리자(ship_manager) 권한 테스트 ===
@@ -140,6 +142,7 @@ test.describe('시나리오 7: 권한별 접근 제어 테스트', () => {
       localStorage.setItem('userSession', JSON.stringify(sessionData));
       localStorage.setItem('userRole', 'ship_manager');
       localStorage.setItem('i18nextLng', 'ko');
+      document.cookie = 'mock-role=ship_manager; path=/';
     });
 
     console.log('  ✅ 배송 관리자 세션 설정 완료');
@@ -208,6 +211,7 @@ test.describe('시나리오 7: 권한별 접근 제어 테스트', () => {
     // 세션 클리어
     await page.evaluate(() => {
       localStorage.clear();
+      document.cookie = 'mock-role=; Max-Age=0; path=/';
     });
 
     // === 테스트 요약 ===

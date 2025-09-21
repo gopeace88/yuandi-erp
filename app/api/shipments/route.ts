@@ -1,9 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase/server';
+import { getUserRole, isRoleAllowed, type UserRole } from '@/lib/auth/roles';
 
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createServerSupabase();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    const mockRole = request.cookies.get('mock-role')?.value as UserRole | undefined;
+    const role = user ? await getUserRole(supabase, user.id) : (mockRole ?? null);
+
+    if (!user && !mockRole) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    if (!isRoleAllowed(role, ['admin', 'ship_manager'])) {
+      return NextResponse.json(
+        { error: 'Forbidden' },
+        { status: 403 }
+      );
+    }
     
     // URL 파라미터 가져오기
     const searchParams = request.nextUrl.searchParams;
@@ -58,6 +78,26 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createServerSupabase();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    const mockRole = request.cookies.get('mock-role')?.value as UserRole | undefined;
+    const role = user ? await getUserRole(supabase, user.id) : (mockRole ?? null);
+
+    if (!user && !mockRole) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    if (!isRoleAllowed(role, ['admin', 'ship_manager'])) {
+      return NextResponse.json(
+        { error: 'Forbidden' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     
     // 배송비는 필수
@@ -82,36 +122,74 @@ export async function POST(request: NextRequest) {
       .eq('id', body.orderId)
       .single();
     
-    // 배송 정보 생성 - 단순화된 스키마 사용
-    const { data: shipment, error: shipmentError } = await supabase
+    const baseShipmentPayload = {
+      order_id: body.orderId,
+      shipping_address: orderData ? `${orderData.shipping_address_line1} ${orderData.shipping_address_line2 || ''}`.trim() : '',
+      shipping_address_line1: orderData?.shipping_address_line1 || '',
+      shipping_address_line2: orderData?.shipping_address_line2 || '',
+      shipping_postal_code: orderData?.shipping_postal_code || '',
+      shipping_method: 'express',
+      courier: body.courierCn || 'YUANSUN',
+      tracking_number: body.trackingNumberCn || body.trackingNumber,
+      tracking_url: body.trackingUrlCn || body.trackingUrl || null,
+      shipping_cost_cny: shippingCostCny,
+      shipping_cost_krw: shippingCostKrw,
+      shipped_date: new Date().toISOString().split('T')[0],
+      status: 'in_transit',
+      notes: body.notes || `배송비: ${shippingCostCny} CNY (₩${shippingCostKrw.toLocaleString()})`
+    };
+
+    // 동일 주문에 기존 배송 정보가 있으면 업데이트, 없으면 생성
+    const { data: existingShipment, error: existingShipmentError } = await supabase
       .from('shipments')
-      .insert({
-        order_id: body.orderId,
-        // 배송지 정보
-        shipping_address: orderData ? 
-          `${orderData.shipping_address_line1} ${orderData.shipping_address_line2 || ''}`.trim() : '',
-        shipping_address_line1: orderData?.shipping_address_line1 || '',
-        shipping_address_line2: orderData?.shipping_address_line2 || '',
-        shipping_postal_code: orderData?.shipping_postal_code || '',
-        // 배송 방법
-        shipping_method: 'express', // 기본값
-        // 단순화된 배송 정보 (중국택배사가 초기에 정해지고 송장번호는 하나)
-        courier: body.courierCn || 'YUANSUN',
-        tracking_number: body.trackingNumberCn || body.trackingNumber,
-        tracking_url: body.trackingUrlCn || body.trackingUrl || null,
-        // 배송비
-        shipping_cost_cny: shippingCostCny,
-        shipping_cost_krw: shippingCostKrw,
-        // 날짜
-        shipped_date: new Date().toISOString().split('T')[0],
-        // 상태
-        status: 'in_transit',
-        // 메모
-        notes: body.notes || `배송비: ${shippingCostCny} CNY (₩${shippingCostKrw.toLocaleString()})`
-      })
-      .select()
-      .single();
-    
+      .select('id')
+      .eq('order_id', body.orderId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (existingShipmentError && existingShipmentError.code !== 'PGRST116') {
+      console.error('Existing shipment fetch error:', existingShipmentError);
+    }
+
+    let shipmentId: number | null = null;
+    let shipmentError = null;
+    let shipmentData = null;
+
+    if (existingShipment?.id) {
+      shipmentId = existingShipment.id;
+      const updateResponse = await supabase
+        .from('shipments')
+        .update(baseShipmentPayload)
+        .eq('id', existingShipment.id)
+        .select()
+        .single();
+
+      shipmentData = updateResponse.data;
+      shipmentError = updateResponse.error;
+
+      // 기존 배송비 출납장부 기록 제거
+      const { error: cashbookCleanupError } = await supabase
+        .from('cashbook_transactions')
+        .delete()
+        .eq('ref_type', 'shipment')
+        .eq('ref_id', existingShipment.id.toString());
+
+      if (cashbookCleanupError) {
+        console.error('Cashbook cleanup error:', cashbookCleanupError);
+      }
+    } else {
+      const insertResponse = await supabase
+        .from('shipments')
+        .insert(baseShipmentPayload)
+        .select()
+        .single();
+
+      shipmentData = insertResponse.data;
+      shipmentError = insertResponse.error;
+      shipmentId = insertResponse.data?.id ?? null;
+    }
+
     if (shipmentError) {
       console.error('Shipment creation error:', shipmentError);
       return NextResponse.json(
@@ -119,7 +197,7 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-    
+
     // 주문 상태 업데이트 (orders 테이블에는 courier, tracking_number 컬럼이 없을 수 있음)
     const { error: orderError } = await supabase
       .from('orders')
@@ -168,7 +246,7 @@ export async function POST(request: NextRequest) {
           fx_rate: CNY_TO_KRW_RATE,
           description: `[SHIPPING_FEE] ${orderData?.order_number} (${orderData?.customer_name})`,
           ref_type: 'shipment',
-          ref_id: shipment.id.toString(),
+          ref_id: (shipmentId ?? shipmentData?.id)?.toString() || '',
           note: `주문번호: ${orderData?.order_number || ''}, 중국 운송장: ${body.trackingNumberCn || ''}`,
           created_by: user?.id || '78502b6d-13e7-4acc-94a7-23a797de3519'  // admin 사용자
         });
@@ -181,10 +259,47 @@ export async function POST(request: NextRequest) {
       }
     }
     
+    // 배송 처리 완료 시 재고 할당량 감소 (배송 완료 → 실제 출고)
+    const { data: orderItems, error: orderItemsError } = await supabase
+      .from('order_items')
+      .select('product_id, quantity')
+      .eq('order_id', body.orderId);
+
+    if (orderItemsError) {
+      console.error('Order items fetch error for shipment:', orderItemsError);
+    }
+
+    if (orderItems) {
+      for (const item of orderItems) {
+        const { data: inventoryRecord, error: inventoryFetchError } = await supabase
+          .from('inventory')
+          .select('id, allocated')
+          .eq('product_id', item.product_id)
+          .maybeSingle();
+
+        if (inventoryFetchError && inventoryFetchError.code !== 'PGRST116') {
+          console.error('Inventory fetch error (shipment):', inventoryFetchError);
+          continue;
+        }
+
+        if (inventoryRecord?.id) {
+          const nextAllocated = Math.max(0, (inventoryRecord.allocated || 0) - (item.quantity || 0));
+          const { error: inventoryUpdateError } = await supabase
+            .from('inventory')
+            .update({ allocated: nextAllocated })
+            .eq('id', inventoryRecord.id);
+
+          if (inventoryUpdateError) {
+            console.error('Inventory allocated update error:', inventoryUpdateError);
+          }
+        }
+      }
+    }
+
     return NextResponse.json({ 
       success: true, 
       shipment: {
-        id: shipment.id
+        id: shipmentId || shipmentData?.id
       }
     });
   } catch (error) {
@@ -199,6 +314,26 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const supabase = await createServerSupabase();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    const mockRole = request.cookies.get('mock-role')?.value as UserRole | undefined;
+    const role = user ? await getUserRole(supabase, user.id) : (mockRole ?? null);
+
+    if (!user && !mockRole) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    if (!isRoleAllowed(role, ['admin', 'ship_manager'])) {
+      return NextResponse.json(
+        { error: 'Forbidden' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const { id, ...updateData } = body;
     

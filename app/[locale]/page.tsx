@@ -74,7 +74,10 @@ export default function HomePage({ params: { locale } }: HomePageProps) {
       
       if (authError) {
         console.error('Auth error:', authError);
-        setError(t.error);
+        const message = authError.message?.includes('Invalid login credentials')
+          ? (locale === 'ko' ? '이메일 또는 비밀번호가 올바르지 않습니다.' : '邮箱或密码不正确。')
+          : t.error;
+        setError(message);
         setIsLoading(false);
         return;
       }
@@ -88,7 +91,7 @@ export default function HomePage({ params: { locale } }: HomePageProps) {
       
       if (profileError || !profile) {
         console.error('Profile error:', profileError);
-        setError(t.error);
+        setError(locale === 'ko' ? '사용자 프로필을 불러올 수 없습니다.' : '无法加载用户信息。');
         setIsLoading(false);
         return;
       }
@@ -103,7 +106,7 @@ export default function HomePage({ params: { locale } }: HomePageProps) {
       
     } catch (error) {
       console.error('Login error:', error);
-      setError(t.error);
+      setError(locale === 'ko' ? '로그인 처리 중 문제가 발생했습니다.' : '登录过程中出现问题。');
       setIsLoading(false);
     }
   };
