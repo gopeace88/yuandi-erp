@@ -8,7 +8,10 @@ export async function GET(request: NextRequest) {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    const mockRole = request.cookies.get('mock-role')?.value as UserRole | undefined;
+    const allowMockRole = process.env.NODE_ENV !== 'production';
+    const mockRole = allowMockRole
+      ? (request.cookies.get('mock-role')?.value as UserRole | undefined)
+      : undefined;
     const role = user ? await getUserRole(supabase, user.id) : (mockRole ?? null);
     
     // URL 파라미터 가져오기
@@ -189,7 +192,10 @@ export async function POST(request: NextRequest) {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    const mockRole = request.cookies.get('mock-role')?.value as UserRole | undefined;
+    const allowMockRole = process.env.NODE_ENV !== 'production';
+    const mockRole = allowMockRole
+      ? (request.cookies.get('mock-role')?.value as UserRole | undefined)
+      : undefined;
     const role = user ? await getUserRole(supabase, user.id) : (mockRole ?? null);
 
     if (!user && !mockRole) {
@@ -459,7 +465,10 @@ export async function PATCH(request: NextRequest) {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    const mockRole = request.cookies.get('mock-role')?.value as UserRole | undefined;
+    const allowMockRole = process.env.NODE_ENV !== 'production';
+    const mockRole = allowMockRole
+      ? (request.cookies.get('mock-role')?.value as UserRole | undefined)
+      : undefined;
     const role = user ? await getUserRole(supabase, user.id) : (mockRole ?? null);
 
     if (!user && !mockRole) {
