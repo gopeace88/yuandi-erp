@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { getTestUrl, logTestEnvironment, TIMEOUTS, TEST_ACCOUNTS } from './test-config';
+import { getTestUrl, logTestEnvironment, TIMEOUTS } from './test-config';
 
 test.describe('시나리오 6: 고객 조회 테스트', () => {
   test('고객 조회 페이지에서 PCCC 코드로 고객 정보 조회', async ({ page }) => {

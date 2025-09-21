@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { getTestUrl, logTestEnvironment, TIMEOUTS, TEST_ACCOUNTS } from './test-config';
+import { getTestUrl, logTestEnvironment, TIMEOUTS } from './test-config';
+import { ensureLoggedIn, clearAuth } from './utils/auth';
 
 test.describe('시나리오 7: 권한별 접근 제어 테스트', () => {
   test('각 역할별로 접근 가능한 메뉴 확인', async ({ page }) => {
@@ -9,15 +10,7 @@ test.describe('시나리오 7: 권한별 접근 제어 테스트', () => {
 
     // === 1단계: 관리자(admin) 권한 테스트 ===
     console.log('📍 1단계: 관리자(admin) 권한 테스트');
-    await page.goto(getTestUrl('/ko'));
-    await page.waitForTimeout(TIMEOUTS.medium);
-
-    // 관리자 로그인
-    await page.fill('input[type="email"]', 'admin@yuandi.com');
-    await page.fill('input[type="password"]', 'yuandi123!');
-    await page.click('button[type="submit"]');
-    await page.waitForTimeout(TIMEOUTS.medium);
-
+    await ensureLoggedIn(page, 'admin', { redirectPath: '/ko/dashboard' });
     console.log('  ✅ 관리자로 로그인 성공');
 
     // 관리자가 접근 가능한 모든 메뉴 확인
@@ -69,38 +62,17 @@ test.describe('시나리오 7: 권한별 접근 제어 테스트', () => {
       }
     } else {
       // URL로 직접 로그아웃
+      await clearAuth(page);
       await page.goto(getTestUrl('/ko'));
-      await page.evaluate(() => {
-        localStorage.clear();
-      });
-      await page.reload();
       console.log('  ✅ 강제 로그아웃 완료');
     }
 
+    await clearAuth(page);
+
     // === 2단계: 주문 관리자(order_manager) 권한 테스트 ===
     console.log('\n📍 2단계: 주문 관리자(order_manager) 권한 테스트');
-
-    // localStorage로 세션 설정 (order_manager 권한)
-    await page.evaluate(() => {
-      const sessionData = {
-        id: 'test-order-manager-id',
-        email: 'order@yuandi.com',
-        name: '주문관리자',
-        role: 'order_manager',
-        last_login: new Date().toISOString()
-      };
-
-      localStorage.setItem('userSession', JSON.stringify(sessionData));
-      localStorage.setItem('userRole', 'order_manager');
-      localStorage.setItem('i18nextLng', 'ko');
-      document.cookie = 'mock-role=order_manager; path=/';
-    });
-
-    console.log('  ✅ 주문 관리자 세션 설정 완료');
-
-    // 페이지 새로고침하여 세션 적용
-    await page.goto(getTestUrl('/ko/dashboard'));
-    await page.waitForTimeout(TIMEOUTS.medium);
+    await ensureLoggedIn(page, 'orderManager', { redirectPath: '/ko/dashboard' });
+    console.log('  ✅ 주문 관리자 로그인 완료');
 
     // 주문 관리자가 접근 가능한 메뉴 확인
     console.log('  📋 주문 관리자 메뉴 접근성 확인:');
@@ -120,36 +92,12 @@ test.describe('시나리오 7: 권한별 접근 제어 테스트', () => {
       console.log(`    ${!isVisible ? '✅' : '❌'} ${menuName} - 접근 ${isVisible ? '가능 (오류)' : '제한 (정상)'}`);
     }
 
-    // 세션 클리어
-    await page.evaluate(() => {
-      localStorage.clear();
-      document.cookie = 'mock-role=; Max-Age=0; path=/';
-    });
+    await clearAuth(page);
 
     // === 3단계: 배송 관리자(ship_manager) 권한 테스트 ===
     console.log('\n📍 3단계: 배송 관리자(ship_manager) 권한 테스트');
-
-    // localStorage로 세션 설정 (ship_manager 권한)
-    await page.evaluate(() => {
-      const sessionData = {
-        id: 'test-ship-manager-id',
-        email: 'ship@yuandi.com',
-        name: '배송관리자',
-        role: 'ship_manager',
-        last_login: new Date().toISOString()
-      };
-
-      localStorage.setItem('userSession', JSON.stringify(sessionData));
-      localStorage.setItem('userRole', 'ship_manager');
-      localStorage.setItem('i18nextLng', 'ko');
-      document.cookie = 'mock-role=ship_manager; path=/';
-    });
-
-    console.log('  ✅ 배송 관리자 세션 설정 완료');
-
-    // 페이지 새로고침하여 세션 적용
-    await page.goto(getTestUrl('/ko/dashboard'));
-    await page.waitForTimeout(TIMEOUTS.medium);
+    await ensureLoggedIn(page, 'shipManager', { redirectPath: '/ko/dashboard' });
+    console.log('  ✅ 배송 관리자 로그인 완료');
 
     // 배송 관리자가 접근 가능한 메뉴 확인
     console.log('  📋 배송 관리자 메뉴 접근성 확인:');
@@ -208,11 +156,7 @@ test.describe('시나리오 7: 권한별 접근 제어 테스트', () => {
       console.log(`  ⚠️ API 호출 실패: ${error.message}`);
     }
 
-    // 세션 클리어
-    await page.evaluate(() => {
-      localStorage.clear();
-      document.cookie = 'mock-role=; Max-Age=0; path=/';
-    });
+    await clearAuth(page);
 
     // === 테스트 요약 ===
     console.log('\n=== 시나리오 7 테스트 완료 ===');

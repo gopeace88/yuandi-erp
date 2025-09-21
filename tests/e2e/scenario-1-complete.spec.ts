@@ -1,13 +1,8 @@
 import { test, expect } from '@playwright/test';
-import { getTestUrl, logTestEnvironment, TIMEOUTS, TEST_ACCOUNTS } from './test-config';
+import { getTestUrl, logTestEnvironment, TIMEOUTS } from './test-config';
+import { ensureLoggedIn, clearAuth } from './utils/auth';
 
 test.describe('시나리오 1: 상품 등록 및 재고 관리 통합 플로우', () => {
-  // 테스트 계정
-  const TEST_ADMIN = {
-    email: TEST_ACCOUNTS.admin.email,
-    password: TEST_ACCOUNTS.admin.password
-  };
-
   // 고유한 타임스탬프 생성
   const timestamp = Date.now();
   const uniqueModel = `TEST-${timestamp}`;
@@ -38,25 +33,8 @@ test.describe('시나리오 1: 상품 등록 및 재고 관리 통합 플로우'
     // 1단계: 로그인 및 세션 설정
     // ========================================
     console.log('📍 1단계: 로그인 및 세션 설정');
-    await page.goto(getTestUrl('/ko'));
-
-    // localStorage로 세션 정보 설정 (다른 시나리오와 동일)
-    await page.evaluate((testAccounts) => {
-      const sessionData = {
-        id: '78502b6d-13e7-4acc-94a7-23a797de3519',
-        email: testAccounts.admin.email,
-        name: '관리자',
-        role: 'admin',
-        last_login: new Date().toISOString()
-      };
-
-      localStorage.setItem('userSession', JSON.stringify(sessionData));
-      localStorage.setItem('userRole', 'admin');
-      localStorage.setItem('i18nextLng', 'ko');
-      document.cookie = 'mock-role=admin; path=/';
-    }, TEST_ACCOUNTS);
-
-    console.log('  ✅ localStorage 세션 정보 설정 완료');
+    await ensureLoggedIn(page, 'admin', { redirectPath: '/ko/dashboard' });
+    console.log('  ✅ 로그인 완료');
 
     // ========================================
     // 2단계: 대시보드에서 초기 재고 확인
@@ -88,9 +66,9 @@ test.describe('시나리오 1: 상품 등록 및 재고 관리 통합 플로우'
     }
 
     // ========================================
-    // 3단계: 설정 > 상품 관리에서 상품 추가
+    // 3단계: 설정 페이지에서 상품 추가
     // ========================================
-    console.log('\n📍 3단계: 설정 > 상품 관리에서 상품 추가');
+    console.log('\n📍 3단계: 설정 페이지에서 상품 추가');
 
     // 설정 페이지로 이동
     await page.goto(getTestUrl('/ko/settings'));
@@ -98,7 +76,7 @@ test.describe('시나리오 1: 상품 등록 및 재고 관리 통합 플로우'
     console.log('  - 설정 페이지 이동');
     await page.waitForTimeout(TIMEOUTS.medium);
 
-    // 상품 관리 탭 클릭 (첫 번째 탭이므로 기본적으로 선택되어 있을 수 있음)
+    // 상품 관리 탭 클릭
     const productTab = page.locator('button[role="tab"]').filter({ hasText: /상품 관리/i }).first();
     if (await productTab.count() > 0) {
       await productTab.click();
@@ -210,8 +188,8 @@ test.describe('시나리오 1: 상품 등록 및 재고 관리 통합 플로우'
       await page.waitForTimeout(500);
     }
 
-    // 재고 입고 버튼 클릭
-    const inboundButton = page.locator('button').filter({ hasText: /재고 입고|입고/i }).first();
+    // 재고 입고 버튼 클릭 - 더 정확한 선택자 사용
+    const inboundButton = page.locator('button').filter({ hasText: /\+ 재고 입고|재고 입고/i }).first();
     await inboundButton.click();
     await page.waitForTimeout(1500);
     console.log('  - 재고 입고 모달 열림');
@@ -385,8 +363,6 @@ test.describe('시나리오 1: 상품 등록 및 재고 관리 통합 플로우'
     expect(page.url()).not.toContain('/login');
     console.log('✅ 모든 단계 성공적으로 완료');
 
-    await page.evaluate(() => {
-      document.cookie = 'mock-role=; Max-Age=0; path=/';
-    });
+    await clearAuth(page);
   });
 });

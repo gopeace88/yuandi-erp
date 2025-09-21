@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { getTestUrl, logTestEnvironment, TIMEOUTS, TEST_ACCOUNTS } from './test-config';
+import { getTestUrl, logTestEnvironment, TIMEOUTS } from './test-config';
+import { ensureLoggedIn, clearAuth } from './utils/auth';
 
 test.describe('시나리오 3: 주문 배송 처리 (localStorage 세션 유지)', () => {
   test('배송 처리 및 상태 변경 확인', async ({ page }) => {
@@ -9,25 +10,8 @@ test.describe('시나리오 3: 주문 배송 처리 (localStorage 세션 유지)
 
     // === 1단계: 로그인 및 세션 설정 ===
     console.log('📍 1단계: 로그인 및 세션 설정');
-    await page.goto(getTestUrl('/ko'));
-
-    // localStorage로 세션 정보 설정
-    await page.evaluate((testAccounts) => {
-      const sessionData = {
-        id: '78502b6d-13e7-4acc-94a7-23a797de3519',
-        email: testAccounts.admin.email,
-        name: '관리자',
-        role: 'admin',
-        last_login: new Date().toISOString()
-      };
-
-      localStorage.setItem('userSession', JSON.stringify(sessionData));
-      localStorage.setItem('userRole', 'admin');
-      localStorage.setItem('i18nextLng', 'ko');
-      document.cookie = 'mock-role=admin; path=/';
-    }, TEST_ACCOUNTS);
-
-    console.log('  ✅ localStorage 세션 정보 설정 완료');
+    await ensureLoggedIn(page, 'admin', { redirectPath: '/ko/dashboard' });
+    console.log('  ✅ 로그인 완료');
 
     // === 2단계: 대시보드에서 초기 배송대기 주문 수 확인 ===
     console.log('\n📍 2단계: 대시보드에서 초기 배송대기 주문 수 확인');
@@ -264,8 +248,6 @@ test.describe('시나리오 3: 주문 배송 처리 (localStorage 세션 유지)
     console.log('========================================');
     console.log('✅ 모든 단계 성공적으로 완료');
 
-    await page.evaluate(() => {
-      document.cookie = 'mock-role=; Max-Age=0; path=/';
-    });
+    await clearAuth(page);
   });
 });

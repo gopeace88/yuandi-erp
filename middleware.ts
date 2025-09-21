@@ -127,7 +127,7 @@ export async function middleware(request: NextRequest) {
       }
 
       if (!role) {
-        const loginUrl = new URL(`/${locale}/login`, request.url)
+        const loginUrl = new URL(`/${locale}/auth/signin`, request.url)
         loginUrl.searchParams.set('redirect', pathname)
         return NextResponse.redirect(loginUrl)
       }
@@ -139,7 +139,7 @@ export async function middleware(request: NextRequest) {
     } else if (section && !publicSections.has(section)) {
       // For any other authenticated section, ensure session exists or mock role is provided (dev only)
       if (!session && !(mockRoleCookie && process.env.NODE_ENV === 'development')) {
-        const loginUrl = new URL(`/${locale}/login`, request.url)
+        const loginUrl = new URL(`/${locale}/auth/signin`, request.url)
         loginUrl.searchParams.set('redirect', pathname)
         return NextResponse.redirect(loginUrl)
       }
