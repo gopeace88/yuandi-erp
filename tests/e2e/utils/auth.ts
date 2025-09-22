@@ -13,15 +13,11 @@ export async function ensureLoggedIn(
   // 로그인 페이지로 이동
   await page.goto(getTestUrl(`/${locale}`));
 
-  // 이미 로그인되어 있는지 확인
-  const isLoggedIn = await page.evaluate(() => {
-    const keys = Object.keys(localStorage);
-    const hasSession = keys.some(key =>
-      key.includes('supabase.auth.token') ||
-      key.startsWith('sb-') && key.includes('-auth-token')
-    );
-    return hasSession;
-  });
+  // 이미 로그인되어 있는지 확인 (쿠키 기반)
+  const cookies = await page.context().cookies();
+  const isLoggedIn = cookies.some(cookie =>
+    cookie.name.includes('sb-') && cookie.name.includes('-auth-token')
+  );
 
   if (isLoggedIn) {
     console.log('  ✅ 이미 로그인되어 있음');
@@ -48,22 +44,23 @@ export async function ensureLoggedIn(
     // URL 변경이 없더라도 세션이 생성되었는지 확인
   });
 
-  // 세션 생성 확인
-  const sessionCreated = await page.evaluate(() => {
-    // Supabase는 다음과 같은 키를 사용함
-    const keys = Object.keys(localStorage);
-    const hasSession = keys.some(key =>
-      key.includes('supabase.auth.token') ||
-      key.startsWith('sb-') && key.includes('-auth-token')
-    );
-    return hasSession;
-  });
+  // 세션 생성 확인 (쿠키 기반)
+  const postLoginCookies = await page.context().cookies();
+  const sessionCreated = postLoginCookies.some(cookie =>
+    cookie.name.includes('sb-') && cookie.name.includes('-auth-token')
+  );
 
   if (sessionCreated) {
     console.log('  ✅ 로그인 성공');
   } else {
-    console.log('  ❌ 로그인 실패');
-    throw new Error('로그인 실패: 세션이 생성되지 않음');
+    // 대시보드로 이동했는지 확인 (추가 검증)
+    const currentUrl = page.url();
+    if (currentUrl.includes('/dashboard')) {
+      console.log('  ✅ 로그인 성공 (대시보드 도달)');
+    } else {
+      console.log('  ❌ 로그인 실패');
+      throw new Error('로그인 실패: 세션이 생성되지 않음');
+    }
   }
 }
 

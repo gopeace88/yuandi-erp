@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { getTestUrl, logTestEnvironment, TIMEOUTS } from './test-config';
+import { getTestUrl, logTestEnvironment, TIMEOUTS, TEST_ACCOUNTS } from './test-config';
 import { ensureLoggedIn, clearAuth } from './utils/auth';
 
 test.describe('시나리오 7: 권한별 접근 제어 테스트', () => {
@@ -10,7 +10,7 @@ test.describe('시나리오 7: 권한별 접근 제어 테스트', () => {
 
     // === 1단계: 관리자(admin) 권한 테스트 ===
     console.log('📍 1단계: 관리자(admin) 권한 테스트');
-    await ensureLoggedIn(page, 'admin', { redirectPath: '/ko/dashboard' });
+    await ensureLoggedIn(page, TEST_ACCOUNTS.admin.email, TEST_ACCOUNTS.admin.password, 'ko');
     console.log('  ✅ 관리자로 로그인 성공');
 
     // 관리자가 접근 가능한 모든 메뉴 확인

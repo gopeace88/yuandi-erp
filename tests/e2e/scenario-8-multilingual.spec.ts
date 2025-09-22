@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { getTestUrl, logTestEnvironment, TIMEOUTS } from './test-config';
+import { getTestUrl, logTestEnvironment, TIMEOUTS, TEST_ACCOUNTS } from './test-config';
 import { ensureLoggedIn, clearAuth } from './utils/auth';
 
 test.describe('시나리오 8: 다국어 테스트', () => {

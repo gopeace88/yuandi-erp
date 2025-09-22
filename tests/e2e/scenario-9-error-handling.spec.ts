@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { getTestUrl, logTestEnvironment, TIMEOUTS } from './test-config';
+import { getTestUrl, logTestEnvironment, TIMEOUTS, TEST_ACCOUNTS } from './test-config';
 import { ensureLoggedIn, clearAuth } from './utils/auth';
 
 test.describe('시나리오 9: 에러 처리 테스트', () => {
@@ -148,7 +148,7 @@ test.describe('시나리오 9: 에러 처리 테스트', () => {
     // === 4단계: 네트워크 에러 시뮬레이션 ===
     console.log('\n📍 4단계: 네트워크 에러 시뮬레이션');
 
-    await ensureLoggedIn(page, 'admin', { redirectPath: '/ko/dashboard' });
+    await ensureLoggedIn(page, TEST_ACCOUNTS.admin.email, TEST_ACCOUNTS.admin.password, 'ko');
     await page.goto(getTestUrl('/ko/dashboard'));
     await page.waitForTimeout(TIMEOUTS.medium);
 
@@ -175,7 +175,7 @@ test.describe('시나리오 9: 에러 처리 테스트', () => {
     // === 6단계: 세션 만료 처리 테스트 ===
     console.log('\n📍 6단계: 세션 만료 처리 테스트');
 
-    await ensureLoggedIn(page, 'admin', { redirectPath: '/ko/dashboard' });
+    await ensureLoggedIn(page, TEST_ACCOUNTS.admin.email, TEST_ACCOUNTS.admin.password, 'ko');
     await page.goto(getTestUrl('/ko/dashboard'));
     await page.waitForTimeout(TIMEOUTS.medium);
 

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { getTestUrl, logTestEnvironment, TIMEOUTS } from './test-config';
+import { getTestUrl, logTestEnvironment, TIMEOUTS, TEST_ACCOUNTS } from './test-config';
 import { ensureLoggedIn, clearAuth } from './utils/auth';
 
 test.describe('시나리오 3: 주문 배송 처리 (localStorage 세션 유지)', () => {
@@ -10,7 +10,7 @@ test.describe('시나리오 3: 주문 배송 처리 (localStorage 세션 유지)
 
     // === 1단계: 로그인 및 세션 설정 ===
     console.log('📍 1단계: 로그인 및 세션 설정');
-    await ensureLoggedIn(page, 'admin', { redirectPath: '/ko/dashboard' });
+    await ensureLoggedIn(page, TEST_ACCOUNTS.admin.email, TEST_ACCOUNTS.admin.password, 'ko');
     console.log('  ✅ 로그인 완료');
 
     // === 2단계: 대시보드에서 초기 배송대기 주문 수 확인 ===
