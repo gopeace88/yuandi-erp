@@ -71,7 +71,7 @@ test.describe('시나리오 7: 권한별 접근 제어 테스트', () => {
 
     // === 2단계: 주문 관리자(order_manager) 권한 테스트 ===
     console.log('\n📍 2단계: 주문 관리자(order_manager) 권한 테스트');
-    await ensureLoggedIn(page, 'orderManager', { redirectPath: '/ko/dashboard' });
+    await ensureLoggedIn(page, TEST_ACCOUNTS.orderManager.email, TEST_ACCOUNTS.orderManager.password);
     console.log('  ✅ 주문 관리자 로그인 완료');
 
     // 주문 관리자가 접근 가능한 메뉴 확인
@@ -96,7 +96,7 @@ test.describe('시나리오 7: 권한별 접근 제어 테스트', () => {
 
     // === 3단계: 배송 관리자(ship_manager) 권한 테스트 ===
     console.log('\n📍 3단계: 배송 관리자(ship_manager) 권한 테스트');
-    await ensureLoggedIn(page, 'shipManager', { redirectPath: '/ko/dashboard' });
+    await ensureLoggedIn(page, TEST_ACCOUNTS.shipManager.email, TEST_ACCOUNTS.shipManager.password);
     console.log('  ✅ 배송 관리자 로그인 완료');
 
     // 배송 관리자가 접근 가능한 메뉴 확인

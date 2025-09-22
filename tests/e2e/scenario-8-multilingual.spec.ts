@@ -25,7 +25,7 @@ test.describe('시나리오 8: 다국어 테스트', () => {
       console.log(`    ${count > 0 ? '✅' : '❌'} ${element}`);
     }
 
-    await ensureLoggedIn(page, 'admin', { locale: 'ko', redirectPath: '/ko/dashboard' });
+    await ensureLoggedIn(page, TEST_ACCOUNTS.admin.email, TEST_ACCOUNTS.admin.password);
     console.log('  ✅ 한국어 로그인 완료');
 
     const koreanMenus = ['대시보드', '재고 관리', '주문 관리', '배송 관리', '출납장부'];

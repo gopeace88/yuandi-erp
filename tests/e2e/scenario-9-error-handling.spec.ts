@@ -59,7 +59,7 @@ test.describe('시나리오 9: 에러 처리 테스트', () => {
     // === 2단계: 필수 필드 누락 테스트 ===
     console.log('\n📍 2단계: 필수 필드 누락 테스트');
 
-    await ensureLoggedIn(page, 'admin', { redirectPath: '/ko/inventory' });
+    await ensureLoggedIn(page, TEST_ACCOUNTS.admin.email, TEST_ACCOUNTS.admin.password);
     console.log('  ✅ 정상 로그인 완료');
 
     await page.goto(getTestUrl('/ko/inventory'));
@@ -92,7 +92,7 @@ test.describe('시나리오 9: 에러 처리 테스트', () => {
     // === 3단계: 재고 부족 시 주문 생성 테스트 ===
     console.log('\n📍 3단계: 재고 부족 시 주문 생성 테스트');
 
-    await ensureLoggedIn(page, 'admin', { redirectPath: '/ko/orders' });
+    await ensureLoggedIn(page, TEST_ACCOUNTS.admin.email, TEST_ACCOUNTS.admin.password);
     await page.goto(getTestUrl('/ko/orders'));
     await page.waitForTimeout(TIMEOUTS.medium);
 
