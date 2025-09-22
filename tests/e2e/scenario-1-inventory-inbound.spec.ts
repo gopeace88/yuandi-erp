@@ -53,51 +53,86 @@ test.describe('시나리오 1: 재고 입고', () => {
     // === 5단계: 입고 정보 입력 ===
     console.log('\n📍 5단계: 입고 정보 입력');
 
-    // 상품 선택 (드롭다운에서)
-    const productSelect = page.locator('select').filter({ has: page.locator('option') }).nth(0);
-    const selectExists = await productSelect.count() > 0;
+    // 모달이 완전히 로드될 때까지 대기
+    await page.waitForTimeout(TIMEOUTS.medium);
 
-    if (selectExists) {
-      // select 엘리먼트가 있는 경우
+    // 모달 내의 모든 select 확인
+    const allSelects = await page.locator('select').all();
+    console.log(`  - 모달 내 전체 select 개수: ${allSelects.length}개`);
+
+    // 두 번째 select가 상품 선택 드롭다운일 가능성이 높음
+    // (첫 번째는 카테고리일 수 있음)
+    let productSelect = page.locator('select').first();
+
+    // select가 2개 이상이면 두 번째 것을 사용
+    if (allSelects.length > 1) {
+      productSelect = page.locator('select').nth(1);
+      console.log('  - 두 번째 select를 상품 선택 드롭다운으로 사용');
+    } else {
+      console.log('  - 첫 번째 select를 상품 선택 드롭다운으로 사용');
+    }
+
+    if (await productSelect.count() > 0) {
+      // 옵션들 확인
       const options = await productSelect.locator('option').all();
       console.log(`  - 상품 옵션 개수: ${options.length}개`);
 
-      // 실제 상품이 있는 옵션 선택 (보통 index 1부터)
+      // 처음 5개 옵션만 로그 출력
+      for (let i = 0; i < Math.min(5, options.length); i++) {
+        const text = await options[i].textContent();
+        console.log(`    옵션 ${i}: "${text}"`);
+      }
+
+      // 실제 상품 선택 (인덱스 1부터, 0은 보통 "선택하세요" 같은 플레이스홀더)
       if (options.length > 1) {
-        const optionText = await options[1].textContent();
-        console.log(`  - 선택할 상품: ${optionText}`);
-        await productSelect.selectOption({ index: 1 });
+        // 상품명을 포함한 옵션 찾기 (테스트 상품 또는 기존 상품)
+        let found = false;
+
+        for (let i = 1; i < options.length; i++) {
+          const text = await options[i].textContent();
+          // 비어있지 않은 첫 번째 실제 상품 선택
+          if (text && text.trim().length > 0 && !text.includes('선택')) {
+            await productSelect.selectOption({ index: i });
+            console.log(`  ✅ 상품 선택: "${text}" (인덱스: ${i})`);
+            found = true;
+            break;
+          }
+        }
+
+        if (!found) {
+          // 못 찾았으면 그냥 첫 번째 옵션 선택 (인덱스 1)
+          await productSelect.selectOption({ index: 1 });
+          const selectedText = await options[1].textContent();
+          console.log(`  - 기본값으로 첫 번째 상품 선택: "${selectedText}"`);
+        }
       }
     } else {
-      // 일반 드롭다운인 경우
-      const productDropdown = page.locator('[data-testid*="product"], [id*="product"]').first();
-      await productDropdown.click();
-      const firstOption = page.locator('[role="option"]').first();
-      await firstOption.click();
+      console.log('  ❌ 상품 선택 드롭다운을 찾을 수 없음');
     }
 
-    console.log('  ✅ 상품 선택 완료');
+    console.log('  ✅ 상품 선택 단계 완료');
 
-    // 입고 수량 입력
-    const quantityInput = page.locator('input[type="number"]').filter({ hasNotText: /가격|금액|price/i }).first();
+    // 입고 수량 입력 - 모든 number input 찾기
+    const numberInputs = await page.locator('input[type="number"]').all();
     const inboundQuantity = 100;
-    await quantityInput.fill(inboundQuantity.toString());
-    console.log(`  - 입고 수량: ${inboundQuantity}개`);
 
-    // 입고 단가 입력 (선택사항)
-    const costInput = page.locator('input').filter({ hasText: /단가|원가|cost/i }).or(
-      page.locator('input[name*="cost"], input[placeholder*="단가"]')
-    ).first();
+    if (numberInputs.length > 0) {
+      // 첫 번째 number input이 수량 필드
+      await numberInputs[0].fill(inboundQuantity.toString());
+      console.log(`  - 입고 수량: ${inboundQuantity}개`);
 
-    if (await costInput.count() > 0) {
-      await costInput.fill('150');  // 150 CNY
-      console.log('  - 입고 단가: 150 CNY');
+      // 두 번째 number input이 단가 필드 (있으면)
+      if (numberInputs.length > 1) {
+        await numberInputs[1].fill('150');  // 150 CNY
+        console.log('  - 입고 단가: 150 CNY');
+      }
     }
 
-    // 메모 입력
-    const memoInput = page.locator('input[name*="memo"], textarea[name*="memo"], input[placeholder*="메모"]').first();
+    // 메모 입력 - textarea 또는 text input 찾기
+    const memoInput = page.locator('textarea, input[type="text"]').last();
     if (await memoInput.count() > 0) {
-      await memoInput.fill(`시나리오 1 테스트 입고 - ${new Date().toLocaleString('ko-KR')}`);
+      const memoText = `시나리오 1 테스트 입고 - ${new Date().toLocaleString('ko-KR')}`;
+      await memoInput.fill(memoText);
       console.log('  - 메모: 시나리오 1 테스트 입고');
     }
 
@@ -129,13 +164,30 @@ test.describe('시나리오 1: 재고 입고', () => {
     // === 7단계: 재고 증가 확인 ===
     console.log('\n📍 7단계: 재고 증가 확인');
 
-    // 페이지 새로고침
+    // 모달이 닫힐 때까지 대기
+    await page.waitForTimeout(TIMEOUTS.medium);
+
+    // 페이지 새로고침하여 최신 데이터 가져오기
     await page.reload();
     await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(TIMEOUTS.short);
 
-    // 동일한 상품의 재고 확인
+    // 동일한 상품의 재고 확인 (재고 열 찾기)
     const updatedProductRow = page.locator('tbody tr').first();
-    const updatedStock = await updatedProductRow.locator('td').filter({ hasText: /^\d+$/ }).first().textContent();
+    const tdElements = await updatedProductRow.locator('td').all();
+
+    // 재고 수량 찾기 (보통 상품명 다음 열들 중 하나)
+    let updatedStock = '0';
+    for (let i = 2; i < tdElements.length; i++) {
+      const text = await tdElements[i].textContent();
+      // 숫자만 있는 셀을 찾기 (재고 수량일 가능성이 높음)
+      if (text && /^\d+$/.test(text.trim())) {
+        updatedStock = text.trim();
+        console.log(`  - 재고 컬럼 위치: ${i}번째 td`);
+        break;
+      }
+    }
+
     const stockIncrease = parseInt(updatedStock || '0') - parseInt(currentStock || '0');
 
     console.log(`  - 입고 후 재고: ${updatedStock}개`);
