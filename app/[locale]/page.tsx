@@ -100,9 +100,12 @@ export default function HomePage({ params: { locale } }: HomePageProps) {
       localStorage.setItem('userRole', profile.role);
       localStorage.setItem('userName', profile.name);
       localStorage.setItem('userEmail', profile.email);
-      
-      // 대시보드로 이동
-      window.location.href = `/${locale}/dashboard`;
+
+      // 세션이 제대로 설정될 때까지 잠시 대기
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // 대시보드로 이동 (router.push 사용)
+      router.push(`/${locale}/dashboard`);
       
     } catch (error) {
       console.error('Login error:', error);

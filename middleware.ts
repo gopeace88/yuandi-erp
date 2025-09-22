@@ -63,10 +63,6 @@ export async function middleware(request: NextRequest) {
   const {
     data: { session },
   } = await supabase.auth.getSession()
-  const allowMockRole = process.env.NODE_ENV !== 'production'
-  const mockRoleCookie = allowMockRole
-    ? (request.cookies.get('mock-role')?.value as UserRole | undefined)
-    : undefined
 
   // Skip static files and API routes
   if (
@@ -121,13 +117,10 @@ export async function middleware(request: NextRequest) {
 
       if (session?.user?.id) {
         role = await getUserRole(supabase, session.user.id)
-      } else if (mockRoleCookie && process.env.NODE_ENV === 'development') {
-        // Only allow mock role in development environment
-        role = mockRoleCookie as UserRole
       }
 
       if (!role) {
-        const loginUrl = new URL(`/${locale}/auth/signin`, request.url)
+        const loginUrl = new URL(`/${locale}`, request.url)
         loginUrl.searchParams.set('redirect', pathname)
         return NextResponse.redirect(loginUrl)
       }
@@ -137,9 +130,9 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(fallbackUrl)
       }
     } else if (section && !publicSections.has(section)) {
-      // For any other authenticated section, ensure session exists or mock role is provided (dev only)
-      if (!session && !(mockRoleCookie && process.env.NODE_ENV === 'development')) {
-        const loginUrl = new URL(`/${locale}/auth/signin`, request.url)
+      // For any other authenticated section, ensure session exists
+      if (!session) {
+        const loginUrl = new URL(`/${locale}`, request.url)
         loginUrl.searchParams.set('redirect', pathname)
         return NextResponse.redirect(loginUrl)
       }
