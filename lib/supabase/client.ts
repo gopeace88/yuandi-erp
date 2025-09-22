@@ -21,9 +21,7 @@ if (typeof window !== 'undefined' && !supabaseInstance) {
     supabaseKey,
     {
       auth: {
-        persistSession: true,
-        storageKey: 'yuandi-auth-token',
-        storage: window.localStorage
+        persistSession: true
       }
     }
   )
@@ -51,9 +49,7 @@ export function createClient() {
       supabaseKey,
       {
         auth: {
-          persistSession: true,
-          storageKey: 'yuandi-auth-token',
-          storage: window.localStorage
+          persistSession: true
         }
       }
     )
